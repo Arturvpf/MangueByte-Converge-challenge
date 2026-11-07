@@ -1,0 +1,185 @@
+/* ==========================================================================
+   Base: reset mínimo, tipografia global e utilitários
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Lenis (lenis.css): com smooth scroll ativo o scroll nativo é desligado. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: clip;
+}
+
+body {
+  margin: 0;
+  background: var(--color-gray-50);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.5;
+  font-feature-settings: var(--font-features);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+img,
+svg,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+figure,
+dl,
+dd {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--color-ink);
+  color: var(--color-white);
+}
+
+/* --- Tipografia -------------------------------------------------------- */
+
+.t-h1,
+.t-h2,
+.t-h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: var(--tracking-display);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.t-h1 { font-size: var(--text-h1); }
+.t-h2 { font-size: var(--text-h2); }
+.t-h3 { font-size: var(--text-h3); letter-spacing: -0.01em; line-height: 1.25; }
+
+.t-lead {
+  font-size: var(--text-lead);
+  line-height: 28px;
+  letter-spacing: var(--tracking-tight);
+}
+
+.t-body {
+  font-size: var(--text-body);
+  line-height: 24px;
+  letter-spacing: -0.02em;
+  color: var(--color-ink-muted);
+}
+
+.t-small {
+  font-size: var(--text-small);
+  line-height: 22px;
+}
+
+.t-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+  line-height: 20px;
+  text-transform: uppercase;
+}
+
+.t-mono-sm {
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+/* Trecho em cinza dentro de um título ("... que substitui planilhas") */
+.t-muted {
+  color: var(--color-ink-muted);
+  opacity: 0.6;
+}
+
+.is-dark .t-muted {
+  color: var(--color-on-night);
+  opacity: 0.45;
+}
+
+/* --- Utilitários ------------------------------------------------------- */
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 100;
+  padding: 8px 12px;
+  background: var(--color-ink);
+  color: var(--color-white);
+  border-radius: var(--radius-sm);
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

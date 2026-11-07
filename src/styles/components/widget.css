@@ -1,0 +1,180 @@
+/* ==========================================================================
+   Peças compartilhadas dos "cards de produto" (chat, previsão, fluxo, regras)
+   Cores e sombras lidas dos módulos do script-017 (AI Chat Card etc.):
+   - moldura: borda 1px #f5f5f5, fundo branco
+   - superfície interna: borda 1px #e6e5e5, fundo #fafafa
+   - chips: inset 0 0 2px 2px #fff + 0 0 2px rgba(0,0,0,.1)
+   ========================================================================== */
+
+.widget {
+  width: 100%;
+  max-width: 440px;
+  padding: 6px;
+  border: 1px solid var(--color-gray-100);
+  border-radius: var(--radius-lg);
+  background: var(--color-white);
+  box-shadow: var(--shadow-card);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.widget__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 10px 12px;
+  color: var(--color-ink-mono);
+}
+
+.widget__surface {
+  position: relative;
+  padding: 10px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  background: var(--color-gray-50);
+}
+
+/* --- Status (pílula com ponto) ------------------------------------------ */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-xs);
+  background: var(--color-gray-50);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+.status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+}
+.status--live i {
+  background: var(--color-positive);
+  opacity: 1;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* --- Chip / avatar / ponto de status ----------------------------------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(180deg, #fcfcfe 0%, #f2f2f2 100%);
+  box-shadow: var(--shadow-chip);
+  font-size: 11px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+.chip svg {
+  width: 12px;
+  height: 12px;
+}
+
+.avatar {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-xs);
+  /* Avatar abstrato: listras diagonais em tons de grafite (sem imagem). */
+  background:
+    repeating-linear-gradient(135deg, #2a2a2e 0 3px, #8d8f99 3px 5px, #e9e9ee 5px 6px),
+    #2a2a2e;
+}
+
+.dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: 1px;
+}
+.dot--ok { background: var(--color-positive); }
+.dot--warn { background: var(--color-warning); }
+
+.is-up { color: var(--color-positive); font-style: normal; }
+.is-down { color: var(--color-warning); font-style: normal; }
+.is-warn { color: var(--color-warning); }
+
+/* --- Métricas ---------------------------------------------------------- */
+.metric {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  box-shadow: var(--shadow-chip);
+}
+.metric > .t-mono-sm {
+  color: var(--color-ink-mono);
+  font-size: 10px;
+}
+.metric p {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+}
+.metric strong {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 400;
+}
+.metric em {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.metric--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.metric--row .t-mono-sm {
+  font-size: 10px;
+}
+
+/* --- Bolhas de chat ---------------------------------------------------- */
+.bubble {
+  max-width: 280px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  box-shadow: var(--shadow-chip);
+}
+.bubble--user {
+  background: var(--color-ink);
+  color: var(--color-white);
+  box-shadow: none;
+}
+.bubble--typing {
+  display: inline-flex;
+  gap: 4px;
+  padding: 11px 12px;
+}
+.bubble--typing i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #b4b4b4;
+  animation: typing 1.2s ease-in-out infinite;
+}
+.bubble--typing i:nth-child(2) { animation-delay: 0.15s; }
+.bubble--typing i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}

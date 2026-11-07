@@ -1,0 +1,317 @@
+/* ==========================================================================
+   Casos de uso — "Tab Items" (script-012, componente de código)
+   Constantes copiadas do módulo:
+     5 abas de 20% · régua de 303 traços (101 por largura) · traço 1x14 a 5px
+     linha ativa 1x19 · faixa desloca com transform 900ms cubic-bezier(.22,1,.36,1)
+     texto: opacity + blur(4px), entra em 320ms, sai em 220ms, corpo atrasa 40ms
+     painel: grid .85fr / 1.15fr, gap 56, texto min-height 420, mídia 504px
+   ========================================================================== */
+
+.use-cases {
+  padding-bottom: 0;
+}
+
+.ruler-tabs {
+  margin-top: 64px;
+}
+
+.ruler-tabs__list {
+  display: flex;
+}
+
+.ruler-tabs__tab {
+  flex: 0 0 20%;
+  padding: 6px 2px;
+  color: var(--color-on-night-faint);
+  font-size: 14px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-align: center;
+  white-space: nowrap;
+  transition: color 250ms ease;
+}
+.ruler-tabs__tab:hover {
+  color: var(--color-on-night-hover);
+}
+.ruler-tabs__tab[aria-selected="true"] {
+  color: var(--color-on-night);
+}
+
+.ruler {
+  position: relative;
+  height: 19px;
+  margin-top: 16px;
+  overflow: hidden;
+}
+
+/* A faixa tem 3x a largura e começa em -100%: assim sempre há traços
+   dos dois lados enquanto ela desliza. */
+.ruler__strip {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 300%;
+  height: 19px;
+  transform: translate3d(var(--ruler-x, 0px), 0, 0);
+  transition: transform 900ms var(--ease-out-expo);
+  will-change: transform;
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.25) 0 1px, transparent 1px);
+  background-size: calc(100% / 303) 14px;
+  background-position: 0 5px;
+  background-repeat: repeat-x;
+}
+.ruler__strip::after {
+  /* Linha ativa: no traço 101, ou seja, exatamente 1/3 da faixa. */
+  content: "";
+  position: absolute;
+  top: 0;
+  left: calc(100% / 3);
+  width: 1px;
+  height: 19px;
+  background: var(--color-on-night);
+}
+.ruler-tabs.is-static .ruler__strip {
+  transition: none;
+}
+
+.use-cases__divider {
+  margin: 32px 0;
+}
+
+.ruler-tabs__panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 56px;
+  padding-bottom: 32px;
+}
+
+/* Todas as camadas de texto ocupam a mesma célula do grid. */
+.ruler-tabs__texts {
+  display: grid;
+  min-height: 420px;
+}
+.ruler-tabs__text {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+}
+.ruler-tabs__text h3,
+.ruler-tabs__text p {
+  max-width: 422px;
+  transition: opacity 320ms var(--ease-out-expo), filter 320ms var(--ease-out-expo);
+}
+.ruler-tabs__text h3 {
+  color: var(--color-on-night);
+}
+.ruler-tabs__text p {
+  color: var(--color-on-night-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  transition-delay: 40ms;
+}
+.ruler-tabs__text[data-active="false"] {
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0s linear 220ms;
+}
+.ruler-tabs__text[data-active="false"] h3,
+.ruler-tabs__text[data-active="false"] p {
+  opacity: 0;
+  filter: blur(4px);
+  transition-duration: 220ms;
+  transition-delay: 0ms;
+}
+
+/* --- Mídia: fotografia editorial e superfícies abstratas da Alinia ----- */
+.ruler-tabs__media {
+  position: relative;
+  justify-self: end;
+  width: 100%;
+  max-width: 610px;
+  min-height: 504px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  /* "vidro canelado" estático: faixas diagonais sobre um gradiente quente */
+  background:
+    repeating-linear-gradient(121deg, rgba(255, 255, 255, 0.07) 0 2px, rgba(0, 0, 0, 0.16) 2px 28px, rgba(255, 255, 255, 0.03) 28px 36px),
+    radial-gradient(120% 90% at 20% 10%, #6e6a66 0%, #2b2826 45%, #121010 100%);
+  transition: opacity 320ms var(--ease-out-expo);
+}
+.scene:nth-child(2) { background-color: #1e2a33; background-image: repeating-linear-gradient(121deg, rgba(255,255,255,.07) 0 2px, rgba(0,0,0,.16) 2px 28px, rgba(255,255,255,.03) 28px 36px), radial-gradient(120% 90% at 80% 0%, #5f7c8c 0%, #23313a 45%, #0f1316 100%); }
+.scene:nth-child(3) { background-image: repeating-linear-gradient(121deg, rgba(255,255,255,.07) 0 2px, rgba(0,0,0,.16) 2px 28px, rgba(255,255,255,.03) 28px 36px), radial-gradient(120% 90% at 30% 100%, #7a6b5a 0%, #2e2822 45%, #121010 100%); }
+.scene:nth-child(4) { background-image: repeating-linear-gradient(121deg, rgba(255,255,255,.07) 0 2px, rgba(0,0,0,.16) 2px 28px, rgba(255,255,255,.03) 28px 36px), radial-gradient(120% 90% at 90% 90%, #6b6f86 0%, #272a36 45%, #101114 100%); }
+.scene:nth-child(5) { background-image: repeating-linear-gradient(121deg, rgba(255,255,255,.07) 0 2px, rgba(0,0,0,.16) 2px 28px, rgba(255,255,255,.03) 28px 36px), radial-gradient(120% 90% at 50% 0%, #8a8a8a 0%, #2c2c2c 45%, #111 100%); }
+
+.scene__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(0.75) contrast(0.96);
+  pointer-events: none;
+}
+.scene__image--light {
+  filter: saturate(0.7) contrast(0.92);
+}
+.scene__card,
+.scene__prompt {
+  z-index: 1;
+}
+.scene__card {
+  position: relative;
+}
+
+.scene[data-active="false"] {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 220ms ease, visibility 0s linear 220ms;
+}
+
+.scene__card {
+  display: grid;
+  gap: 6px;
+  min-width: 260px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-lg);
+  background: rgba(14, 11, 10, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--color-on-night);
+  font-size: 13px;
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.6);
+}
+.scene__card .t-mono-sm {
+  color: var(--color-white-70);
+  font-size: 10px;
+}
+.scene__card strong {
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+.scene__card > span:not(.t-mono-sm):not(.scene__tag) {
+  color: var(--color-on-night-muted);
+}
+.scene__tag {
+  justify-self: start;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  background: rgba(31, 157, 85, 0.18);
+  color: #7fe0a6;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.scene__tag--warn {
+  background: rgba(232, 89, 12, 0.18);
+  color: #ffb085;
+}
+.scene__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 72px;
+  margin: 8px 0 2px;
+}
+.scene__bars i {
+  flex: 1;
+  height: calc(var(--v) * 100%);
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, #f5f5f3, rgba(245, 245, 243, 0.25));
+}
+.scene__compare {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  align-items: center;
+  gap: 8px 10px;
+  margin: 8px 0 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.scene__compare i {
+  height: 8px;
+  width: calc(var(--v) * 100%);
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(245, 245, 243, 0.3), #f5f5f3);
+}
+
+/* Barra de prompt — estilos copiados do Tab Items. */
+.scene__prompt {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  background: var(--color-ink-soft);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  line-height: 1;
+}
+.scene__prompt > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scene__send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  background: linear-gradient(160deg, #5b616c 0%, #343a43 42%, #1a1f27 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 0 -1px 0 rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+.scene__send svg {
+  width: 12px;
+  height: 12px;
+}
+
+.use-cases__bottom {
+  height: 96px;
+  border-top: 1px solid var(--color-night-raised);
+}
+
+/* --- Responsivo (limiares do componente: 1136px e 746px) ---------------- */
+@media (max-width: 1136px) {
+  .ruler-tabs__panel { grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); gap: 32px; }
+  .ruler-tabs__texts { min-height: auto; }
+  .ruler-tabs__media { min-height: 360px; }
+}
+
+@media (max-width: 746px) {
+  .ruler-tabs__list {
+    overflow-x: auto;
+    gap: 28px;
+    scrollbar-width: none;
+  }
+  .ruler-tabs__list::-webkit-scrollbar { display: none; }
+  .ruler-tabs__tab { flex: 0 0 auto; }
+  .ruler-tabs__panel { grid-template-columns: 1fr; gap: 24px; }
+  .ruler-tabs__media { order: -1; min-height: 240px; justify-self: stretch; max-width: none; }
+}

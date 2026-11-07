@@ -1,0 +1,24 @@
+/* ==========================================================================
+   Ponto de entrada dos estilos. Ordem: tokens -> base -> layout ->
+   componentes -> seções (do topo para o rodapé da página).
+   ========================================================================== */
+
+@import url("./tokens.css");
+@import url("./base.css");
+@import url("./layout.css");
+
+@import url("./components/badge.css");
+@import url("./components/button.css");
+@import url("./components/header.css");
+@import url("./components/widget.css");
+@import url("./components/motion.css");
+
+@import url("./sections/hero.css");
+@import url("./sections/process.css");
+@import url("./sections/capabilities.css");
+@import url("./sections/use-cases.css");
+@import url("./sections/example.css");
+@import url("./sections/scale.css");
+@import url("./sections/security.css");
+@import url("./sections/changelog-faq.css");
+@import url("./sections/footer.css");

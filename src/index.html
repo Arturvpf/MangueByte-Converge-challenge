@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alinia — Workforce Intelligence</title>
+  <meta name="description" content="Planejamento de capacidade e contratação com agentes de IA: investigação de déficit por equipe, previsão com incerteza, cenários simulados e regras de jornada verificadas, sempre com aprovação do RH.">
+  <meta name="theme-color" content="#fafafa">
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500&display=swap">
+
+  <link rel="stylesheet" href="styles/main.css">
+  <script type="module" src="scripts/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+  <!-- =====================================================================
+       Header
+       ===================================================================== -->
+  <header class="site-header" data-header>
+    <div class="container site-header__inner">
+      <div class="site-header__start">
+        <a class="logo" href="#topo" aria-label="Alinia — início">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="13" width="5" height="9" rx="1" fill="currentColor"/><rect x="9.5" y="8" width="5" height="14" rx="1" fill="currentColor"/><rect x="17" y="2" width="5" height="20" rx="1" fill="currentColor" opacity=".35"/></svg>
+          <span>alinia</span>
+        </a>
+        <nav class="nav" aria-label="Principal">
+          <a class="nav__link" href="app/">Plataforma</a>
+          <a class="nav__link" href="#capacidades">Produto</a>
+          <a class="nav__link" href="#casos-de-uso">Casos de uso</a>
+          <a class="nav__link" href="#como-funciona">Como funciona</a>
+          <a class="nav__link" href="#seguranca">Segurança</a>
+          <a class="nav__link" href="#faq">FAQ</a>
+        </nav>
+      </div>
+
+      <a class="btn btn--light site-header__cta" href="#contato" data-metal>
+        <span class="btn__face"><span class="roll"><span class="roll__line">Agendar demo</span><span class="roll__line" aria-hidden="true">Agendar demo</span></span></span>
+      </a>
+
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="menu-mobile" data-menu-toggle>
+        <span class="visually-hidden">Abrir menu</span>
+        <span aria-hidden="true"></span><span aria-hidden="true"></span>
+      </button>
+    </div>
+  </header>
+
+  <nav class="mobile-menu" id="menu-mobile" aria-label="Menu" data-menu>
+    <a class="nav__link" href="app/">Plataforma</a>
+    <a class="nav__link" href="#capacidades">Produto</a>
+    <a class="nav__link" href="#casos-de-uso">Casos de uso</a>
+    <a class="nav__link" href="#como-funciona">Como funciona</a>
+    <a class="nav__link" href="#seguranca">Segurança</a>
+    <a class="nav__link" href="#faq">FAQ</a>
+    <a class="btn" href="#contato" data-metal>
+      <span class="btn__face"><span class="roll"><span class="roll__line">Agendar demo</span><span class="roll__line" aria-hidden="true">Agendar demo</span></span></span>
+    </a>
+  </nav>
+
+  <main id="conteudo">
+
+    <!-- ===================================================================
+         Hero
+         =================================================================== -->
+    <section class="section hero" id="topo">
+      <div class="container hero__inner">
+        <div class="hero__content" data-appear>
+          <span class="badge" data-metal="badge">
+            <span class="badge__content">
+              <svg class="badge__icon" viewBox="0 0 18 18" aria-hidden="true"><use href="#i-spark"/></svg>
+              Workforce Intelligence
+            </span>
+          </span>
+
+          <h1 class="t-h1 hero__title">
+            Planejamento de capacidade que
+            <span class="t-muted">troca planilhas por cenários verificáveis</span>
+          </h1>
+
+          <div class="hero__actions">
+            <a class="btn btn--ghost" href="#contato">
+              <span class="btn__face">
+                <span class="btn__avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-calendar"/></svg></span>
+                <span class="roll"><span class="roll__line">Agendar demo</span><span class="roll__line" aria-hidden="true">Agendar demo</span></span>
+              </span>
+            </a>
+            <a class="btn" href="app/" data-metal>
+              <span class="btn__face"><span class="roll"><span class="roll__line">Explorar plataforma</span><span class="roll__line" aria-hidden="true">Explorar plataforma</span></span></span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="container hero__visual" data-appear>
+        <canvas class="hero__shader" data-fluted-swirl aria-hidden="true"></canvas>
+
+        <div class="hero__glass">
+          <div class="app" role="img" aria-label="Painel da Alinia mostrando demanda, capacidade e IPD da Unidade Centro, com o assistente explicando o déficit no turno da tarde.">
+            <aside class="app__sidebar" aria-hidden="true">
+              <div class="app__brand">
+                <span class="app__brand-mark"><svg viewBox="0 0 24 24"><rect x="2" y="13" width="5" height="9" rx="1" fill="currentColor"/><rect x="9.5" y="8" width="5" height="14" rx="1" fill="currentColor"/><rect x="17" y="2" width="5" height="20" rx="1" fill="currentColor" opacity=".35"/></svg></span>
+                <span><strong>Alinia</strong><small>Unidade Centro</small></span>
+              </div>
+              <ul class="app__menu">
+                <li class="is-active"><svg viewBox="0 0 24 24"><use href="#i-grid"/></svg>Visão geral</li>
+                <li><svg viewBox="0 0 24 24"><use href="#i-trend"/></svg>Demanda<span>4</span></li>
+                <li><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>Capacidade<span>2</span></li>
+                <li><svg viewBox="0 0 24 24"><use href="#i-branch"/></svg>Cenários<span>5</span></li>
+                <li><svg viewBox="0 0 24 24"><use href="#i-scale"/></svg>Regras</li>
+              </ul>
+              <div class="app__sync"><i></i>Fontes sincronizadas</div>
+            </aside>
+
+            <div class="app__main" aria-hidden="true">
+              <div class="app__bar">
+                <span class="app__title"><svg viewBox="0 0 24 24"><use href="#i-grid"/></svg>Visão geral</span>
+                <span class="chip t-mono-sm">Nov 2026</span>
+              </div>
+              <div class="app__tabs"><span class="is-active">Esta semana</span><span>Próx. 4 semanas</span><span>Trimestre</span></div>
+              <div class="app__metrics">
+                <div><span class="t-mono-sm">Demanda proj.</span><strong>1.200</strong><em class="is-up">+4,3%</em></div>
+                <div><span class="t-mono-sm">Capacidade</span><strong>954</strong><em class="is-down">−4,6%</em></div>
+                <div><span class="t-mono-sm">IPD</span><strong>1,21</strong><em class="is-down">+0,06</em></div>
+              </div>
+              <div class="app__coverage">
+                <div class="app__coverage-head"><span class="t-mono-sm">Cobertura por turno</span><span class="chip">Todos os turnos</span></div>
+                <p><strong>86%</strong> <em class="is-up">meta 95%</em></p>
+                <div class="app__dots" data-dot-row="24" data-dot-fill="0.86"></div>
+              </div>
+              <table class="app__table">
+                <thead><tr><th>Competência</th><th>Gap</th><th>Turno</th></tr></thead>
+                <tbody>
+                  <tr><td><i class="dot dot--warn"></i>N1 · Atendimento</td><td class="is-down">+2,1 FTE</td><td>Tarde</td></tr>
+                  <tr><td><i class="dot dot--ok"></i>N2 · Suporte</td><td class="is-down">+0,6 FTE</td><td>Manhã</td></tr>
+                  <tr><td><i class="dot dot--ok"></i>N3 · Especialista</td><td>0,0 FTE</td><td>—</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="app__assistant" aria-hidden="true">
+              <div class="app__bar">
+                <span class="app__title"><span class="avatar"></span>Pergunte à Alinia</span>
+                <span class="app__plus">+</span>
+              </div>
+              <div class="app__msg">
+                <span class="avatar"></span>
+                <p>No cenário 42h o <strong>IPD fica em 1,21</strong>. Quase todo o déficit está em N1, no turno da tarde.</p>
+              </div>
+              <span class="chip chip--source"><svg viewBox="0 0 24 24"><use href="#i-file"/></svg>escala_out.csv · linha 212</span>
+              <div class="app__suggestions"><span>Ver cenários</span><span>Comparar jornadas</span></div>
+              <div class="app__composer">Pergunte sobre a capacidade…<span class="avatar"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         Fontes de dados (no original: faixa de logos de clientes)
+         =================================================================== -->
+    <section class="section sources" aria-label="Fontes de dados suportadas">
+      <div class="divider"></div>
+      <div class="container container--padded sources__row">
+        <span class="sources__item"><svg viewBox="0 0 24 24"><use href="#i-file"/></svg>CSV</span>
+        <span class="sources__item"><svg viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Jira</span>
+        <span class="sources__item"><svg viewBox="0 0 24 24"><use href="#i-branch"/></svg>Linear</span>
+        <span class="sources__item"><svg viewBox="0 0 24 24"><use href="#i-calendar"/></svg>WFM / Escalas</span>
+        <span class="sources__item"><svg viewBox="0 0 24 24"><use href="#i-clock"/></svg>Ponto</span>
+        <span class="sources__item"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg>ERP de RH</span>
+      </div>
+      <div class="divider"></div>
+    </section>
+
+    <!-- ===================================================================
+         Capacidades (nav sticky + 4 cards animados)
+         =================================================================== -->
+    <section class="section capabilities" id="capacidades">
+      <div class="container section-head">
+        <span class="badge" data-metal="badge"><span class="badge__content"><svg class="badge__icon" viewBox="0 0 18 18" aria-hidden="true"><use href="#i-spark"/></svg>Capacidades</span></span>
+        <h2 class="t-h2 section-head__title">Tudo o que o RH precisa para decidir capacidade. Quatro capacidades, construídas para trabalhar juntas.</h2>
+      </div>
+
+      <div class="divider capabilities__divider"></div>
+
+      <div class="container capabilities__body" data-capabilities>
+        <nav class="capabilities__nav" aria-label="Capacidades">
+          <a class="capabilities__link is-active" href="#cap-investigacao">Investigação</a>
+          <a class="capabilities__link" href="#cap-previsao">Previsão</a>
+          <a class="capabilities__link" href="#cap-cenarios">Cenários</a>
+          <a class="capabilities__link" href="#cap-regras">Regras de jornada</a>
+        </nav>
+
+        <div class="capabilities__cards">
+
+          <!-- 1. Investigação: AI Chat Card -->
+          <article class="cap-card" id="cap-investigacao">
+            <header class="cap-card__head">
+              <span class="cap-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-search"/></svg></span>
+              <p class="t-lead"><strong>Pergunte em linguagem natural.</strong> <span>Os agentes investigam causas, pedem os dados que faltam e devolvem hipóteses com a origem de cada evidência.</span></p>
+            </header>
+            <div class="cap-card__stage">
+              <div class="widget chat" data-chat aria-label="Exemplo de conversa com a Alinia">
+                <div class="widget__head">
+                  <span class="t-mono-sm">Investigação</span>
+                  <span class="status" data-chat-status><i></i><span>Pronto</span></span>
+                </div>
+                <div class="widget__surface chat__surface">
+                  <div class="chat__thread">
+                    <div class="chat__row chat__row--user" data-step="question"><p class="bubble bubble--user">Por que o backlog da Unidade Centro subiu?</p></div>
+                    <div class="chat__row" data-step="answer">
+                      <span class="avatar"></span>
+                      <div><span class="chat__name">Alinia</span><p class="bubble">O IPD chegou a 1,21 no turno da tarde. Quase todo o déficit está em atendimento N1; o resto se manteve estável.</p></div>
+                    </div>
+                    <div class="chat__row chat__row--user" data-step="followup"><p class="bubble bubble--user">Quais competências faltam?</p></div>
+                    <div class="chat__row" data-step="typing">
+                      <span class="avatar"></span>
+                      <div><span class="chat__name">Alinia</span><p class="bubble bubble--typing"><i></i><i></i><i></i></p></div>
+                    </div>
+                  </div>
+                  <div class="chat__composer">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-clip"/></svg>
+                    <span class="chat__input" data-chat-input data-placeholder="Pergunte mais…">Pergunte mais…</span>
+                    <span class="chat__send" data-chat-send><i></i><i></i><i></i></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- 2. Previsão: Live Overview Card -->
+          <article class="cap-card" id="cap-previsao">
+            <header class="cap-card__head">
+              <span class="cap-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-trend"/></svg></span>
+              <p class="t-lead"><strong>Previsões com incerteza, não palpites.</strong> <span>Demanda por equipe e turno, com backtesting, intervalos e abstenção quando os dados não sustentam a resposta.</span></p>
+            </header>
+            <div class="cap-card__stage">
+              <div class="widget overview" data-overview>
+                <div class="widget__head">
+                  <span class="t-mono-sm">Previsão semanal</span>
+                  <span class="status status--live"><i></i><span>Atualizando</span></span>
+                </div>
+                <div class="widget__surface overview__surface">
+                  <div class="overview__metrics">
+                    <div class="metric"><span class="t-mono-sm">Demanda proj.</span><p><strong data-live="demand">1.200</strong><em class="is-up">+4,3%</em></p></div>
+                    <div class="metric"><span class="t-mono-sm">Capacidade</span><p><strong data-live="capacity">954</strong><em class="is-down">−4,6%</em></p></div>
+                    <div class="metric"><span class="t-mono-sm">IPD</span><p><strong data-live="ipd">1,21</strong><em class="is-down">+0,06</em></p></div>
+                  </div>
+                  <div class="overview__chart">
+                    <div class="overview__chart-head"><span class="t-mono-sm">Demanda</span><span class="chip">Agora <strong data-live="now">1.200</strong></span></div>
+                    <div class="overview__plot" data-dot-chart></div>
+                    <div class="overview__legend t-mono-sm"><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span><span>Dom</span></div>
+                  </div>
+                  <div class="overview__health">
+                    <div class="metric metric--row"><span><i class="dot dot--ok"></i>Forecast</span><span class="t-mono-sm is-up">Backtest</span></div>
+                    <div class="metric metric--row"><span><i class="dot dot--ok"></i>Solver</span><span class="t-mono-sm is-up">Viável</span></div>
+                    <div class="metric metric--row"><span><i class="dot dot--warn"></i>Regras</span><span class="t-mono-sm is-warn">Revisar</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- 3. Cenários: Automation Flow Card -->
+          <article class="cap-card" id="cap-cenarios">
+            <header class="cap-card__head">
+              <span class="cap-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-branch"/></svg></span>
+              <p class="t-lead"><strong>Cenários que respeitam restrições.</strong> <span>Contratar, capacitar, realocar ou redesenhar turnos: cada alternativa é simulada e passa por um agente crítico antes de chegar ao RH.</span></p>
+            </header>
+            <div class="cap-card__stage">
+              <div class="widget flow" data-flow>
+                <div class="widget__head">
+                  <span class="t-mono-sm">Cenário</span>
+                  <span class="status status--live"><i></i><span>Simulando</span></span>
+                </div>
+                <div class="widget__surface flow__surface">
+                  <div class="flow__node" data-flow-step="0"><span class="t-mono-sm">Gatilho</span><strong>IPD &gt; 1,15 · 4 sem.</strong></div>
+                  <svg class="flow__wire" viewBox="0 0 2 28" preserveAspectRatio="none" aria-hidden="true"><line x1="1" y1="0" x2="1" y2="28" data-flow-step="1"/></svg>
+                  <div class="flow__node" data-flow-step="1"><span class="t-mono-sm">Ação</span><strong>Simular A–E</strong><em data-flow-run>executando</em></div>
+                  <svg class="flow__split" viewBox="0 0 200 32" preserveAspectRatio="none" aria-hidden="true"><path d="M100 0 V8 Q100 16 92 16 H58 Q50 16 50 24 V32" data-flow-step="2"/><path d="M100 0 V8 Q100 16 108 16 H142 Q150 16 150 24 V32" data-flow-step="2"/></svg>
+                  <div class="flow__branches">
+                    <div class="flow__branch"><span class="t-mono-sm flow__cond">Se viável</span><div class="flow__node" data-flow-step="2"><strong>Enviar ao RH</strong><span>3 de 4 cenários</span></div></div>
+                    <div class="flow__branch"><span class="t-mono-sm flow__cond">Senão</span><div class="flow__node" data-flow-step="2"><strong>Revisão jurídica</strong><span>1 de 4 cenários</span></div></div>
+                  </div>
+                  <svg class="flow__split" viewBox="0 0 200 32" preserveAspectRatio="none" aria-hidden="true"><path d="M50 0 V8 Q50 16 58 16 H92 Q100 16 100 24 V32" data-flow-step="3"/><path d="M150 0 V8 Q150 16 142 16 H108 Q100 16 100 24 V32" data-flow-step="3"/></svg>
+                  <div class="flow__node flow__node--done" data-flow-step="3"><span class="t-mono-sm">Decisão</span><strong>registrada</strong><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- 4. Regras: Integrations Flow Card / Rotating Integrations -->
+          <article class="cap-card" id="cap-regras">
+            <header class="cap-card__head">
+              <span class="cap-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#i-scale"/></svg></span>
+              <p class="t-lead"><strong>Regras trabalhistas verificadas e versionadas.</strong> <span>CLT, CCT/ACT e a transição da EC 141/2026 num Rule Store com vigência, versão e responsável. O modelo de linguagem nunca dá a palavra final.</span></p>
+            </header>
+            <div class="cap-card__stage">
+              <div class="widget rules" data-rules>
+                <div class="widget__head">
+                  <span class="t-mono-sm">Rule Store</span>
+                  <span class="status"><i></i><span>Versionado</span></span>
+                </div>
+                <div class="widget__surface rules__surface">
+                  <div class="rules__viewport">
+                    <ul class="rules__track" data-rules-track>
+                      <li>CLT</li><li>CCT / ACT</li><li>EC 141/2026</li><li>Lei 6.019</li><li>Aprendizagem</li><li>Cota PcD</li><li>Repouso semanal</li><li>Banco de horas</li>
+                    </ul>
+                  </div>
+                  <div class="rules__center">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg>
+                    <span class="t-mono-sm">Regra verificada</span>
+                    <strong data-rules-current>CLT</strong>
+                  </div>
+                  <div class="rules__controls">
+                    <button type="button" data-rules-prev aria-label="Regra anterior"><svg viewBox="0 0 24 24"><use href="#i-arrow-left"/></svg></button>
+                    <button type="button" data-rules-next aria-label="Próxima regra"><svg viewBox="0 0 24 24"><use href="#i-arrow-right"/></svg></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+      <div class="divider"></div>
+    </section>
+
+    <!-- ===================================================================
+         Casos de uso (tabs com régua)
+         =================================================================== -->
+    <section class="section is-dark use-cases" id="casos-de-uso" data-theme="dark">
+      <div class="container section-head section-head--center">
+        <span class="badge badge--dark" data-metal="badge"><span class="badge__content"><svg class="badge__icon" viewBox="0 0 18 18" aria-hidden="true"><use href="#i-spark"/></svg>Casos de uso</span></span>
+        <h2 class="t-h2 section-head__title">Quem usa, e o que ganha</h2>
+      </div>
+
+      <div class="container container--padded ruler-tabs" data-ruler-tabs>
+        <div class="ruler-tabs__list" role="tablist" aria-label="Casos de uso">
+          <button class="ruler-tabs__tab" role="tab" type="button" aria-selected="true" id="uc-tab-0" aria-controls="uc-panel">RH estratégico</button>
+          <button class="ruler-tabs__tab" role="tab" type="button" aria-selected="false" id="uc-tab-1" aria-controls="uc-panel" tabindex="-1">Operações</button>
+          <button class="ruler-tabs__tab" role="tab" type="button" aria-selected="false" id="uc-tab-2" aria-controls="uc-panel" tabindex="-1">Jurídico trabalhista</button>
+          <button class="ruler-tabs__tab" role="tab" type="button" aria-selected="false" id="uc-tab-3" aria-controls="uc-panel" tabindex="-1">Financeiro</button>
+          <button class="ruler-tabs__tab" role="tab" type="button" aria-selected="false" id="uc-tab-4" aria-controls="uc-panel" tabindex="-1">Liderança</button>
+        </div>
+        <div class="ruler" aria-hidden="true"><div class="ruler__strip" data-ruler-strip></div></div>
+      </div>
+
+      <div class="divider divider--dark use-cases__divider"></div>
+
+      <div class="container container--padded ruler-tabs__panel" id="uc-panel" role="tabpanel" aria-labelledby="uc-tab-0" data-ruler-panel>
+        <div class="ruler-tabs__texts" aria-live="polite">
+          <div class="ruler-tabs__text" data-active="true">
+            <h3 class="t-h3">Requisições de vaga com justificativa verificável.</h3>
+            <p>O agente redige a requisição com cenários, premissas e custos. O RH aprova, ajusta ou descarta; nada é publicado sem essa aprovação.</p>
+          </div>
+          <div class="ruler-tabs__text" data-active="false">
+            <h3 class="t-h3">Saiba onde a capacidade aperta, turno a turno.</h3>
+            <p>Pressão por equipe, competência e horário, com fila e SLA simulados antes de qualquer mudança na escala.</p>
+          </div>
+          <div class="ruler-tabs__text" data-active="false">
+            <h3 class="t-h3">Cada cenário checado contra a regra vigente.</h3>
+            <p>Jornada, repousos, temporários e cotas validados por versão de regra, com sinalização para revisão humana quando a norma exige.</p>
+          </div>
+          <div class="ruler-tabs__text" data-active="false">
+            <h3 class="t-h3">O custo de agir e o de não agir, lado a lado.</h3>
+            <p>Faixas de custo por alternativa, incluindo hora extra, ramp-up de contratação e o custo do backlog sem intervenção.</p>
+          </div>
+          <div class="ruler-tabs__text" data-active="false">
+            <h3 class="t-h3">Decisões de quadro explicáveis para a diretoria.</h3>
+            <p>Um resumo com evidências, incertezas e o histórico de quem aprovou o quê, versão por versão.</p>
+          </div>
+        </div>
+
+        <div class="ruler-tabs__media">
+          <div class="scene" data-active="true">
+            <img class="scene__image" src="./assets/images/alinia-human-review.jpg" alt="" loading="lazy" decoding="async">
+            <div class="scene__card"><span class="t-mono-sm">Requisição · rascunho</span><strong>+3 atendentes N1</strong><span>Cenário A · turno da tarde</span><span class="scene__tag">Aguardando RH</span></div>
+            <div class="scene__prompt"><span class="avatar"></span><span>Rascunhe a requisição para o turno da tarde…</span><span class="scene__send"><svg viewBox="0 0 24 24"><use href="#i-arrow-up"/></svg></span></div>
+          </div>
+          <div class="scene" data-active="false">
+            <img class="scene__image" src="./assets/images/alinia-operations-planning.jpg" alt="" loading="lazy" decoding="async">
+            <div class="scene__card"><span class="t-mono-sm">IPD por turno</span><div class="scene__bars"><i style="--v:.62"></i><i style="--v:.94"></i><i style="--v:.71"></i><i style="--v:.38"></i></div><span>Manhã · Tarde · Noite · Madrugada</span></div>
+            <div class="scene__prompt"><span class="avatar"></span><span>Onde o SLA vai estourar nas próximas 4 semanas…</span><span class="scene__send"><svg viewBox="0 0 24 24"><use href="#i-arrow-up"/></svg></span></div>
+          </div>
+          <div class="scene" data-active="false">
+            <div class="scene__card"><span class="t-mono-sm">Rule Store</span><strong>EC 141/2026</strong><span>Cenário C · 42h em 5 dias</span><span class="scene__tag scene__tag--warn">Revisão jurídica</span></div>
+            <div class="scene__prompt"><span class="avatar"></span><span>Este cenário respeita a CCT vigente…</span><span class="scene__send"><svg viewBox="0 0 24 24"><use href="#i-arrow-up"/></svg></span></div>
+          </div>
+          <div class="scene" data-active="false">
+            <img class="scene__image scene__image--light" src="./assets/images/alinia-abstract-light.jpg" alt="" loading="lazy" decoding="async">
+            <div class="scene__card"><span class="t-mono-sm">Custo estimado / mês</span><div class="scene__compare"><span>A</span><i style="--v:.8"></i><span>C</span><i style="--v:.55"></i><span>E</span><i style="--v:.95"></i></div><span>Faixas com premissas explícitas</span></div>
+            <div class="scene__prompt"><span class="avatar"></span><span>Compare o custo dos cenários A e C…</span><span class="scene__send"><svg viewBox="0 0 24 24"><use href="#i-arrow-up"/></svg></span></div>
+          </div>
+          <div class="scene" data-active="false">
+            <div class="scene__card"><span class="t-mono-sm">Resumo trimestral</span><strong>3 decisões aprovadas</strong><span>Com evidências e versões de regra</span><span class="scene__tag">Exportável</span></div>
+            <div class="scene__prompt"><span class="avatar"></span><span>Resuma a necessidade de capacidade do trimestre…</span><span class="scene__send"><svg viewBox="0 0 24 24"><use href="#i-arrow-up"/></svg></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="use-cases__bottom"></div>
+    </section>
+
+    <!-- ===================================================================
+         Como funciona
+         =================================================================== -->
+    <section class="section process" id="como-funciona">
+      <div class="container section-head">
+        <span class="badge" data-metal="badge"><span class="badge__content"><svg class="badge__icon" viewBox="0 0 18 18" aria-hidden="true"><use href="#i-spark"/></svg>Como funciona</span></span>
+        <h2 class="t-h2 section-head__title">A Alinia conecta seus dados, investiga a causa e mostra o trabalho por trás de cada recomendação</h2>
+      </div>
+
+      <div class="divider process__divider"></div>
+      <div class="container process__grid">
+        <article class="process-card">
+          <div class="process-card__visual">
+            <div class="orbit" data-orbit>
+              <div class="orbit__ring"></div>
+              <span class="orbit__item"><svg viewBox="0 0 24 24"><use href="#i-file"/></svg></span>
+              <span class="orbit__item"><svg viewBox="0 0 24 24"><use href="#i-ticket"/></svg></span>
+              <span class="orbit__item"><svg viewBox="0 0 24 24"><use href="#i-calendar"/></svg></span>
+              <span class="orbit__item"><svg viewBox="0 0 24 24"><use href="#i-clock"/></svg></span>
+              <span class="orbit__item"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg></span>
+              <span class="orbit__item"><svg viewBox="0 0 24 24"><use href="#i-scale"/></svg></span>
+              <span class="orbit__core"><svg viewBox="0 0 24 24"><rect x="2" y="13" width="5" height="9" rx="1" fill="currentColor"/><rect x="9.5" y="8" width="5" height="14" rx="1" fill="currentColor"/><rect x="17" y="2" width="5" height="20" rx="1" fill="currentColor" opacity=".35"/></svg></span>
+            </div>
+          </div>
+          <h3 class="process-card__title">Conecte seus dados</h3>
+          <p class="process-card__text">Demanda, escalas, ponto e cargos. Somente leitura no início, então nada muda no primeiro dia.</p>
+        </article>
+
+        <article class="process-card">
+          <div class="process-card__visual">
+            <div class="ask" data-typewriter="Por que a hora extra subiu em outubro?">
+              <p class="ask__text"><span data-typewriter-text></span><i class="ask__caret"></i></p>
+              <div class="ask__bar">
+                <span class="ask__mode"><svg viewBox="0 0 24 24"><use href="#i-spark-24"/></svg>Auto<svg viewBox="0 0 24 24"><use href="#i-chevron"/></svg></span>
+                <span class="ask__send"><svg viewBox="0 0 24 24"><use href="#i-arrow-up"/></svg></span>
+              </div>
+            </div>
+          </div>
+          <h3 class="process-card__title">Pergunte o que precisa</h3>
+          <p class="process-card__text">Em linguagem natural. A Alinia mapeia a pergunta para os dados e chama as ferramentas certas.</p>
+        </article>
+
+        <article class="process-card">
+          <div class="process-card__visual">
+            <div class="sources-card" data-sources-card>
+              <p class="sources-card__title">IPD 1,21 no turno da tarde</p>
+              <ul>
+                <li><svg viewBox="0 0 24 24"><use href="#i-file"/></svg><span class="t-mono-sm">escala_out.csv</span><span>Linha 212</span><svg class="is-ok" viewBox="0 0 24 24"><use href="#i-check"/></svg></li>
+                <li><svg viewBox="0 0 24 24"><use href="#i-scale"/></svg><span class="t-mono-sm">CCT 2026</span><span>Cláusula 14</span><svg class="is-ok" viewBox="0 0 24 24"><use href="#i-check"/></svg></li>
+              </ul>
+            </div>
+          </div>
+          <h3 class="process-card__title">Confira o trabalho</h3>
+          <p class="process-card__text">Toda resposta abre as fontes, as regras e as simulações que a sustentam, prontas para revisão.</p>
+        </article>
+      </div>
+      <div class="divider"></div>
+    </section>
+
+    <!-- ===================================================================
+         Exemplo (no original: depoimentos expansíveis)
+         =================================================================== -->
+    <section class="section section--gray example" id="exemplo">
+      <div class="container section-head section-head--split">
+        <div>
+          <span class="badge" data-metal="badge"><span class="badge__content"><svg class="badge__icon" viewBox="0 0 18 18" aria-hidden="true"><use href="#i-spark"/></svg>Exemplo</span></span>
+          <h2 class="t-h2 section-head__title">Unidade Centro: o mesmo time sob três jornadas</h2>
+        </div>
+        <p class="section-head__text">Demanda projetada de 1.200 atendimentos por semana contra 11 pessoas no quadro. Números do exemplo revisado do PRD v4.1.</p>
+      </div>
+
+      <div class="container container--padded example__cards" data-expand-cards>
+        <article class="x-card" data-expanded="true">
+          <button class="x-card__toggle" type="button" aria-expanded="true">
+            <span class="x-card__label t-mono">Jornada 42h</span>
+            <span class="x-card__plus" aria-hidden="true"></span>
+          </button>
+          <div class="x-card__body">
+            <p class="x-card__quote">Capacidade de ~954 atendimentos por semana. O solver aponta +3 pessoas e verifica cobertura N1 e carga de mentoria antes de recomendar.</p>
+            <div class="x-card__stats">
+              <div><strong data-counter data-to="1.21" data-decimals="2">1,21</strong><span>IPD atual</span></div>
+              <div><strong data-counter data-to="3">3</strong><span>gap de pessoas</span></div>
+            </div>
+          </div>
+        </article>
+        <article class="x-card" data-expanded="false">
+          <button class="x-card__toggle" type="button" aria-expanded="false">
+            <span class="x-card__label t-mono">Jornada 44h</span>
+            <span class="x-card__plus" aria-hidden="true"></span>
+          </button>
+          <div class="x-card__body">
+            <p class="x-card__quote">Capacidade de ~999,8 atendimentos por semana. Mesmo na jornada atual o quadro não cobre a demanda projetada.</p>
+            <div class="x-card__stats">
+              <div><strong data-counter data-to="1.15" data-decimals="2">1,15</strong><span>IPD atual</span></div>
+              <div><strong data-counter data-to="3">3</strong><span>gap de pessoas</span></div>
+            </div>
+          </div>
+        </article>
+        <article class="x-card" data-expanded="false">
+          <button class="x-card__toggle" type="button" aria-expanded="false">
+            <span class="x-card__label t-mono">Jornada 40h</span>
+            <span class="x-card__plus" aria-hidden="true"></span>
+          </button>
+          <div class="x-card__body">
+            <p class="x-card__quote">Capacidade de ~908,9 atendimentos por semana. A redução final da jornada amplia o gap; os cenários são recalculados por grupo elegível.</p>
+            <div class="x-card__stats">
+              <div><strong data-counter data-to="1.27" data-decimals="2">1,27</strong><span>IPD atual</span></div>
+              <div><strong data-counter data-to="4">4</strong><span>gap de pessoas</span></div>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div class="example__bottom"></div>
+    </section>
+
+    <!-- ===================================================================
+         Escala: números + gráfico
+         =================================================================== -->
+    <section class="section scale" id="escala">
+      <div class="divider"></div>
+      <div class="container section-head">
+        <span class="badge" data-metal="badge"><span class="badge__content"><svg class="badge__icon" viewBox="0 0 18 18" aria-hidden="true"><use href="#i-spark"/></svg>Determinístico</span></span>
+        <h2 class="t-h2 section-head__title">Modelos investigam e explicam. Números, regras e aprovações ficam com sistemas verificáveis.</h2>
+      </div>
+
+      <div class="divider scale__divider"></div>
+      <div class="container scale__stats">
+        <div class="stat"><p class="stat__value"><span data-counter data-to="5" data-delay="400" data-duration="1400">5</span></p><p class="stat__label">cenários comparados, de A a E</p></div>
+        <div class="stat"><p class="stat__value"><span data-counter data-to="4" data-delay="400" data-duration="1400">4</span></p><p class="stat__label">agentes com contratos de saída</p></div>
+        <div class="stat"><p class="stat__value"><span data-counter data-to="100" data-delay="400" data-duration="1400">100</span>%</p><p class="stat__label">das decisões com aprovação humana</p></div>
+        <div class="stat"><p class="stat__value"><span data-counter data-to="0" data-from="9" data-delay="400" data-duration="1400">0</span></p><p class="stat__label">desligamentos recomendados</p></div>
+      </div>
+      <div class="divider"></div>
+
+      <div class="container scale__chart">
+        <figure class="chart" data-chart>
+          <figcaption class="visually-hidden">Projeção de demanda semanal da Unidade Centro, subindo de cerca de 1.000 para 1.300 atendimentos em 26 semanas, contra capacidade atual de 954 atendimentos no cenário 42h.</figcaption>
+          <div class="chart__axis t-mono-sm" aria-hidden="true"><span>1.400</span><span>1.200</span><span>1.000</span><span>800</span><span>600</span></div>
+          <svg class="chart__svg" viewBox="0 0 1000 400" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="chart-fill" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0" stop-color="#ffe0d6"/>
+                <stop offset=".35" stop-color="#cfe6f3"/>
+                <stop offset=".7" stop-color="#d9d9ef"/>
+                <stop offset="1" stop-color="#e9e9f1"/>
+              </linearGradient>
+              <clipPath id="chart-clip"><path data-chart-area/></clipPath>
+              <clipPath id="chart-wipe"><rect data-chart-wipe width="1000" height="400"/></clipPath>
+            </defs>
+            <g clip-path="url(#chart-wipe)">
+              <g clip-path="url(#chart-clip)">
+                <rect width="1000" height="400" fill="url(#chart-fill)" opacity=".85"/>
+                <g data-chart-bars stroke="#fff" stroke-opacity=".9"></g>
+              </g>
+            </g>
+            <line class="chart__capacity" x1="0" x2="1000" data-chart-capacity/>
+            <path class="chart__line" data-chart-line/>
+          </svg>
+          <div class="chart__legend t-mono-sm" aria-hidden="true"><span><i class="chart__key chart__key--line"></i>Demanda projetada</span><span><i class="chart__key chart__key--dash"></i>Capacidade atual · 42h</span></div>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         Segurança + Auditoria
+         =================================================================== -->
+    <section class="section is-dark security" id="seguranca" data-theme="dark">
+      <div class="container section-head section-head--center">
+        <span class="badge badge--dark" data-metal="badge"><span class="badge__content"><svg class="badge__icon" viewBox="0 0 18 18" aria-hidden="true"><use href="#i-spark"/></svg>Privacidade e segurança</span></span>
+        <h2 class="t-h2 section-head__title">Os dados continuam seus</h2>
+        <p class="section-head__text">Agregação mínima, análise de reidentificação e aprovação humana em toda ação que muda alguma coisa.</p>
+      </div>
+
+      <div class="divider divider--dark security__divider"></div>
+      <div class="container security__grid">
+        <div class="sec-card"><span class="sec-card__icon"><svg viewBox="0 0 24 24"><use href="#i-eye"/></svg></span><p>Somente leitura por padrão</p></div>
+        <div class="sec-card"><span class="sec-card__icon"><svg viewBox="0 0 24 24"><use href="#i-list"/></svg></span><p>Trilha de auditoria completa</p></div>
+        <div class="sec-card"><span class="sec-card__icon"><svg viewBox="0 0 24 24"><use href="#i-shield"/></svg></span><p>LGPD e anti-reidentificação</p></div>
+      </div>
+      <div class="divider divider--dark"></div>
+
+      <div class="container audit">
+        <div class="audit__copy">
+          <canvas class="audit__pattern" data-ascii-pattern aria-hidden="true"></canvas>
+          <div class="audit__text">
+            <span class="badge badge--dark" data-metal="badge"><span class="badge__content"><svg class="badge__icon" viewBox="0 0 18 18" aria-hidden="true"><use href="#i-spark"/></svg>Auditoria</span></span>
+            <h2 class="t-h2">Cada decisão fica registrada <span class="t-muted">e pode ser reproduzida</span></h2>
+          </div>
+          <div class="audit__try">
+            <span class="t-mono-sm">Experimente</span>
+            <div class="code">
+              <code data-copy-source>alinia decisions show --team centro --latest</code>
+              <button class="code__copy" type="button" data-copy aria-label="Copiar comando">
+                <svg class="code__icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg>
+                <span class="code__done t-mono-sm" aria-live="polite">Copiado!</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="audit__visual">
+          <span class="audit__agent t-mono-sm">Agente crítico</span>
+          <div class="window">
+            <div class="window__dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <p class="bubble bubble--user-dark">O cenário C respeita a jornada de 42h?</p>
+            <div class="window__answer">
+              <span class="window__spark"><svg viewBox="0 0 24 24"><use href="#i-spark-24"/></svg></span>
+              <div>
+                <span class="t-mono-sm">Verificação · Rule Store</span>
+                <p>Sim: 42h em cinco dias, com dois repousos semanais e nenhuma exceção pendente de aprovação.</p>
+              </div>
+            </div>
+            <div class="window__composer">Pergunte sobre uma decisão…<svg viewBox="0 0 24 24"><use href="#i-arrow-up"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="divider divider--dark"></div>
+      <div class="security__bottom"></div>
+    </section>
+
+    <!-- ===================================================================
+         Changelog
+         =================================================================== -->
+    <section class="section changelog" id="changelog">
+      <div class="container section-head">
+        <span class="badge" data-metal="badge"><span class="badge__content"><svg class="badge__icon" viewBox="0 0 18 18" aria-hidden="true"><use href="#i-spark"/></svg>PRD v4.1</span></span>
+        <h2 class="t-h2 section-head__title">Sempre evoluindo</h2>
+        <a class="link-arrow link-roll t-mono" href="#faq"><span class="roll"><span class="roll__line">Dúvidas frequentes</span><span class="roll__line" aria-hidden="true">Dúvidas frequentes</span></span><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow-right"/></svg></a>
+      </div>
+      <div class="divider changelog__divider"></div>
+      <div class="container changelog__grid">
+        <article class="log"><span class="t-mono-sm log__tag">Agentes</span><h3>Orquestrador multiagente</h3><p>Investigador, mapeador de competências, planejador de cenários e crítico, com memória e interrupções.</p><div class="log__ruler" aria-hidden="true"></div></article>
+        <article class="log"><span class="t-mono-sm log__tag">Previsão</span><h3>Backtesting e incerteza</h3><p>Baseline, janelas históricas adequadas, intervalos e abstenção quando os dados não sustentam.</p><div class="log__ruler" aria-hidden="true"></div></article>
+        <article class="log"><span class="t-mono-sm log__tag">Jornada</span><h3>Regras por categoria</h3><p>Limites temporais por categoria e instrumento coletivo, com revisão das exceções.</p><div class="log__ruler" aria-hidden="true"></div></article>
+        <article class="log"><span class="t-mono-sm log__tag">Privacidade</span><h3>Além do mínimo de 5</h3><p>Agregação mínima vira só a primeira barreira; entram análise de reidentificação e supressão.</p><div class="log__ruler" aria-hidden="true"></div></article>
+      </div>
+      <div class="divider"></div>
+    </section>
+
+    <!-- ===================================================================
+         FAQ
+         =================================================================== -->
+    <section class="section faq" id="faq">
+      <div class="container container--padded faq__inner">
+        <h2 class="t-h2 faq__title">Perguntas e respostas</h2>
+        <div class="accordion" data-accordion>
+          <div class="accordion__item" data-open="true">
+            <h3><button class="accordion__trigger" type="button" aria-expanded="true" aria-controls="faq-1" id="faq-1-t">O que a Alinia faz, na prática?<span class="accordion__icon" aria-hidden="true"></span></button></h3>
+            <div class="accordion__panel" id="faq-1" role="region" aria-labelledby="faq-1-t"><div><p>Investiga o déficit de capacidade por equipe, prevê a demanda, avalia competências, monta cenários de contratação e reorganização, simula os impactos e entrega ao RH alternativas verificáveis. A camada de jornada e repousos funciona como guardrail de direitos.</p></div></div>
+          </div>
+          <div class="accordion__item" data-open="false">
+            <h3><button class="accordion__trigger" type="button" aria-expanded="false" aria-controls="faq-2" id="faq-2-t">A Alinia decide contratações?<span class="accordion__icon" aria-hidden="true"></span></button></h3>
+            <div class="accordion__panel" id="faq-2" role="region" aria-labelledby="faq-2-t"><div><p>Não. O agente pode rascunhar uma requisição de vaga, mas ela só avança com aprovação explícita do RH responsável. A Alinia não seleciona candidatos, não pontua pessoas e não indica desligamentos.</p></div></div>
+          </div>
+          <div class="accordion__item" data-open="false">
+            <h3><button class="accordion__trigger" type="button" aria-expanded="false" aria-controls="faq-3" id="faq-3-t">Como sabemos que os números estão certos?<span class="accordion__icon" aria-hidden="true"></span></button></h3>
+            <div class="accordion__panel" id="faq-3" role="region" aria-labelledby="faq-3-t"><div><p>Os modelos investigam e explicam; quem calcula FTE, demanda, custos e jornadas são motores determinísticos e versionados: previsão com backtesting, otimização com solver e um Rule Store revisado. Cada resposta aponta as fontes e as versões usadas.</p></div></div>
+          </div>
+          <div class="accordion__item" data-open="false">
+            <h3><button class="accordion__trigger" type="button" aria-expanded="false" aria-controls="faq-4" id="faq-4-t">E a privacidade dos colaboradores?<span class="accordion__icon" aria-hidden="true"></span></button></h3>
+            <div class="accordion__panel" id="faq-4" role="region" aria-labelledby="faq-4-t"><div><p>A agregação mínima é só a barreira inicial: há análise de reidentificação e supressão adicional. O sistema não faz avaliação individual de desempenho nem infere estado mental ou fadiga.</p></div></div>
+          </div>
+          <div class="accordion__item" data-open="false">
+            <h3><button class="accordion__trigger" type="button" aria-expanded="false" aria-controls="faq-5" id="faq-5-t">Como fica a transição da EC 141/2026?<span class="accordion__icon" aria-hidden="true"></span></button></h3>
+            <div class="accordion__panel" id="faq-5" role="region" aria-labelledby="faq-5-t"><div><p>As regras têm vigência por data, categoria e fonte normativa. A jornada de 42h em cinco dias só é gerada com autorização jurídica específica, e os cenários de 40h são recalculados por grupo elegível. Exceções pedem revisão jurídica.</p></div></div>
+          </div>
+          <div class="accordion__item" data-open="false">
+            <h3><button class="accordion__trigger" type="button" aria-expanded="false" aria-controls="faq-6" id="faq-6-t">Quanto tempo leva para começar?<span class="accordion__icon" aria-hidden="true"></span></button></h3>
+            <div class="accordion__panel" id="faq-6" role="region" aria-labelledby="faq-6-t"><div><p>O piloto começa com CSV ou Jira/Linear para a demanda e com escalas ou WFM para a capacidade, sempre em modo somente leitura. Integrações com ponto e ERP de RH entram depois, com autorização.</p></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- =====================================================================
+       Footer
+       ===================================================================== -->
+  <footer class="section is-dark site-footer" data-theme="dark">
+    <div class="container footer-cta" id="contato">
+      <canvas class="footer-cta__shader" data-fluted-swirl="dark" aria-hidden="true"></canvas>
+      <div class="footer-cta__inner container--padded">
+        <h2 class="t-h2">Pronto para planejar capacidade com evidências?</h2>
+        <div class="footer-cta__side">
+          <p>Diagnóstico, cenários e regras de jornada num só lugar, com o RH aprovando cada passo.</p>
+          <div class="footer-cta__actions">
+            <a class="btn btn--light" href="#topo" data-metal>
+              <span class="btn__face"><span class="roll"><span class="roll__line">Agendar demo</span><span class="roll__line" aria-hidden="true">Agendar demo</span></span></span>
+            </a>
+            <a class="btn btn--ghost" href="#faq">
+              <span class="btn__face"><span class="roll"><span class="roll__line">Ler o FAQ</span><span class="roll__line" aria-hidden="true">Ler o FAQ</span></span></span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="divider divider--dark"></div>
+
+    <div class="container container--padded footer-nav">
+      <div class="footer-nav__brand">
+        <a class="logo" href="#topo"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="13" width="5" height="9" rx="1" fill="currentColor"/><rect x="9.5" y="8" width="5" height="14" rx="1" fill="currentColor"/><rect x="17" y="2" width="5" height="20" rx="1" fill="currentColor" opacity=".35"/></svg><span>alinia</span></a>
+        <p>Planejamento de capacidade com agentes de IA, respostas verificáveis e o RH no controle.</p>
+      </div>
+      <nav class="footer-nav__cols" aria-label="Rodapé">
+        <div><p class="t-mono-sm">Produto</p><a href="#capacidades">Capacidades</a><a href="#casos-de-uso">Casos de uso</a><a href="#como-funciona">Como funciona</a><a href="#exemplo">Exemplo</a></div>
+        <div><p class="t-mono-sm">Confiança</p><a href="#seguranca">Segurança</a><a href="#escala">Determinismo</a><a href="#changelog">PRD v4.1</a><a href="#faq">FAQ</a></div>
+      </nav>
+    </div>
+    <div class="divider divider--dark"></div>
+
+    <div class="container footer-wordmark" data-spotlight>
+      <svg class="footer-wordmark__svg" viewBox="0 0 1240 400" aria-hidden="true">
+        <defs>
+          <linearGradient id="spot-gradient" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0" stop-color="#66ccff"/>
+            <stop offset=".5" stop-color="#ffffff"/>
+            <stop offset="1" stop-color="#66ccff"/>
+          </linearGradient>
+          <radialGradient id="spot-falloff">
+            <stop offset="0" stop-color="#fff"/>
+            <stop offset=".35" stop-color="#fff"/>
+            <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <mask id="spot-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="1240" height="400">
+            <circle data-spotlight-circle cx="-200" cy="200" r="180" fill="url(#spot-falloff)"/>
+          </mask>
+        </defs>
+        <text class="footer-wordmark__base" x="50%" y="370" text-anchor="middle">alinia</text>
+        <text class="footer-wordmark__lit" x="50%" y="370" text-anchor="middle" mask="url(#spot-mask)" data-spotlight-lit>alinia</text>
+      </svg>
+    </div>
+    <div class="divider divider--dark"></div>
+
+    <div class="container container--padded footer-bottom">
+      <p>© 2026 Alinia · Workforce Intelligence</p>
+      <p class="t-mono-sm">Não constitui parecer jurídico</p>
+    </div>
+  </footer>
+
+  <!-- =====================================================================
+       Sprite de ícones (traço 1.5px, desenhados para este projeto)
+       ===================================================================== -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-spark" viewBox="0 0 18 18"><path d="M9 1.5c.5 3.6 2 5.6 6.5 7.5-4.5 1.9-6 3.9-6.5 7.5-.5-3.6-2-5.6-6.5-7.5C7 7.1 8.5 5.1 9 1.5Z" fill="currentColor"/></symbol>
+    <symbol id="i-spark-24" viewBox="0 0 24 24"><path d="M12 3c.6 4.5 2.5 6.9 8 9-5.5 2.1-7.4 4.5-8 9-.6-4.5-2.5-6.9-8-9 5.5-2.1 7.4-4.5 8-9Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></g></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.3-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c1.8.7 3 2.4 3.5 5.2"/></g></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-6 4-11.5 8.5"/></g></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M4 7h16M6 7l-3 7a3 3 0 0 0 6 0L6 7ZM18 7l-3 7a3 3 0 0 0 6 0l-3-7Z"/></g></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></g></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></g></symbol>
+    <symbol id="i-ticket" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4Z"/><path d="M14 7v10" stroke-dasharray="2 2"/></g></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></g></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></g></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24"><path d="M20 11.5l-7.8 7.8a5 5 0 0 1-7-7l8.2-8.2a3.3 3.3 0 0 1 4.7 4.7l-8.1 8.1a1.7 1.7 0 0 1-2.4-2.4l7.4-7.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5m6-6-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></g></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></g></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/></g></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.3 8.2-8 9-4.7-.8-8-4.5-8-9V6Z"/><path d="M8.5 12l2.5 2.5 4.5-5" stroke-linecap="round"/></g></symbol>
+  </svg>
+</body>
+</html>

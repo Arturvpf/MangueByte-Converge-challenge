@@ -1,0 +1,27 @@
+/* ==========================================================================
+   Movimento compartilhado
+   - .metal: canvas do metal líquido (badges e botões)
+   - [data-appear]: entrada do hero. Original (__framer__appearAnimationsContent):
+     opacity .001 -> 1, spring {bounce:0, duration:.6, delay:.2}
+   ========================================================================== */
+
+.metal {
+  display: block;
+  pointer-events: none;
+  /* Antes do WebGL desenhar, um gradiente cromado estático cobre a moldura. */
+  background: linear-gradient(110deg, #141416 0%, #404350 20%, #fafaff 32%, #404350 46%, #141416 60%, #fafaff 74%, #404350 88%);
+}
+
+.js [data-appear] {
+  opacity: 0.001;
+}
+.js [data-appear].is-in {
+  opacity: 1;
+  transition: opacity var(--dur-spring) var(--ease-spring) 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-appear] {
+    opacity: 1;
+  }
+}

@@ -1,0 +1,50 @@
+/* ==========================================================================
+   Section Label (badge)
+   Original: componente "Section Label" (script-008). Moldura de 2px onde
+   aparece o metal líquido, conteúdo com gradiente e raio de 4px.
+   ========================================================================== */
+
+.badge {
+  position: relative;
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  overflow: clip;
+  box-shadow: var(--shadow-control);
+  isolation: isolate;
+}
+
+/* O canvas transborda 20px para cada lado (framer-1aggivb-container). */
+.badge > .metal {
+  position: absolute;
+  inset: -20px;
+  z-index: -1;
+}
+
+.badge__content {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 4px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(180deg, #fcfcfe 0%, #f2f2f2 100%);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: var(--text-label);
+  font-weight: 500;
+  line-height: 16px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge__icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+/* Variante escura ("Black"): conteúdo na cor ink. */
+.badge--dark .badge__content {
+  background: var(--color-ink);
+  color: var(--color-white);
+}

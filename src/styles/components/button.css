@@ -1,0 +1,137 @@
+/* ==========================================================================
+   Botões
+   .btn          -> "Button Primary" (script-006, framer-10qih)
+   .btn--ghost   -> botão secundário com avatar ("Book Button", script-014)
+   .link-arrow   -> link de texto mono com seta ("View all")
+   ========================================================================== */
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: var(--shadow-control);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Metal líquido atrás do conteúdo: 180px de altura, centralizado,
+   7px além das laterais (framer-86hip0-container). */
+.btn > .metal {
+  position: absolute;
+  left: -7px;
+  right: -7px;
+  top: calc(50% - 90px);
+  height: 180px;
+  z-index: -1;
+}
+
+.btn__face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  padding: 8px 21px;
+  border-radius: var(--radius-xs);
+  background: var(--color-ink);
+  color: var(--color-white);
+}
+
+.btn--light .btn__face {
+  background: var(--color-gray-100);
+  color: var(--color-ink);
+}
+
+/* --- Texto que "rola" no hover -----------------------------------------
+   Duas cópias empilhadas; no hover a primeira sobe 18px e a segunda entra.
+   Transição: spring {bounce:0, duration:.6}. */
+.roll {
+  position: relative;
+  display: block;
+  height: 20px;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-mono);
+  line-height: 20px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.roll__line {
+  display: block;
+  transition: transform var(--dur-spring) var(--ease-spring);
+}
+
+.roll__line + .roll__line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translateY(100%);
+}
+
+@media (hover: hover) {
+  .btn:hover .roll__line,
+  .link-roll:hover .roll__line {
+    transform: translateY(-100%);
+  }
+  .btn:hover .roll__line + .roll__line,
+  .link-roll:hover .roll__line + .roll__line {
+    transform: translateY(0);
+  }
+}
+
+/* --- Botão secundário ("Agendar demonstração") ------------------------- */
+.btn--ghost {
+  padding: 0;
+  border: 1px solid var(--color-gray-200);
+  background: var(--color-white);
+  box-shadow: var(--shadow-control);
+}
+.btn--ghost .btn__face {
+  background: transparent;
+  color: var(--color-ink);
+  padding: 6px 14px 6px 6px;
+}
+.btn__avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-xs);
+  background: var(--color-ink);
+  color: var(--color-white);
+  display: grid;
+  place-items: center;
+}
+.btn__avatar svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* No escuro o ghost inverte. */
+.is-dark .btn--ghost {
+  border-color: var(--color-night-raised);
+  background: var(--color-night);
+}
+.is-dark .btn--ghost .btn__face {
+  color: var(--color-white);
+  padding: 8px 14px;
+}
+
+/* --- Link de texto com seta -------------------------------------------- */
+.link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px;
+}
+.link-arrow svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 300ms var(--ease-spring);
+}
+.link-arrow:hover svg {
+  transform: translateX(3px);
+}

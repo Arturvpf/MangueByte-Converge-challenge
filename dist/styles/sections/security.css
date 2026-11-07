@@ -1,0 +1,277 @@
+/* ==========================================================================
+   Segurança (3 "Security Card") + Auditoria (no original: "MCP & Dev Card"
+   com "Animated Pattern Background" binário e "Copy Clipboard").
+   ========================================================================== */
+
+.security__divider {
+  margin-top: 78px;
+}
+
+.security__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sec-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  min-height: 330px;
+  padding: 32px;
+  text-align: center;
+  font-size: var(--text-lead);
+  letter-spacing: var(--tracking-tight);
+}
+.sec-card + .sec-card {
+  border-left: 1px solid var(--color-night-raised);
+}
+
+/* Ícone em "metal": gradiente cromado aplicado como máscara do traço. */
+.sec-card__icon {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02)),
+    #171413;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+    0 24px 48px -24px rgba(0, 0, 0, 0.8);
+}
+.sec-card__icon svg {
+  width: 44px;
+  height: 44px;
+  color: #e9e9ee;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.6)) drop-shadow(0 0 10px rgba(180, 200, 255, 0.25));
+}
+
+/* --- Auditoria --------------------------------------------------------- */
+.audit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: 560px;
+}
+
+.audit__copy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 48px;
+  padding: 88px var(--gutter) 48px;
+  overflow: hidden;
+}
+
+/* Padrão ASCII binário ocupa o topo do bloco e some para baixo. */
+.audit__pattern {
+  position: absolute;
+  inset: 0 0 auto;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.6) 22%, transparent 48%);
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.6) 22%, transparent 48%);
+}
+
+.audit__text,
+.audit__try {
+  position: relative;
+}
+.audit__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 64px;
+}
+.audit__text h2 {
+  max-width: 440px;
+}
+
+.audit__try {
+  display: grid;
+  gap: 12px;
+}
+.audit__try > .t-mono-sm {
+  color: var(--color-white-70);
+}
+
+.code {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 520px;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid var(--color-night-raised);
+  border-radius: var(--radius-md);
+  background: #151211;
+}
+.code code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-white-70);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.code__copy {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+}
+.code__icon {
+  width: 14px;
+  height: 14px;
+  transition: opacity 200ms ease, transform 300ms var(--ease-spring);
+}
+.code__done {
+  position: absolute;
+  right: 0;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-size: 10px;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 200ms ease, transform 300ms var(--ease-spring);
+}
+.code__copy.is-copied .code__icon {
+  opacity: 0;
+  transform: scale(0.8);
+}
+.code__copy.is-copied .code__done {
+  opacity: 1;
+  transform: none;
+}
+
+.audit__visual {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 88px 48px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(5, 4, 4, 0.38), rgba(5, 4, 4, 0.12)),
+    #050404 url("../../assets/images/alinia-abstract-dark.jpg") center / cover no-repeat;
+  border-left: 1px solid var(--color-night-raised);
+}
+
+.audit__agent {
+  position: absolute;
+  top: 72px;
+  right: 40px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-white);
+  font-size: 10px;
+}
+
+.window {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  width: min(100%, 360px);
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg);
+  background: rgba(20, 18, 18, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--color-on-night);
+  font-size: 12px;
+  line-height: 18px;
+}
+.window__dots {
+  display: flex;
+  gap: 6px;
+}
+.window__dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff5f57;
+}
+.window__dots i:nth-child(2) { background: #febc2e; }
+.window__dots i:nth-child(3) { background: #28c840; }
+
+.bubble--user-dark {
+  justify-self: end;
+  max-width: 260px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.06);
+}
+.window__answer {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.06);
+}
+.window__answer .t-mono-sm {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--color-white-70);
+  font-size: 10px;
+}
+.window__spark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  align-self: flex-end;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  color: var(--color-ink);
+}
+.window__spark svg {
+  width: 14px;
+  height: 14px;
+}
+.window__composer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  color: rgba(255, 255, 255, 0.45);
+}
+.window__composer svg {
+  width: 14px;
+  height: 14px;
+}
+
+.security__bottom {
+  height: 96px;
+}
+
+@media (max-width: 1199.98px) {
+  .audit { grid-template-columns: 1fr; }
+  .audit__visual { border-left: 0; border-top: 1px solid var(--color-night-raised); }
+}
+
+@media (max-width: 809.98px) {
+  .security__grid { grid-template-columns: 1fr; }
+  .sec-card { min-height: 220px; }
+  .sec-card + .sec-card { border-left: 0; border-top: 1px solid var(--color-night-raised); }
+  .audit__visual { padding: 72px 16px; }
+  .audit__agent { top: 24px; right: 16px; }
+}

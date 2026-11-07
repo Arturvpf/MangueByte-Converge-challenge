@@ -1,0 +1,155 @@
+/* ==========================================================================
+   Changelog ("Changelog Card Home") + FAQ ("FAQ", script-015)
+   FAQ: abre/fecha em .3s com ease [.44,0,.56,1].
+   ========================================================================== */
+
+.changelog__divider {
+  margin-top: 56px;
+}
+
+.changelog .section-head .link-arrow {
+  margin-top: 8px;
+  margin-left: -4px;
+}
+
+.changelog__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 32px var(--gutter) 0;
+}
+
+.log__tag {
+  color: var(--color-ink-mono);
+  margin-bottom: 4px;
+}
+.log h3 {
+  font-size: var(--text-tab);
+  font-weight: 400;
+  line-height: 26px;
+  letter-spacing: var(--tracking-tight);
+}
+.log p {
+  min-height: 66px;
+  color: var(--color-ink-muted);
+  font-size: var(--text-small);
+  line-height: 22px;
+}
+
+/* Régua inferior: traços de 1px a cada 8px, o primeiro mais alto. */
+.log__ruler {
+  position: relative;
+  height: 24px;
+  margin: 24px calc(-1 * var(--gutter)) 0 0;
+  background-image: linear-gradient(90deg, var(--color-gray-200) 0 1px, transparent 1px);
+  background-size: 8px 8px;
+  background-position: 0 100%;
+  background-repeat: repeat-x;
+}
+.log__ruler::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1px;
+  height: 18px;
+  background: var(--color-ink);
+}
+
+@media (max-width: 1199.98px) {
+  .changelog__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 809.98px) {
+  .changelog__grid { grid-template-columns: 1fr; }
+}
+
+/* --- FAQ --------------------------------------------------------------- */
+.faq__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.58fr);
+  gap: 48px;
+  padding-block: 120px;
+}
+
+.faq__title {
+  max-width: 360px;
+}
+
+.accordion__item + .accordion__item {
+  margin-top: 8px;
+}
+
+.accordion__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  width: 100%;
+  padding: 18px 30px 18px 0;
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: -0.02em;
+  text-align: left;
+}
+
+.accordion__icon {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.accordion__icon::before,
+.accordion__icon::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 14px;
+  height: 1.5px;
+  margin-top: -0.75px;
+  background: var(--color-ink);
+  transition: transform 300ms var(--ease-in-out);
+}
+.accordion__icon::after {
+  transform: rotate(90deg);
+}
+.accordion__item[data-open="true"] .accordion__icon::after {
+  transform: rotate(0deg);
+}
+
+/* Altura animada com grid-template-rows 0fr -> 1fr. */
+.accordion__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 300ms var(--ease-in-out);
+}
+.accordion__panel > div {
+  min-height: 0;
+  overflow: hidden;
+}
+.accordion__panel p {
+  max-width: 560px;
+  padding: 0 30px 12px 0;
+  color: var(--color-ink-muted);
+  font-size: var(--text-small);
+  line-height: 22px;
+  opacity: 0;
+  transition: opacity 300ms var(--ease-in-out);
+}
+.accordion__item[data-open="true"] .accordion__panel {
+  grid-template-rows: 1fr;
+}
+.accordion__item[data-open="true"] .accordion__panel p {
+  opacity: 1;
+}
+
+@media (max-width: 1199.98px) {
+  .faq__inner { grid-template-columns: 1fr; padding-block: 88px; }
+  .faq__title { padding-left: 0; max-width: none; }
+}

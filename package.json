@@ -1,0 +1,12 @@
+{
+  "name": "alinia-site",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Landing page da Alinia (Workforce Intelligence), reconstruída a partir do mirror do template Accrue.",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/serve.mjs src 5173",
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/build.mjs && node scripts/serve.mjs dist 4173"
+  }
+}

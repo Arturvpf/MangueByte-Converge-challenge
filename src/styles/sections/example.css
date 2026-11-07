@@ -1,0 +1,143 @@
+/* ==========================================================================
+   Exemplo — reaproveita o comportamento do "Testimonial Tab" (script-015):
+   uma linha de cards onde só um fica aberto; clicar num card fechado o
+   expande. Transição: spring {bounce:0, duration:.6}.
+   ========================================================================== */
+
+.example {
+  padding-bottom: 0;
+}
+
+.example__cards {
+  display: flex;
+  gap: 8px;
+  margin-top: 64px;
+  height: 440px;
+}
+
+.x-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 22px;
+  border-radius: var(--radius-lg);
+  background: var(--color-white);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: flex-grow var(--dur-spring) var(--ease-spring);
+}
+.x-card[data-expanded="true"] {
+  flex-grow: 3.8;
+}
+
+/* O botão cobre o card inteiro quando fechado. */
+.x-card__toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex: 1;
+  text-align: left;
+}
+.x-card[data-expanded="true"] .x-card__toggle {
+  flex: none;
+  cursor: default;
+}
+.x-card__label {
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+.x-card[data-expanded="false"] .x-card__label {
+  color: var(--color-ink-mono);
+}
+
+.x-card__plus {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--color-gray-100);
+}
+.x-card__plus::before,
+.x-card__plus::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 1.5px;
+  margin: -0.75px -6px;
+  background: var(--color-ink);
+}
+.x-card__plus::after {
+  transform: rotate(90deg);
+}
+.x-card[data-expanded="true"] .x-card__plus {
+  display: none;
+}
+
+.x-card__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 24px;
+  flex: 1;
+  min-width: 420px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 300ms ease, transform 600ms var(--ease-spring);
+}
+.x-card[data-expanded="true"] .x-card__body {
+  opacity: 1;
+  transform: none;
+  transition-delay: 200ms;
+}
+.x-card[data-expanded="false"] .x-card__body {
+  position: absolute;
+  inset: auto 22px 22px;
+  pointer-events: none;
+}
+
+.x-card__quote {
+  max-width: 460px;
+  font-size: var(--text-lead);
+  line-height: 28px;
+  letter-spacing: var(--tracking-tight);
+}
+
+.x-card__stats {
+  display: flex;
+  gap: 32px;
+}
+.x-card__stats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 12px;
+  border-left: 1px solid var(--color-gray-200);
+}
+.x-card__stats strong {
+  font-size: var(--text-stat);
+  font-weight: 400;
+  line-height: 38px;
+  letter-spacing: var(--tracking-display);
+}
+.x-card__stats span {
+  color: var(--color-ink-mono);
+  font-size: var(--text-small);
+}
+
+.example__bottom {
+  height: 96px;
+}
+
+@media (max-width: 1199.98px) {
+  .example__cards { flex-direction: column; height: auto; }
+  .x-card { flex: none; }
+  .x-card[data-expanded="false"] .x-card__toggle { flex-direction: row; align-items: center; }
+  .x-card__body { min-width: 0; }
+  .x-card[data-expanded="false"] .x-card__body { display: none; }
+  .x-card[data-expanded="true"] .x-card__body { margin-top: 40px; }
+}

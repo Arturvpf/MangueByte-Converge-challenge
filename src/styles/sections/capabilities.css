@@ -1,0 +1,449 @@
+/* ==========================================================================
+   Capacidades
+   Coluna esquerda: nav sticky (max-width 310px, padding 104px 0 60px,
+   .framer-a9g80o). Direita: cards com padding 80px 32px e borda superior
+   (.framer-186jna7). A nav acompanha o card visível (scroll-spy).
+   ========================================================================== */
+
+.capabilities {
+  padding-bottom: 80px;
+}
+
+.capabilities__divider {
+  margin-top: 78px;
+}
+
+.capabilities__body {
+  display: grid;
+  grid-template-columns: minmax(0, 310px) minmax(0, 1fr);
+}
+
+.capabilities__nav {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 104px 0 60px;
+}
+
+.capabilities__link {
+  position: relative;
+  padding: 4px var(--gutter);
+  color: var(--color-ink-muted);
+  opacity: 0.6;
+  font-size: var(--text-tab);
+  font-weight: 500;
+  line-height: 26px;
+  letter-spacing: var(--tracking-tight);
+  transition: opacity 250ms ease, color 250ms ease;
+}
+.capabilities__link:hover {
+  opacity: 0.85;
+}
+.capabilities__link.is-active {
+  color: var(--color-ink);
+  opacity: 1;
+}
+
+/* Indicador: um único traço que viaja até o link ativo (JS define --y/--h). */
+.capabilities__nav::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2px;
+  height: var(--indicator-h, 34px);
+  background: var(--color-ink);
+  transform: translateY(var(--indicator-y, 104px));
+  transition: transform 500ms var(--ease-spring), height 500ms var(--ease-spring);
+}
+
+.capabilities__cards {
+  border-left: 1px solid var(--color-gray-200);
+}
+
+.cap-card {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  padding: 80px var(--gutter);
+  scroll-margin-top: var(--header-h);
+}
+.cap-card + .cap-card {
+  border-top: 1px solid var(--color-gray-200);
+}
+
+.cap-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 520px;
+}
+.cap-card__head strong {
+  font-weight: 500;
+}
+.cap-card__head span {
+  color: var(--color-ink-muted);
+}
+
+.cap-card__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, #fff 0%, #f2f2f2 100%);
+  box-shadow: var(--shadow-control);
+}
+.cap-card__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.cap-card__stage {
+  display: grid;
+  place-items: center;
+  min-height: 512px;
+  padding: 48px 24px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-gray-50);
+  overflow: hidden;
+}
+
+/* --- 1. Chat ----------------------------------------------------------- */
+.chat__surface {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 290px;
+  justify-content: flex-end;
+}
+.chat__thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.chat__row {
+  display: flex;
+  gap: 8px;
+  transition: opacity 450ms var(--ease-standard), transform 450ms var(--ease-standard);
+}
+.chat__row--user {
+  justify-content: flex-end;
+}
+.chat__row[hidden] {
+  display: none;
+}
+.chat__row.is-entering {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.chat__name {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.chat__composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  box-shadow: var(--shadow-chip);
+  color: var(--color-ink-mono);
+}
+.chat__composer svg {
+  width: 14px;
+  height: 14px;
+}
+.chat__input {
+  flex: 1;
+  min-height: 18px;
+}
+.chat__input.is-typing {
+  color: var(--color-ink);
+}
+.chat__send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  background: var(--color-ink);
+}
+.chat__send i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--color-white);
+}
+.chat.is-busy .chat__send i {
+  animation: typing 1.2s ease-in-out infinite;
+}
+.chat.is-busy .chat__send i:nth-child(2) { animation-delay: 0.15s; }
+.chat.is-busy .chat__send i:nth-child(3) { animation-delay: 0.3s; }
+
+/* --- 2. Previsão ------------------------------------------------------- */
+.overview__surface {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.overview__metrics,
+.overview__health {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.overview__chart {
+  padding: 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  box-shadow: var(--shadow-chip);
+}
+.overview__chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--color-ink-mono);
+}
+.overview__chart-head .chip strong {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--color-ink);
+}
+/* Matriz de pontos: colunas x linhas desenhadas pelo JS. */
+.overview__plot {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(6, 4px);
+  grid-auto-columns: 1fr;
+  row-gap: 4px;
+  justify-items: center;
+  height: 44px;
+  margin: 14px 0 10px;
+}
+.overview__plot i {
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--color-gray-200);
+  transition: background-color 400ms ease;
+}
+.overview__plot i.is-on {
+  background: var(--color-ink);
+}
+.overview__plot i.is-mid {
+  background: #9a9a9a;
+}
+.overview__legend {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-ink-mono);
+  font-size: 10px;
+}
+.overview__health .metric {
+  gap: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.overview__health .metric .dot {
+  margin-right: 4px;
+}
+
+/* --- 3. Fluxo ---------------------------------------------------------- */
+.flow__surface {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 14px;
+}
+.flow__node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  box-shadow: var(--shadow-chip);
+  white-space: nowrap;
+  transition: opacity 400ms var(--ease-standard), transform 400ms var(--ease-standard);
+}
+.flow__node .t-mono-sm {
+  color: var(--color-ink-mono);
+  font-size: 10px;
+}
+.flow__node strong {
+  font-weight: 500;
+}
+.flow__node em,
+.flow__node span:not(.t-mono-sm) {
+  color: var(--color-ink-mono);
+  font-style: normal;
+  font-size: 11px;
+}
+.flow__node em {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.flow__node svg {
+  width: 14px;
+  height: 14px;
+  color: var(--color-positive);
+}
+.flow__wire {
+  width: 2px;
+  height: 28px;
+  overflow: visible;
+}
+.flow__split {
+  width: 60%;
+  height: 32px;
+  overflow: visible;
+}
+.flow__wire line,
+.flow__split path {
+  fill: none;
+  stroke: #c9c9c9;
+  stroke-width: 1.2;
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.flow__wire line.is-on,
+.flow__split path.is-on {
+  stroke: var(--color-ink);
+  animation: dash 0.8s linear infinite;
+}
+@keyframes dash {
+  to { stroke-dashoffset: -12; }
+}
+.flow__branches {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+}
+.flow__branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.flow__branch .flow__node {
+  flex-direction: column;
+  gap: 0;
+}
+.flow__cond {
+  color: var(--color-ink-mono);
+  font-size: 10px;
+}
+.flow__node.is-pending {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+/* --- 4. Regras --------------------------------------------------------- */
+.rules__surface {
+  display: grid;
+  gap: 14px;
+  padding: 20px 0 14px;
+  overflow: hidden;
+}
+.rules__viewport {
+  position: relative;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+.rules__track {
+  display: flex;
+  gap: 8px;
+  width: max-content;
+  transition: transform 600ms var(--ease-spring);
+}
+.rules__track li {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-white);
+  box-shadow: var(--shadow-chip);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background-color 300ms ease, color 300ms ease;
+}
+.rules__track li.is-current {
+  background: var(--color-ink);
+  color: var(--color-white);
+}
+.rules__center {
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 180px;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  background: var(--color-white);
+  box-shadow: var(--shadow-card), var(--shadow-chip);
+}
+.rules__center svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-positive);
+}
+.rules__center .t-mono-sm {
+  color: var(--color-ink-mono);
+  font-size: 10px;
+}
+.rules__center strong {
+  font-size: 16px;
+  font-weight: 500;
+}
+.rules__controls {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.rules__controls button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--color-white);
+  box-shadow: var(--shadow-chip);
+}
+.rules__controls svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* --- Responsivo -------------------------------------------------------- */
+@media (max-width: 1199.98px) {
+  .capabilities__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .capabilities__nav {
+    display: none;
+  }
+  .capabilities__cards {
+    border-left: 0;
+  }
+}
+
+@media (max-width: 809.98px) {
+  .cap-card { padding: 56px var(--gutter); gap: 32px; }
+  .cap-card__stage { min-height: 0; padding: 32px 12px; }
+  .overview__metrics,
+  .overview__health { grid-template-columns: 1fr; }
+}

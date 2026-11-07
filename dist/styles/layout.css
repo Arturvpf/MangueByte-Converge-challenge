@@ -1,0 +1,107 @@
+/* ==========================================================================
+   Layout: container, trilhos verticais, divisores e cabeçalho de seção
+   ========================================================================== */
+
+/* Container de 1300px. O conteúdo tem padding lateral de 32px (gutter). */
+.container {
+  position: relative;
+  width: 100%;
+  max-width: var(--container);
+  margin-inline: auto;
+}
+
+.container--padded {
+  padding-inline: var(--gutter);
+}
+
+/* Divisor horizontal de largura total com o mesmo efeito gravado. */
+.divider {
+  height: 2px;
+  background: linear-gradient(180deg, var(--color-gray-200) 0 1px, var(--color-white) 1px 2px);
+}
+.is-dark .divider,
+.divider--dark {
+  background: linear-gradient(180deg, var(--color-night-raised) 0 1px, rgba(255, 255, 255, 0.03) 1px 2px);
+}
+
+/* --- Seções ------------------------------------------------------------ */
+
+/* Cada seção desenha os próprios trilhos verticais nas bordas do container.
+   No original são dois componentes "Border" (Light + White) lado a lado, o
+   que dá a linha "gravada" de 1px cinza + 1px branco; em seção escura as
+   cores mudam junto com o fundo. Ficam no background-image para não
+   interferir no layout (e somem sozinhos em telas menores que 1304px). */
+.section {
+  --rail-a: var(--color-gray-200);
+  --rail-b: var(--color-white);
+  --rail-offset: calc(var(--container) / 2 + 1px);
+  position: relative;
+  background-image:
+    linear-gradient(90deg, var(--rail-a) 0 1px, var(--rail-b) 1px 2px),
+    linear-gradient(90deg, var(--rail-b) 0 1px, var(--rail-a) 1px 2px);
+  background-size: 2px 100%;
+  background-repeat: no-repeat;
+  background-position:
+    calc(50% - var(--rail-offset)) 0,
+    calc(50% + var(--rail-offset)) 0;
+}
+
+.section.is-dark {
+  --rail-a: var(--color-night-raised);
+  --rail-b: rgba(255, 255, 255, 0.03);
+  background-color: var(--color-night);
+  color: var(--color-on-night);
+}
+
+.section--gray {
+  background-color: #f2f2f2;
+}
+
+/* Cabeçalho de seção: badge + título (+ texto/ação opcional). */
+.section-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: var(--section-top) var(--gutter) 0;
+}
+
+.section-head__title {
+  max-width: 690px;
+}
+
+.section-head--center {
+  align-items: center;
+  text-align: center;
+}
+.section-head--center .section-head__title {
+  max-width: 760px;
+}
+
+.section-head--split {
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+}
+.section-head--split > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.section-head__text {
+  max-width: 420px;
+  color: var(--color-ink-muted);
+}
+.is-dark .section-head__text {
+  color: var(--color-on-night-muted);
+}
+
+@media (max-width: 809.98px) {
+  .section-head--split {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

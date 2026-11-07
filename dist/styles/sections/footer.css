@@ -1,0 +1,139 @@
+/* ==========================================================================
+   Footer: CTA com shader escuro, navegação, wordmark com spotlight
+   (componente de código de spotlight, script-006: raio 180px, gradiente
+   #66ccff -> #fff -> #66ccff a 90deg, base a 15% de branco, varredura
+   automática de 5s + 0,4s de pausa quando não há ponteiro).
+   ========================================================================== */
+
+.site-footer {
+  overflow: hidden;
+}
+
+.footer-cta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.footer-cta__shader {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  opacity: 0.9;
+}
+.footer-cta::after {
+  /* escurece o shader para manter contraste do texto */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, rgba(14, 11, 10, 0.75), rgba(14, 11, 10, 0.25));
+}
+.footer-cta__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 470px);
+  gap: 48px;
+  padding-block: 112px 120px;
+}
+.footer-cta__inner h2 {
+  max-width: 480px;
+}
+.footer-cta__side {
+  display: grid;
+  align-content: start;
+  gap: 24px;
+}
+.footer-cta__side p {
+  color: var(--color-white-70);
+}
+.footer-cta__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.footer-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 48px;
+  padding-block: 48px;
+}
+.footer-nav__brand {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  max-width: 320px;
+}
+.footer-nav__brand p {
+  color: var(--color-white-70);
+  font-size: var(--text-small);
+  line-height: 22px;
+}
+.footer-nav__cols {
+  display: flex;
+  gap: 96px;
+}
+.footer-nav__cols > div {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+.footer-nav__cols .t-mono-sm {
+  margin-bottom: 6px;
+  color: var(--color-white-70);
+}
+.footer-nav__cols a {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: var(--text-small);
+  transition: color 200ms ease;
+}
+.footer-nav__cols a:hover {
+  color: var(--color-white);
+}
+
+/* --- Wordmark ---------------------------------------------------------- */
+.footer-wordmark {
+  padding: 24px var(--gutter);
+}
+.footer-wordmark__svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.footer-wordmark__svg text {
+  font-family: var(--font-display);
+  font-size: 500px;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  fill: none;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+.footer-wordmark__base {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+.footer-wordmark__lit {
+  stroke: url(#spot-gradient);
+  stroke-width: 1.6;
+  transition: opacity 280ms ease;
+}
+
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 24px 32px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: var(--text-small);
+}
+
+@media (max-width: 1199.98px) {
+  .footer-cta__inner { grid-template-columns: 1fr; }
+}
+@media (max-width: 809.98px) {
+  .footer-cta__inner { padding-block: 88px; }
+  .footer-nav { flex-direction: column; }
+  .footer-nav__cols { gap: 56px; }
+  .footer-bottom { flex-direction: column; }
+}

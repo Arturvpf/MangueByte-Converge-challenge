@@ -1,0 +1,262 @@
+/* ==========================================================================
+   Fontes de dados (faixa) + Como funciona (3 Process Cards)
+   ========================================================================== */
+
+/* --- Faixa de fontes --------------------------------------------------- */
+.sources__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 40px;
+  padding-block: 40px;
+}
+
+.sources__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-ink);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  opacity: 0.85;
+}
+.sources__item svg {
+  width: 22px;
+  height: 22px;
+}
+
+@media (max-width: 1199.98px) {
+  .sources__row { flex-wrap: wrap; justify-content: center; gap: 20px 56px; }
+}
+@media (max-width: 809.98px) {
+  .sources__row { gap: 16px 32px; padding-block: 32px; }
+  .sources__item { font-size: 16px; }
+}
+
+/* --- Como funciona ----------------------------------------------------- */
+.process__divider {
+  margin-top: 78px;
+}
+
+.process__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.process-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 var(--gutter) 32px;
+}
+.process-card + .process-card {
+  border-left: 1px solid var(--color-gray-200);
+}
+
+.process-card__visual {
+  display: grid;
+  place-items: center;
+  height: 300px;
+  margin-bottom: 24px;
+}
+
+.process-card__title {
+  font-size: var(--text-small);
+  font-weight: 500;
+  line-height: 22px;
+}
+.process-card__text {
+  max-width: 360px;
+  color: var(--color-ink-muted);
+  font-size: var(--text-small);
+  line-height: 22px;
+}
+
+/* Órbita de fontes girando ao redor do logo. */
+.orbit {
+  --size: 220px;
+  position: relative;
+  width: var(--size);
+  height: var(--size);
+}
+.orbit__ring {
+  position: absolute;
+  inset: 0;
+  border: 1px dashed #cfcfcf;
+  border-radius: 50%;
+  animation: orbit-spin 40s linear infinite;
+}
+/* Cada item fica num ângulo fixo (--i x 60deg) somado ao giro global --spin,
+   e é "desgirado" no fim para o ícone continuar de pé. */
+.orbit__item {
+  --angle: calc(var(--i) * 60deg + var(--spin));
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin: -20px;
+  border-radius: 50%;
+  background: var(--color-white);
+  box-shadow: var(--shadow-card), var(--shadow-chip);
+  transform: rotate(var(--angle)) translateY(calc(var(--size) / -2)) rotate(calc(-1 * var(--angle)));
+}
+.orbit__item:nth-child(2) { --i: 0; }
+.orbit__item:nth-child(3) { --i: 1; }
+.orbit__item:nth-child(4) { --i: 2; }
+.orbit__item:nth-child(5) { --i: 3; }
+.orbit__item:nth-child(6) { --i: 4; }
+.orbit__item:nth-child(7) { --i: 5; }
+.orbit__item svg {
+  width: 18px;
+  height: 18px;
+}
+.orbit__core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: -26px;
+  border-radius: var(--radius-md);
+  background: var(--color-ink);
+  color: var(--color-white);
+}
+.orbit__core svg {
+  width: 24px;
+  height: 24px;
+}
+
+@property --spin {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+.orbit {
+  animation: orbit-turn 40s linear infinite;
+}
+@keyframes orbit-turn {
+  to { --spin: 360deg; }
+}
+@keyframes orbit-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Campo de pergunta com digitação. */
+.ask {
+  width: min(100%, 300px);
+  padding: 14px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #fff 0%, #f7f7f7 100%);
+  box-shadow: var(--shadow-card);
+}
+.ask__text {
+  min-height: 44px;
+  font-size: 14px;
+  line-height: 22px;
+}
+.ask__caret {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  margin-left: 1px;
+  background: var(--color-ink);
+  vertical-align: -3px;
+  animation: caret 1s steps(1) infinite;
+}
+@keyframes caret {
+  50% { opacity: 0; }
+}
+.ask__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+.ask__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-gray-700);
+  font-size: 13px;
+}
+.ask__mode svg {
+  width: 14px;
+  height: 14px;
+}
+.ask__send {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(160deg, #5b616c 0%, #343a43 42%, #1a1f27 100%);
+  color: var(--color-white);
+}
+.ask__send svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Cartão de fontes citadas. */
+.sources-card {
+  width: min(100%, 260px);
+  padding: 10px;
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-white);
+  box-shadow: var(--shadow-card);
+  font-size: 11px;
+}
+.sources-card__title {
+  padding: 4px 4px 10px;
+  border-bottom: 1px solid var(--color-gray-100);
+  font-size: 12px;
+}
+.sources-card ul {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.sources-card li {
+  display: grid;
+  grid-template-columns: 14px 1fr auto 14px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-gray-50);
+  box-shadow: var(--shadow-chip);
+  color: var(--color-ink-mono);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 450ms var(--ease-standard), transform 450ms var(--ease-standard);
+}
+.sources-card li:nth-child(2) { transition-delay: 150ms; }
+.sources-card.is-visible li {
+  opacity: 1;
+  transform: none;
+}
+.sources-card .t-mono-sm {
+  color: var(--color-ink);
+  font-size: 10px;
+}
+.sources-card svg {
+  width: 14px;
+  height: 14px;
+}
+.sources-card svg.is-ok {
+  color: var(--color-positive);
+}
+
+@media (max-width: 1199.98px) {
+  .process__grid { grid-template-columns: 1fr; }
+  .process-card + .process-card { border-left: 0; border-top: 1px solid var(--color-gray-200); padding-top: 32px; }
+  .process-card__visual { height: 260px; }
+}

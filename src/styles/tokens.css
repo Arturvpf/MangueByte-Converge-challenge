@@ -1,0 +1,109 @@
+/* ==========================================================================
+   Design tokens
+   Valores lidos do CSS do mirror (styles-002.css, variáveis --token-*) e dos
+   presets de texto .framer-styles-preset-*. Nomes traduzidos para papéis.
+   ========================================================================== */
+
+:root {
+  /* --- Cor: superfícies claras ------------------------------------------ */
+  --color-ink: #0e0b0a;            /* token-36fd4801 — texto principal / fundo escuro */
+  --color-ink-muted: #0e0b0aa8;    /* token-f6a8d8cb — texto de apoio */
+  --color-ink-soft: #0e0b0a66;     /* token-c59c216f — vidro escuro */
+  --color-ink-mono: #666666;       /* preset 1u4ub8q — rótulos mono */
+  --color-gray-700: #4d4d4d;       /* token-0c5d4565 */
+  --color-gray-200: #e6e5e5;       /* token-562d18fd — bordas */
+  --color-gray-100: #f5f5f5;       /* token-bd2532eb — bordas suaves */
+  --color-gray-50: #fafafa;        /* token-5b2f134b — fundo da página */
+  --color-white: #ffffff;          /* token-ae4de4b5 */
+
+  /* --- Cor: superfícies escuras ----------------------------------------- */
+  --color-night: #0e0b0a;
+  --color-night-raised: #262323;   /* token-dd35983b — divisores no escuro */
+  --color-night-panel: #0b0b0a;    /* Tab Items: pageBackground */
+  --color-on-night: #f5f5f3;       /* Tab Items: headingText */
+  --color-on-night-muted: rgba(245, 245, 243, 0.55);
+  --color-on-night-faint: rgba(245, 245, 243, 0.45);
+  --color-on-night-hover: rgba(245, 245, 243, 0.8);
+  --color-white-70: #ffffffb3;     /* token-d8cae593 */
+  --color-white-40: #ffffff66;     /* token-cecf13b1 */
+
+  /* --- Cor: estados ------------------------------------------------------ */
+  --color-positive: #1f9d55;
+  --color-warning: #e8590c;
+
+  /* --- Tipografia -------------------------------------------------------- */
+  /* Títulos usam Helvetica Neue no original (licenciada). Substituída por
+     Inter com o mesmo tracking (-0.02em) e line-height (115%). */
+  --font-display: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-features: "cv03", "cv04", "cv09", "cv11";
+
+  /* Escala (desktop / tablet / phone) — presets 7mcqmi, 11dm2w9, etc. */
+  --text-h1: 56px;       /* 7mcqmi: 56 / 42 / 36 */
+  --text-h2: 36px;       /* 11dm2w9: 36 / 30 */
+  --text-h3: 30px;       /* Tab Items heading */
+  --text-stat: 32px;     /* 19g91j3: 32 / 26 / 24 */
+  --text-lead: 20px;     /* 1ozk61g / 9q6x4t */
+  --text-tab: 18px;      /* 1ca64hr */
+  --text-body: 16px;     /* 19rt131 */
+  --text-small: 14px;    /* 1ebkype / peybty */
+  --text-mono: 14px;     /* u2kahd — botões */
+  --text-label: 12px;    /* 1rrrtya — section label */
+
+  --tracking-display: -0.02em;
+  --tracking-tight: -0.5px;
+
+  /* --- Espaço e grade ---------------------------------------------------- */
+  --container: 1300px;   /* max-width dos wrappers de seção */
+  --gutter: 32px;        /* padding lateral do conteúdo */
+  --section-top: 132px;  /* .framer-1e45dax padding-top */
+  --hero-top: 196px;     /* .framer-11kpmt5 padding-top */
+  --header-h: 72px;
+
+  /* --- Forma ------------------------------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-control: 0 2px 4px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 1px 2px rgba(14, 11, 10, 0.04), 0 8px 24px -12px rgba(14, 11, 10, 0.12);
+  --shadow-chip: inset 0 0 2px 2px #fff, 0 0 2px 0 rgba(0, 0, 0, 0.1);
+
+  /* --- Movimento --------------------------------------------------------- */
+  /* Curvas copiadas dos módulos (arrays framer-motion -> cubic-bezier). */
+  --ease-in-out: cubic-bezier(0.44, 0, 0.56, 1);    /* FAQ, contadores */
+  --ease-standard: cubic-bezier(0.42, 0, 0.58, 1);  /* AI Chat Card */
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);  /* Tab Items (régua) */
+  /* framer spring {bounce:0, duration:.6} aproximado por bezier crítico */
+  --ease-spring: cubic-bezier(0.25, 1, 0.5, 1);
+  --dur-spring: 600ms;
+}
+
+/* Breakpoints do Framer (__framer__breakpoints):
+   desktop >= 1200, tablet 810–1199.98, phone <= 809.98 */
+@media (max-width: 1199.98px) {
+  :root {
+    --text-h1: 42px;
+    --text-h2: 30px;
+    --text-stat: 26px;
+    --gutter: 24px;
+    --section-top: 104px;
+    --hero-top: 160px;
+  }
+}
+
+@media (max-width: 809.98px) {
+  :root {
+    --text-h1: 36px;
+    --text-h2: 30px;
+    --text-h3: 24px;
+    --text-stat: 24px;
+    --gutter: 16px;
+    --section-top: 88px;
+    --hero-top: 128px;
+    --header-h: 64px;
+  }
+}
