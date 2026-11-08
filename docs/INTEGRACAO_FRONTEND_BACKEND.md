@@ -19,8 +19,10 @@ O novo visual altera a organização da visão geral, investigação, previsão,
 | Entrada com empresa, e-mail e senha | `POST /api/auth/login`, `GET /api/auth/me` | Conectado; bearer token apenas em memória |
 | Equipes disponíveis | `GET /api/teams` | Conectado com escopo imposto pelo backend |
 | Snapshots por equipe | `GET /api/teams/{team_id}/snapshots` | Conectado |
-| Cartões agregados de demanda, capacidade, IPD, gap | `GET /api/teams/{team_id}/metrics?snapshot_id=...` | Conectado; o gráfico histórico da visão geral ainda é ilustrativo |
-| Retomada de investigação após novo login | `GET /api/investigations`, `GET /api/investigations/{id}` | Conectado; o usuário precisa autenticar novamente ao atualizar a página |
+| Cartões agregados de demanda, capacidade, IPD, gap | `GET /api/teams/{team_id}/metrics?snapshot_id=...` | Conectado |
+| Gráfico Demanda × capacidade e painel Fluxo da demanda | `GET /api/teams/{team_id}/demand-flow?snapshot_id=...` | Conectado; demanda dos últimos 6 períodos do CSV; a capacidade é a do último período, repetida como referência (não há histórico de capacidade); fluxo legado aparece como não classificado |
+| Conversa com a Alinia (`src/app/agent.js`) | As rotas desta tabela, mais `GET /api/policies/resolve` | Conectado; cada pergunta é encaminhada a uma ferramenta fixa. Na simulação, situação, previsão e perguntas livres vão ao agente `alinia-investigator` por `/agent/chat` |
+| Retomada de investigação após novo login | `GET /api/investigations`, `GET /api/investigations/{id}` | Conectado; o login restaura a última investigação só com leitura; o diálogo **Conectar dados** lista as investigações da equipe e o botão **Retomar** pode avançar o fluxo; o usuário precisa autenticar novamente ao atualizar a página |
 | Abertura e retomada do fluxo | `POST /api/investigations`, `POST /api/investigations/{id}/advance` | Conectado; workflow síncrono e determinístico |
 | Respostas às perguntas | `POST /api/investigations/{id}/answers` | Conectado; relatos não se tornam evidências verificadas |
 | Previsão | Campo `forecast` da investigação | Conectado; gráfico usa os pontos da API quando disponíveis; intervalos não são P10/P50/P90 |
@@ -36,6 +38,27 @@ O novo visual altera a organização da visão geral, investigação, previsão,
 - Dados externos e respostas de gestores são adicionados ao DOM como `textContent`, não HTML executável.
 - Estado visual de déficit não calculado não é confundido com `0`.
 
+## Conversa com a Alinia
+
+A tela inicial (`#agente`) é a interface de conversa com o agente. A conversa funciona assim:
+
+- **Encaminhamento fixo:** a pergunta é classificada por padrões de texto (situação, investigação, previsão, cenários, contratação, regras, decisão, fontes) e vai para uma ferramenta que lê a API. Pedidos para revelar credenciais, avaliar pessoas ou usar dado individual são recusados antes de qualquer chamada.
+- **Transparência:** cada resposta mostra os passos executados (endpoint e tempo) e o selo de origem de cada número, que abre o detalhe da fonte.
+- **Perguntas ao gestor:** as perguntas pendentes da investigação aparecem na conversa; a resposta vai para `POST /api/investigations/{id}/answers` como relato não verificado, e o ciclo avança.
+- **Limites:** a Alinia não aprova, não rejeita e não adia; ela leva até a Revisão do RH. Sem headcount conclusivo e validado, ela não recomenda número de vagas.
+- **Sem conexão:** a conversa é uma simulação com os dados de exemplo da Unidade Centro, e a interface avisa isso.
+- **Estado:** a conversa fica só em memória e é apagada a cada novo login.
+
+### Ligação com o agente (`alinia-investigator`)
+
+- **Caminho:** a tela chama `POST /agent/chat` e `GET /agent/health` na mesma origem. O `scripts/serve.mjs` repassa ao agente em `ALINIA_AGENT_URL` (padrão `http://127.0.0.1:3141`, a rota `POST /v1/channels/workflow/chat`). O servidor do agente recusa chamadas de navegador vindas de outra origem (`forbidden_origin`), por isso o repasse existe.
+- **Chave do modelo:** `FEATHERLESS_API_KEY` em `alinia-investigator/.env.local` (ignorado pelo git) ou na variável de ambiente do processo do agente. A chave nunca vai ao navegador. Sem a chave, o agente devolve a ficha de fatos sem redação.
+- **Quando é usado:** só na simulação, nas intenções situação, previsão e pergunta livre, com até 500 caracteres. As guardas, a decisão, a pergunta ao gestor, os cenários e as regras continuam locais. O agente só conhece o caso sintético `run-centro-sintetico`, então não responde no modo conectado.
+- **Falha:** se o agente não estiver de pé ou não responder, o passo aparece como falho e a ferramenta local responde.
+- **Fonte:** a resposta leva o selo `agente`, que explica rota, modelo, dados e limites.
+- **Como subir:** `npm run agent` (porta 3141) e `npm run dev` (porta 5173), e abrir `http://localhost:5173/app/`.
+- **Pendente:** no FastAPI (`/prototype/app/`) ainda não há o repasse `/agent/*`; ali a tela usa as ferramentas locais. Para o agente ler o recorte real, o `deepseek-turn.ts` precisa receber `run_id`/equipe em vez do caso sintético fixo.
+
 ## Falha de execução identificada e corrigida
 
 O teste HTTP de integração revelou que `StaticFiles(directory=prototype)` (configuração anterior) retornava **404 em `/prototype/app/`**. O backend foi ajustado para `StaticFiles(directory=prototype, html=True)` em `backend/app/main.py`, permitindo servir o `index.html` ao acessar a pasta da landing ou da aplicação, sem exigir `/index.html` na URL. O teste cobre ambas as rotas de diretório.
@@ -43,7 +66,7 @@ O teste HTTP de integração revelou que `StaticFiles(directory=prototype)` (con
 ## Lacunas e riscos restantes
 
 1. **Falta importação pela própria UI:** ainda é necessário criar e confirmar o CSV via API/Swagger. O frontend apenas seleciona snapshots já disponíveis.
-2. **Landing e gráficos de exemplo:** até carregar métricas há valores sintéticos; mesmo após carregá-las, o gráfico histórico da visão geral continua ilustrativo (a própria UI informa).
+2. **Landing e gráficos de exemplo:** até carregar métricas há valores sintéticos. Depois de carregá-las, o gráfico da visão geral usa a demanda do `demand-flow`; a linha de capacidade continua sendo uma referência constante do último período (a própria UI informa). Recortes com menos de 2 períodos mantêm a série ilustrativa.
 3. **Sem dimensionamento v4.2 concluído:** forecast não alimenta o solver CP-SAT por competência/turno; as famílias B/C/D não têm simulação quantitativa. O frontend exibe apenas o resultado disponibilizado pela API.
 4. **Aprovação operacional indisponível por segurança:** o workflow ainda não produz `v42_validation` independente e válida; o bloqueio não deve ser removido para fins de demonstração.
 5. **Jira real indisponível:** a rota de sincronização ainda não persiste dados operacionais; o fluxo demonstrável usa CSV sintético.

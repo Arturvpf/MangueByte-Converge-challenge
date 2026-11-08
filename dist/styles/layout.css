@@ -53,10 +53,6 @@
   color: var(--color-on-night);
 }
 
-.section--gray {
-  background-color: #f2f2f2;
-}
-
 /* Cabeçalho de seção: badge + título (+ texto/ação opcional). */
 .section-head {
   display: flex;

@@ -110,9 +110,14 @@ Se a previsão se abstiver, faltar uma regra ou a cobertura obrigatória falhar,
 
 Construímos primeiro a **base de dados, cálculo, auditoria e interface** que sustenta a experiência. A próxima evolução é permitir que o agente escolha e coordene essas ferramentas conforme cada investigação — sem transformar estimativas em fatos nem ultrapassar os limites de autonomia.
 
+A tela inicial da plataforma é a **conversa com a Alinia**, o agente: a pessoa pergunta em linguagem natural e a Alinia mostra os passos que consultou, o selo de origem de cada número, as perguntas ao gestor e a passagem para a decisão humana. Ao lado da conversa ficam cinco áreas navegáveis: **Visão geral**, **Investigação**, **Previsão**, **Cenários** e **Revisão do RH**. A landing page apresenta o conceito do produto; a plataforma permite autenticação, consulta de recortes persistidos e interação com as APIs de investigação e decisão.
+
+A interface distingue dados ilustrativos de dados recebidos da API. Na revisão, cenários sem validação independente **não podem ser aprovados**. Rejeitar e adiar são decisões registráveis pelo perfil autorizado.
+
 | Componente | Situação atual |
 | --- | --- |
 | Novo frontend com Visão geral, Investigação, Previsão, Cenários e Revisão do RH | **Implementado e conectado à API** |
+| Conversa com a Alinia, tela inicial da plataforma | **Implementada e conectada à API** por ferramentas fixas; o modelo de linguagem ainda não escolhe as ferramentas |
 | Autenticação, escopo por empresa/equipe, snapshots, métricas e auditoria | **Implementado para demonstração** |
 | CSV e fixture de Jira com dados sintéticos | **Implementado**; coleta ativa pelo agente e Jira real ainda pendentes |
 | Investigação com checkpoints, perguntas e retomada | **Implementada de forma determinística**; não é ainda a orquestração autônoma do LLM |
@@ -256,7 +261,7 @@ A plataforma lista snapshots existentes, mas **a importação de CSV ainda não 
 
 ### 7. Percorrer o fluxo no frontend
 
-Com o snapshot carregado, a demonstração sugerida é: **Visão geral → Abrir investigação → Responder às perguntas → Previsão → Comparar A–E → Revisão do RH**.
+Com o snapshot carregado, a demonstração sugerida é: **Visão geral → Abrir investigação → Responder às perguntas → Previsão → Comparar A–E → Revisão do RH**. O mesmo caminho pode ser feito pela **Conversa com a Alinia**, perguntando, por exemplo, "Por que a equipe não dá conta da demanda?" e respondendo às perguntas do gestor ali mesmo.
 
 **Nesta entrega, a execução demonstrada é determinística**: a investigação pode exigir mais de uma rodada de respostas, mas o agente LLM ainda não escolhe nem executa as ferramentas do fluxo principal. Relatos do gestor continuam **não verificados** e não alteram automaticamente a capacidade calculada. Com histórico insuficiente, a previsão se abstém e os cenários ficam inconclusivos. O bloqueio de aprovação é **comportamento esperado**, não falha de instalação.
 
@@ -286,6 +291,8 @@ O CI executa testes de backend, regressões da integração HTTP/DOM, verificaç
 O próximo marco é ligar o **agente investigador-planejador** ao fluxo já persistido. Ele poderá partir de um alerta de demanda, buscar dados autorizados, levantar hipóteses, pedir esclarecimentos, acionar previsão e otimização, reconstruir alternativas inviáveis e encaminhar ao RH uma análise com evidências, custos, limites e incertezas. Os validadores independentes continuarão determinando quais propostas podem avançar.
 
 Antes de um piloto empresarial, ainda são necessários: sincronização Jira real somente leitura, simulações quantitativas A–D, previsão por skill/turno, validação de política por categoria/contrato, proteção de dados e testes de segurança do agente (inclusive prompt injection e saídas de ferramentas), avaliações de viés e experimento de ganho incremental do LLM.
+
+Os resultados ilustrativos não são indicadores operacionais reais. Antes de carregar um recorte, o frontend exibe séries de exemplo. Depois, o gráfico da visão geral usa a demanda importada (`demand-flow`), com a capacidade do último período como referência constante; as métricas carregadas da API são identificadas separadamente.
 
 **A intenção é tornar o agente o centro da experiência de investigação, sem transformar o LLM em fonte de verdade matemática, jurídica ou decisória.**
 
