@@ -1,6 +1,6 @@
 """Scoped repository; callers must obtain scope from a trusted principal."""
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -65,7 +65,9 @@ class DataRepository:
         result = []
         for row in rows:
             data = checked_payload(row)
-            result.append(SnapshotSummary(row.snapshot_id, row.created_at, data.source.kind, data.source.reference, data.source.version))
+            created_at = row.created_at
+            created_at = created_at.replace(tzinfo=timezone.utc) if created_at.tzinfo is None else created_at.astimezone(timezone.utc)
+            result.append(SnapshotSummary(row.snapshot_id, created_at, data.source.kind, data.source.reference, data.source.version))
         return tuple(result)
 
     def list_teams(self):

@@ -77,7 +77,9 @@ def test_repository_and_api_isolation_version_and_origin(tmp_path):
         assert old.json()['demand']['records'][0]['quantity'] is None
         assert old.json()['capacity']['hours_unit'] == 'hours_per_period'
         assert old.json()['demand']['records'][0]['unit'] == 'cases_per_period'
-        assert len(client.get(f'/api/teams/{a.team.id}/snapshots').json()) == 2
+        summaries = client.get(f'/api/teams/{a.team.id}/snapshots').json()
+        assert len(summaries) == 2
+        assert all(item['created_at'].endswith(('Z', '+00:00')) for item in summaries)
         assert client.get(f'/api/teams/{b.team.id}/snapshots/{b.capacity.data_snapshot_id}').status_code == 403
         assert client.get(f'/api/teams/{a.team.id}/snapshots/{b.capacity.data_snapshot_id}').status_code == 404
         # Even with a colliding team ID, tenant filtering prevents access.
