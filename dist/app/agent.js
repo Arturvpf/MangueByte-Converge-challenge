@@ -1,15 +1,15 @@
 /* ==========================================================================
    Alinia — interface de conversa com o agente.
 
-   O modelo de linguagem do agente ainda não está ligado (ver a branch
-   agent/alinia-investigator). Até lá, cada pergunta é encaminhada a uma
-   ferramenta fixa:
+   Cada pergunta passa primeiro pelas guardas e depois vai a uma ferramenta:
    - conectado: as ferramentas leem e registram pela API, e cada número leva o
      selo da fonte;
    - sem conexão: a conversa é uma simulação com os dados de exemplo da
      Unidade Centro, e a interface diz isso.
-   A interface não muda quando o modelo entrar: ele passa a escolher a
-   ferramenta e a redigir o texto, e os passos e as fontes continuam visíveis.
+   Na simulação, a situação, a previsão e as perguntas livres vão ao agente
+   (alinia-investigator, com DeepSeek), por /agent/chat na mesma origem. O
+   agente só conhece o caso sintético do Centro, por isso não responde no modo
+   conectado. Se ele não estiver de pé, a ferramenta local responde.
 
    Regras que esta tela não quebra:
    - todo texto vindo de dados ou do usuário entra como textContent;
@@ -97,6 +97,25 @@ const RULE_REASONS = {
   hash_mismatch: 'a integridade da regra não confere',
 };
 
+/* --- Agente (alinia-investigator) ----------------------------------------
+   Intenções que, na simulação, vão ao agente. As guardas, a decisão, a
+   pergunta ao gestor, os cenários e as regras continuam aqui: são os pontos
+   em que a tela precisa garantir o limite, não o modelo. */
+const AGENT_CHAT = '/agent/chat';
+const AGENT_HEALTH = '/agent/health';
+const AGENT_MAX = 500;
+const AGENT_INTENTS = new Set(['overview', 'forecast', 'fallback']);
+const AGENT_EVIDENCE = {
+  title: 'Resposta do agente',
+  intro: 'Texto redigido pelo modelo a partir da ficha do caso sintético do Centro. Os números vêm da ficha; o modelo é instruído a não criar outros.',
+  items: [
+    ['Rota', 'POST /v1/channels/workflow/chat (alinia-investigator)'],
+    ['Modelo', 'DeepSeek V4.1 Flash, via Featherless. Sem a chave, o agente devolve a ficha sem redação'],
+    ['Dados', 'Caso sintético run-centro-sintetico, não um recorte real'],
+    ['Limites', 'Não cadastra vaga, não escolhe nome e não usa dado individual'],
+  ],
+};
+
 /* --- Dados da simulação (mesmos números da Unidade Centro nas outras telas) */
 const DEMO = {
   unit: 'Unidade Centro',
@@ -135,9 +154,21 @@ export function mountAgent(ctx) {
     cited: new Map(),
     demoAnswered: false,
     quiet: false,
+    agent: false, // agente de pé, segundo o último /agent/health
   };
 
   const connected = () => Boolean(ctx.session.token);
+  const agentOn = () => !connected() && state.agent;
+
+  async function probeAgent() {
+    try {
+      const response = await fetch(AGENT_HEALTH, { signal: AbortSignal.timeout(3000) });
+      state.agent = response.ok && (await response.json()).ok === true;
+    } catch {
+      state.agent = false;
+    }
+    refreshContext();
+  }
 
   /* --- Fontes ------------------------------------------------------------ */
   function cite(key, evidence) {
@@ -333,7 +364,9 @@ export function mountAgent(ctx) {
   async function refreshContext() {
     const scope = ctx.scope();
     screen.querySelector('[data-agent-unit]').textContent = connected() ? (scope.teamName || 'Equipe não escolhida') : DEMO.unit;
-    screen.querySelector('[data-agent-mode]').textContent = connected() ? 'API conectada' : 'Simulação com dados de exemplo';
+    screen.querySelector('[data-agent-mode]').textContent = connected()
+      ? 'API conectada'
+      : (state.agent ? 'Simulação · agente ligado' : 'Simulação com dados de exemplo');
     screen.querySelector('[data-agent-mode-dot]').classList.toggle('dot--live', connected());
     screen.querySelector('[data-agent-scope]').textContent = connected()
       ? (scope.snapshotId ? `Recorte ${scope.snapshotId}` : 'Nenhum recorte escolhido')
@@ -345,8 +378,10 @@ export function mountAgent(ctx) {
     }
     screen.querySelector('[data-agent-run]').textContent = runLabel;
     note.textContent = connected()
-      ? 'Respostas montadas a partir da API, com a fonte de cada número. O modelo de linguagem ainda não está ligado.'
-      : 'Simulação com os dados de exemplo da Unidade Centro. Nada é enviado ou salvo.';
+      ? 'Respostas montadas a partir da API, com a fonte de cada número. O agente com modelo de linguagem ainda não lê o seu recorte.'
+      : state.agent
+        ? 'Simulação com o caso de exemplo do Centro. As perguntas livres vão ao agente e ao modelo DeepSeek; nada fica salvo no navegador.'
+        : 'Simulação com os dados de exemplo da Unidade Centro. Nada é enviado ou salvo.';
     // Só o número: o rótulo do menu já é longo.
     const meta = document.querySelector('[data-agent-nav-meta]');
     meta.textContent = state.pending ? '1' : '';
@@ -787,6 +822,99 @@ export function mountAgent(ctx) {
     async decide(turn) { return live.decide(turn); },
   };
 
+  /* --- Agente ------------------------------------------------------------ */
+  // Texto do modelo entra como textContent. Linhas com "- " viram lista.
+  function paintAgentText(container, text) {
+    const blocks = [];
+    let list = null;
+    text.split(/\r?\n/).forEach((raw) => {
+      const line = raw.trim();
+      if (!line) {
+        list = null;
+        return;
+      }
+      if (line.startsWith('- ')) {
+        if (!list) {
+          list = node('ul', 'turn__list');
+          blocks.push(list);
+        }
+        list.append(node('li', null, line.slice(2)));
+        return;
+      }
+      list = null;
+      blocks.push(node('p', null, line));
+    });
+    container.replaceChildren(...blocks);
+  }
+
+  // Devolve true se o agente respondeu algo; false para a ferramenta local assumir.
+  async function askAgent(turn, text) {
+    const handle = turn.step('Consultando o agente', 'POST /agent/chat');
+    let response;
+    try {
+      response = await fetch(AGENT_CHAT, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'text/plain' },
+        body: JSON.stringify({ message: text }),
+        signal: AbortSignal.timeout(60_000),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch {
+      handle.fail('indisponível');
+      state.agent = false;
+      return false;
+    }
+
+    const container = node('div', 'turn__agent-text');
+    let full = '';
+    let shown = false;
+    const show = () => {
+      if (!shown) {
+        turn.block(container);
+        shown = true;
+      }
+      paintAgentText(container, full);
+      scrollToEnd();
+    };
+    try {
+      if ((response.headers.get('content-type') || '').includes('application/json')) {
+        const data = await response.json();
+        const messages = Array.isArray(data.messages) ? data.messages : [];
+        full = String(messages.at(-1)?.text ?? '');
+        if (full) show();
+      } else {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        for (;;) {
+          const step = await reader.read();
+          if (step.done) break;
+          full += decoder.decode(step.value, { stream: true });
+          if (full.trim()) show();
+        }
+      }
+    } catch {
+      if (!full.trim()) {
+        handle.fail('interrompida');
+        return false;
+      }
+      full += '\n\nA resposta foi interrompida.';
+      show();
+    }
+    if (!full.trim()) {
+      handle.fail('sem resposta');
+      return false;
+    }
+    handle.done();
+    const evidence = cite('agente', AGENT_EVIDENCE);
+    const badge = node('button', 'src', 'agente');
+    badge.type = 'button';
+    badge.setAttribute('aria-label', `Ver fonte: ${evidence.title}`);
+    badge.addEventListener('click', () => ctx.openEvidence(evidence, badge));
+    const last = container.lastElementChild;
+    (last?.tagName === 'P' ? last : container).append(' ', badge);
+    return true;
+  }
+
   /* --- Respostas fixas --------------------------------------------------- */
   function intro(turn) {
     turn.say('Eu leio os dados já calculados da equipe, mostro de onde vem cada número e paro antes da decisão.');
@@ -822,7 +950,9 @@ export function mountAgent(ctx) {
       turn.block(row);
     },
     fallback(turn) {
-      turn.say('Não tenho uma ferramenta para responder isso com segurança. Esta versão da Alinia responde por ferramentas fixas; o modelo de linguagem ainda não está ligado.');
+      turn.say(connected()
+        ? 'Não tenho uma ferramenta para responder isso com segurança. No modo conectado, respondo por ferramentas que leem o seu recorte; o agente com modelo de linguagem ainda só conhece o caso de exemplo do Centro.'
+        : 'Não tenho uma ferramenta para responder isso com segurança, e o agente com modelo de linguagem não está ligado agora.');
       turn.suggest(SUGGESTIONS.slice(0, 4));
     },
   };
@@ -846,7 +976,10 @@ export function mountAgent(ctx) {
         await tools.answer(turn, text);
       } else {
         const intent = detectIntent(text);
-        if (tools[intent]) await tools[intent](turn);
+        const viaAgent = agentOn() && AGENT_INTENTS.has(intent) && text.length <= AGENT_MAX;
+        if (viaAgent && await askAgent(turn, text)) {
+          // respondido pelo agente
+        } else if (tools[intent]) await tools[intent](turn);
         else await fixed[intent](turn);
       }
     } catch (error) {
@@ -920,10 +1053,11 @@ export function mountAgent(ctx) {
   document.addEventListener('alinia:context', () => refreshContext());
   document.addEventListener('alinia:route', (event) => {
     if (event.detail === 'agente') {
-      refreshContext();
+      probeAgent();
       if (!state.answeringActive) input.focus({ preventScroll: true });
     }
   });
 
   reset();
+  probeAgent();
 }
