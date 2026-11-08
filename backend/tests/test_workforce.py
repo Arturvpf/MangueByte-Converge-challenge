@@ -242,7 +242,7 @@ def test_flow_resume_decisions_and_isolation(tmp_path):
         assert state["state"] == "AWAITING_HUMAN"
         items = client.get(f"/api/investigations/{opened_long.json()['run_id']}/scenarios", headers=rh).json()["items"]
         hire = next(item for item in items if item["kind"] == "hire")
-        assert hire["conclusive"] is False and hire["headcount_delta"] == 1
+        assert hire["conclusive"] is False and hire["headcount_delta"] is None
         assert client.post(f"/api/scenarios/{hire['scenario_id']}/decisions", json={
             "decision": "approve", "reason": "seguir com ressalva", "expected_hash": "a" * 64, "idempotency_key": "bad-hash",
         }, headers=rh).status_code == 409
