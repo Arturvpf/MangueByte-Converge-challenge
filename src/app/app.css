@@ -663,6 +663,8 @@ body {
 .turn__mark i:nth-child(3) { height: 10px; opacity: 0.45; }
 .turn__body { display: grid; gap: 12px; max-width: 68ch; font-size: 15px; line-height: 24px; }
 .turn__body > p { text-wrap: pretty; }
+.turn__agent-text { display: grid; gap: 12px; }
+.turn__agent-text > p { text-wrap: pretty; }
 .turn__thinking { color: var(--muted); animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.4; } }
 
