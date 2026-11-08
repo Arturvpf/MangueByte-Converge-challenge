@@ -13,7 +13,7 @@ from backend.app.contracts.v1 import Contract, nonempty
 from pydantic import field_validator
 from backend.app.decisions.service import decide, draft
 from backend.app.flow.errors import FlowError
-from backend.app.flow.models import CriticRow, DecisionRow, RequisitionDraftRow, ScenarioRow
+from backend.app.flow.models import CriticRow, DecisionRow, InvestigationRun, RequisitionDraftRow, ScenarioRow
 from backend.app.workflow.service import advance, answer, create_run, _run
 
 router = APIRouter(prefix="/api", tags=["workflow"])
@@ -77,6 +77,25 @@ def open_run(body: RunIn, request: Request, principal: Principal = Depends(requi
         session, principal, team_id=body.team_id, snapshot_id=body.snapshot_id, idempotency_key=body.idempotency_key,
         cycle_limit=body.cycle_limit,
     )))
+
+
+@router.get("/investigations")
+def list_runs(request: Request, principal: Principal = Depends(require_permission(Permission.SCENARIO_READ))):
+    """Resumption index: only runs in the authenticated tenant and accessible teams."""
+    def run(session):
+        query = select(InvestigationRun).where(InvestigationRun.tenant_id == principal.tenant_id)
+        if not principal.tenant_wide(Permission.SCENARIO_READ):
+            allowed = list(principal.team_ids(Permission.SCENARIO_READ))
+            if not allowed:
+                return {"items": []}
+            query = query.where(InvestigationRun.team_id.in_(allowed))
+        rows = session.scalars(query.order_by(InvestigationRun.updated_at.desc()).limit(100))
+        return {"items": [
+            {"run_id": row.run_id, "team_id": row.team_id, "snapshot_id": row.snapshot_id,
+             "state": row.state, "updated_at": row.updated_at.isoformat()}
+            for row in rows if principal.can(Permission.SCENARIO_READ, row.team_id)
+        ]}
+    return _call(request, principal, Permission.SCENARIO_READ, run)
 
 
 @router.get("/investigations/{run_id}")
