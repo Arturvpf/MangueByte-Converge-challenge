@@ -252,6 +252,7 @@ def _plan(session, principal, run: InvestigationRun):
         tenant_id=run.tenant_id, team_id=run.team_id, snapshot_id=run.snapshot_id,
         pools=pools or {}, rows=rows, demand_hours=demand, weekly_max=weekly, policy_complete=complete,
         forecast_calibrated=forecast.status == "calibrated", dependencies=dependencies, rule_versions=versions,
+        forecast_applied=False,  # Explicit fail-closed until skill/shift forecast drives the solver.
     )
     for scenario, simulation in pairs:
         session.add(ScenarioRow(
