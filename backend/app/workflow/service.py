@@ -240,6 +240,14 @@ def _plan(session, principal, run: InvestigationRun):
     parsed = _inputs(snapshot, aggregates)
     pools, rows, demand = (None, [], None) if parsed is None else parsed
     complete, weekly, versions, dependencies = _policy(session, run, snapshot.capacity.period.start)
+    # Answers are manager reports, not verified measurements. Carry only the
+    # question IDs as unverified dependencies; never inject arbitrary text into
+    # a solver, legal check or scenario cost estimate.
+    dependencies.extend(
+        "MANAGER_REPORT_UNVERIFIED:" + question["question_id"]
+        for question in (run.report or {}).get("questions", [])
+        if question.get("status") == "answered"
+    )
     forecast = ForecastResult.model_validate_json(json.dumps(run.forecast))
     # Re-check every operational date in the forecast window. An approved rule
     # valid at snapshot time is not automatically valid for future schedules.
