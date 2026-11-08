@@ -1,5 +1,7 @@
 # Auditoria de rastreabilidade P1/P2 — 08/11/2026
 
+> **HISTÓRICO — BASE PRD v4.1.** Esta auditoria usa o plano anterior e não deve orientar novos aceites. A matriz vigente é [REBASELINE_PRD_V42.md](REBASELINE_PRD_V42.md), que adota o PRD v4.2 (08/11/2026) e revisa agentes, dados, cenários, solver e gates.
+
 Base: `requisitos/docs/Divisao_IA_Backend_Alinia.md`; PRD v4.1, MVP 2.5; branches `p1/dados-investigacao` e `p2/policy-store`.
 
 **Legenda:** Parcial = existe implementação, mas não atende integralmente ao aceite. Implementado = código e testes correspondentes identificados; **não é aprovação de execução**. Pendente = componente ou validação importante não entregues.
