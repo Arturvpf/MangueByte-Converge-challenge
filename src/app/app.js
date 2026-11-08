@@ -45,59 +45,117 @@ mobileBackdrop.addEventListener('click', closeMenu);
 window.addEventListener('hashchange', showRoute);
 showRoute();
 
+/* Gráficos: o SVG estica (preserveAspectRatio none) e os traços usam
+   non-scaling-stroke; rótulos e o ponto final ficam em HTML. */
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const PLOT_W = 1000;
+const PLOT_H = 240;
+const CAPACITY = 954;
+
+const toNumber = (value) => Number(String(value).replace(/\./g, '').replace(',', '.'));
+const formatInt = (value) => Math.round(value).toLocaleString('pt-BR');
+
+function plot(chart, { min, max, ticks, line, quiet = [], band, capacity }) {
+  const svg = chart.querySelector('svg');
+  const x = (index, count) => (count === 1 ? PLOT_W : (index * PLOT_W) / (count - 1));
+  const y = (value) => PLOT_H - ((value - min) / (max - min)) * PLOT_H;
+  const points = (values) => values.map((value, index) => `${x(index, values.length)},${y(value)}`).join(' ');
+  const shape = (tag, attrs) => {
+    const node = document.createElementNS(SVG_NS, tag);
+    Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+    return node;
+  };
+  const nodes = ticks.map((tick) => shape('line', { class: 'grid', x1: 0, x2: PLOT_W, y1: y(tick), y2: y(tick) }));
+  if (band) {
+    const upper = points(band.high);
+    const lower = band.low.map((value, index) => `${x(index, band.low.length)},${y(value)}`).reverse().join(' ');
+    nodes.push(shape('polygon', { class: 'band', points: `${upper} ${lower}` }));
+  }
+  if (capacity != null && line.length) {
+    const top = points(line.map((value) => Math.max(value, capacity)));
+    const base = line.map((_, index) => `${x(index, line.length)},${y(capacity)}`).reverse().join(' ');
+    nodes.push(shape('polygon', { class: 'gap', points: `${top} ${base}` }));
+    nodes.push(shape('line', { class: 'capacity', x1: 0, x2: PLOT_W, y1: y(capacity), y2: y(capacity) }));
+  }
+  quiet.forEach((values) => nodes.push(shape('polyline', { class: 'line line--quiet', points: points(values) })));
+  if (line.length) nodes.push(shape('polyline', { class: 'line', points: points(line) }));
+  svg.replaceChildren(...nodes);
+  chart.querySelectorAll('.chart__y span').forEach((label) => {
+    label.textContent = formatInt(max - (Number.parseFloat(label.style.top) / 100) * (max - min));
+  });
+  const dot = chart.querySelector('.chart__dot');
+  dot.hidden = !line.length;
+  if (line.length) {
+    dot.style.left = '100%';
+    dot.style.top = `${(y(line[line.length - 1]) / PLOT_H) * 100}%`;
+  }
+}
+
+plot(document.querySelector('[data-chart="overview"]'), {
+  min: 900, max: 1200, ticks: [900, 1000, 1100, 1200],
+  line: [1060, 1085, 1120, 1150], capacity: CAPACITY,
+});
+
 const forecastData = {
   low: {
-    value: '1.080',
+    label: 'baixa',
     values: ['1.050', '1.060', '1.075', '1.080'],
-    widths: ['51%', '54%', '58%', '60%'],
-    heading: 'Mesmo com demanda baixa, verifique o déficit por skill.',
+    heading: 'Mesmo com demanda baixa, confira o déficit por competência',
     copy: 'A faixa baixa reduz a pressão agregada, mas não mostra se os turnos e competências críticos estão cobertos.',
   },
   base: {
-    value: '1.200',
+    label: 'provável',
     values: ['1.165', '1.180', '1.195', '1.200'],
-    widths: ['67%', '72%', '77%', '80%'],
-    heading: 'O cenário base mantém o déficit agregado.',
-    copy: 'Com 1.200 atendimentos projetados, o baseline homogêneo de 42h equivale a aproximadamente 14 pessoas. A composição por competência segue pendente.',
+    heading: 'A faixa provável mantém o déficit agregado',
+    copy: 'Com 1.200 atendimentos projetados, o cálculo agregado em 42h equivale a cerca de 14 pessoas. A composição por competência segue pendente.',
   },
   high: {
-    value: '1.320',
+    label: 'alta',
     values: ['1.265', '1.285', '1.305', '1.320'],
-    widths: ['84%', '89%', '94%', '98%'],
-    heading: 'A alta demanda amplia a necessidade de margem operacional.',
-    copy: 'O cenário alto testa a robustez das alternativas. Sem dados por skill e turno, a Alinia não conclui uma composição de vagas.',
+    heading: 'A demanda alta amplia a margem operacional necessária',
+    copy: 'A faixa alta testa a robustez das alternativas. Sem dados por competência e turno, a Alinia não conclui uma composição de vagas.',
   },
 };
+const forecastChart = document.querySelector('[data-chart="forecast"]');
+const forecastScale = { min: 900, max: 1350, ticks: [900, 1050, 1200, 1350] };
+
+function showForecast(key) {
+  const data = forecastData[key];
+  const series = (name) => forecastData[name].values.map(toNumber);
+  const last = data.values[data.values.length - 1];
+  document.querySelectorAll('[data-forecast]').forEach((item) => item.setAttribute('aria-pressed', String(item.dataset.forecast === key)));
+  document.querySelector('[data-forecast-value]').textContent = last;
+  document.querySelector('[data-forecast-delta]').textContent = `+${formatInt(toNumber(last) - CAPACITY)} acima da capacidade em 42h`;
+  document.querySelector('[data-forecast-heading]').textContent = data.heading;
+  document.querySelector('[data-forecast-copy]').textContent = data.copy;
+  data.values.forEach((value, index) => { document.querySelector(`[data-bar-label="${index}"]`).textContent = value; });
+  plot(forecastChart, {
+    ...forecastScale,
+    line: series(key),
+    quiet: Object.keys(forecastData).filter((name) => name !== key).map(series),
+    capacity: CAPACITY,
+  });
+  forecastChart.setAttribute('aria-label', `Demanda projetada na faixa ${data.label}: ${data.values.join(', ')} atendimentos nas semanas 1 a 4, contra capacidade de cerca de 954`);
+}
 
 document.querySelectorAll('[data-forecast]').forEach((button) => {
-  button.addEventListener('click', () => {
-    const data = forecastData[button.dataset.forecast];
-    document.querySelectorAll('[data-forecast]').forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
-    document.querySelector('[data-forecast-value]').textContent = data.value;
-    document.querySelector('[data-forecast-heading]').textContent = data.heading;
-    document.querySelector('[data-forecast-copy]').textContent = data.copy;
-    data.values.forEach((value, index) => {
-      document.querySelector(`[data-bar="${index}"]`).style.setProperty('--bar', data.widths[index]);
-      document.querySelector(`[data-bar-label="${index}"]`).textContent = value;
-    });
-    document.querySelector('.forecast-bars').setAttribute('aria-label', `Barras ilustrativas de demanda para cenário ${button.textContent.trim()}: semanas 1 a 4, ${data.values.join(', ')} atendimentos`);
-  });
+  button.addEventListener('click', () => showForecast(button.dataset.forecast));
 });
+showForecast('base');
 
 const scenarioData = {
-  a: { head: 'A · Contratar', coverage: 'A validar por skill', timing: 'Após contratação e ramp-up', risk: 'Mentoria e cobertura N1', status: 'Condicional' },
-  c: { head: 'C · Realocar', coverage: 'A validar por skill', timing: 'Após formação e realocação', risk: 'Impacto na equipe de origem', status: 'Condicional' },
-  e: { head: 'E · Não agir', coverage: 'Gap agregado de 3 posições', timing: 'Imediato', risk: 'Backlog e pressão operacional', status: 'Referência' },
+  a: { head: 'A · Contratar', coverage: 'A validar por competência', timing: 'Após contratação e ramp-up', risk: 'Mentoria e cobertura N1', status: 'Condicional' },
+  b: { head: 'B · Realocar', coverage: 'A validar por competência', timing: 'Após formação e realocação', risk: 'Impacto na equipe de origem', status: 'Condicional' },
+  c: { head: 'C · Não agir', coverage: 'Gap agregado de 3 posições', timing: 'Imediato', risk: 'Backlog e pressão operacional', status: 'Referência' },
 };
-let selectedScenarios = ['a', 'c'];
+let selectedScenarios = ['a', 'b'];
 
 function renderComparison() {
   document.querySelectorAll('[data-select-scenario]').forEach((button) => {
     const selected = selectedScenarios.includes(button.dataset.selectScenario);
     button.setAttribute('aria-pressed', String(selected));
     button.closest('.scenario-card').classList.toggle('is-selected', selected);
-    button.querySelector('.select-box').textContent = selected ? '✓' : '';
-    button.lastChild.textContent = selected ? 'Selecionado para comparação' : 'Adicionar à comparação';
+    button.querySelector('[data-select-label]').textContent = selected ? 'Na comparação' : 'Adicionar à comparação';
   });
   document.querySelector('[data-comparison-count]').textContent = `${selectedScenarios.length} selecionado${selectedScenarios.length === 1 ? '' : 's'}`;
   document.querySelector('[data-comparison-empty]').hidden = selectedScenarios.length > 0;
@@ -121,10 +179,10 @@ document.querySelectorAll('[data-select-scenario]').forEach((button) => {
 renderComparison();
 
 const evidence = {
-  demanda: { title: 'Demanda atual', intro: 'Fonte ilustrativa do exemplo da Unidade Centro no PRD v4.1.', items: [['Unidade', 'Atendimentos comparáveis por semana'], ['Valor atual', '1.150 atendimentos / semana'], ['Limitação', 'Não somar unidades de trabalho incomparáveis entre equipes.']] },
+  demanda: { title: 'Demanda atual', intro: 'Fonte ilustrativa do exemplo da Unidade Centro.', items: [['Arquivo', 'demanda_centro.csv'], ['Unidade', 'Atendimentos comparáveis por semana'], ['Valor atual', '1.150 atendimentos por semana'], ['Limitação', 'Não somar unidades de trabalho incomparáveis entre equipes.']] },
   jornada: { title: 'Premissa de jornada', intro: 'A jornada de 42h é usada apenas para simulação do exemplo.', items: [['Jornada simulada', '42 horas semanais'], ['Controle necessário', 'Confirmar categoria, vigência e instrumento coletivo aplicável com o RH/jurídico.'], ['Execução', 'Nenhuma alteração de escala ou ponto nesta demonstração.']] },
-  calculo: { title: 'Cálculo agregado', intro: 'Baseline homogêneo reproduzido a partir dos números do PRD.', items: [['Entradas', '11 pessoas × 42h × 91% de disponibilidade × 2,27 atendimentos/hora'], ['Capacidade', 'Aproximadamente 954 atendimentos por semana'], ['IPD', '1.150 ÷ 954 ≈ 1,21'], ['Limitação', 'Não distribui horas por competência ou turno e não define automaticamente as vagas.']] },
-  skills: { title: 'Matriz de competências pendente', intro: 'O gap agregado não resolve a composição da equipe.', items: [['Dado necessário', 'Horas elegíveis por skill, turno e função.'], ['Risco', 'Contar a mesma hora em várias competências ou supor que três pessoas fecham qualquer gap N1.'], ['Próximo passo', 'Validar a matriz com RH e operação antes de otimizar a alocação.']] },
+  calculo: { title: 'Cálculo agregado', intro: 'Capacidade da equipe como se todos fizessem o mesmo trabalho, a partir dos números do exemplo.', items: [['Entradas', '11 pessoas × 42h × 91% de disponibilidade × 2,27 atendimentos por hora'], ['Capacidade', 'Cerca de 954 atendimentos por semana'], ['Pressão de demanda (IPD)', '1.150 ÷ 954 ≈ 1,21'], ['Gap agregado', '3 posições para cobrir a demanda em 42h'], ['Limitação', 'Não distribui horas por competência ou turno e não define automaticamente as vagas.']] },
+  skills: { title: 'Matriz de competências pendente', intro: 'O gap agregado não resolve a composição da equipe.', items: [['Dado necessário', 'Horas elegíveis por competência, turno e função.'], ['Risco', 'Contar a mesma hora em várias competências ou supor que três pessoas fecham qualquer gap N1.'], ['Próximo passo', 'Validar a matriz com RH e operação antes de otimizar a alocação.']] },
   historico: { title: 'Histórico insuficiente', intro: 'Uma hipótese sazonal exige comparação temporal antes de orientar modalidade de contratação.', items: [['Dado necessário', 'Histórico de demanda comparável e calendário de eventos.'], ['Método', 'Baseline e backtesting com origem temporal rolante.'], ['Estado', 'Hipótese não verificada nesta demonstração.']] },
 };
 
@@ -170,13 +228,21 @@ document.querySelector('[data-review-action]').addEventListener('click', (event)
     document.querySelector('[data-review-feedback]').textContent = 'A sessão está ligada. A decisão só aparece depois da resposta da API.';
     return;
   }
-  event.currentTarget.textContent = 'Checklist preparado ✓';
+  event.currentTarget.textContent = 'Checklist preparado';
   event.currentTarget.disabled = true;
   document.querySelector('[data-review-feedback]').textContent = 'Checklist preparado nesta sessão. Nenhuma requisição foi criada.';
 });
 
+const connectDialog = document.querySelector('[data-connect-dialog]');
+document.querySelectorAll('[data-connect-open]').forEach((button) => button.addEventListener('click', () => {
+  closeMenu();
+  connectDialog.showModal();
+}));
+document.querySelector('[data-connect-close]').addEventListener('click', () => connectDialog.close());
+connectDialog.addEventListener('click', (event) => { if (event.target === connectDialog) connectDialog.close(); });
+
 const session = { token: null, runId: null, scenarios: [], approvedId: null };
-const cardKind = { a: 'hire', c: 'reallocate', e: 'do_nothing' };
+const cardKind = { a: 'hire', b: 'reallocate', c: 'do_nothing' };
 const kindTitle = { hire: 'Contratar', reallocate: 'Realocar', do_nothing: 'Não agir' };
 
 function errorText(error) {
@@ -247,9 +313,10 @@ document.querySelector('[data-connect-form]').addEventListener('submit', async (
     document.querySelector('[data-review-action]').hidden = true;
     document.querySelector('[data-decision-form]').hidden = false;
     document.querySelector('[data-review-copy]').textContent = 'Rejeitar, adiar ou aprovar só muda de estado depois que a API responder. Aprovar um cenário inconclusivo não é registrado.';
-    document.querySelector('[data-banner-copy]').textContent = `Ligado como ${role}. Números ilustrativos permanecem até o carregamento de um snapshot.`;
-    document.querySelector('[data-sidebar-status]').textContent = 'Ligado à API';
-    setStatus(teams.length ? 'Sessão aberta. Escolha a equipe e carregue as métricas.' : 'Sessão aberta, mas esta empresa ainda não tem snapshot.');
+    document.querySelector('[data-banner-copy]').textContent = `Conectado como ${role}. Os números de exemplo ficam até você carregar um recorte`;
+    document.querySelector('[data-sidebar-status]').textContent = 'Conectado à API';
+    document.querySelector('[data-connect-form]').hidden = true;
+    setStatus(teams.length ? 'Sessão aberta. Escolha a equipe e o recorte.' : 'Sessão aberta, mas esta empresa ainda não tem recorte de dados.');
   } catch (error) {
     session.token = null;
     setStatus(`Não foi possível entrar: ${errorText(error)}`);
@@ -280,8 +347,15 @@ document.querySelector('[data-load-metrics]').addEventListener('click', async ()
     document.querySelector('[data-live-meta="ipd"]').textContent = block ? 'calculado dos agregados do arquivo' : 'sem bloco homogêneo neste snapshot';
     document.querySelector('[data-live="gap"]').textContent = block && block.headcount_gap != null ? String(block.headcount_gap) : '—';
     document.querySelector('[data-live-meta="gap"]').textContent = block ? `quadro de referência ${block.required_headcount}` : 'gap não calculado';
-    document.querySelector('[data-banner-copy]').textContent = `Métricas do snapshot ${snapshotId}. ${metrics.limitations.join(' ')}`;
+    const ipd = block ? Number.parseFloat(block.ipd) : Number.NaN;
+    const share = Math.round(Math.abs(ipd - 1) * 100);
+    document.querySelector('[data-overview-title]').textContent = Number.isFinite(ipd)
+      ? (share === 0 ? 'A demanda está no nível da capacidade' : `A demanda está ${share}% ${ipd > 1 ? 'acima' : 'abaixo'} da capacidade`)
+      : 'Demanda e capacidade do recorte';
+    document.querySelector('[data-banner-copy]').textContent = `Métricas do recorte ${snapshotId}. ${metrics.limitations.join(' ')}`;
     setStatus('Métricas carregadas da API.');
+    connectDialog.close();
+    location.hash = '#visao-geral';
   } catch (error) {
     setStatus(`Métricas não carregadas: ${errorText(error)}`);
   }
@@ -364,19 +438,18 @@ function renderForecast(forecast) {
   const points = forecast.points || [];
   const estimate = points[0] && points[0].point_estimate != null ? String(points[0].point_estimate) : '—';
   document.querySelector('[data-forecast-value]').textContent = estimate;
-  document.querySelector('[data-forecast-heading]').textContent = forecast.status === 'abstained' ? 'A previsão se absteve.' : 'Estimativa pontual da mediana móvel.';
+  document.querySelector('[data-forecast-heading]').textContent = forecast.status === 'abstained' ? 'A previsão se absteve' : 'Estimativa pontual da mediana móvel';
   document.querySelector('[data-forecast-copy]').textContent = (forecast.limitations || []).join(' ');
-  document.querySelector('[data-forecast-foot]').textContent = 'A API não devolve P10, P50 ou P90. Barras abaixo repetem a estimativa pontual quando ela existe.';
-  points.slice(0, 4).forEach((point, index) => {
-    const bar = document.querySelector(`[data-bar="${index}"]`);
-    const label = document.querySelector(`[data-bar-label="${index}"]`);
-    if (!bar || !label || point.point_estimate == null) return;
-    label.textContent = String(point.point_estimate);
-    bar.style.setProperty('--bar', '70%');
+  document.querySelector('[data-forecast-delta]').textContent = '';
+  document.querySelector('[data-forecast-foot]').textContent = 'A API não devolve faixas P10, P50 ou P90. O gráfico mostra só a estimativa pontual quando ela existe';
+  const estimates = points.slice(0, 4).map((point) => (point.point_estimate == null ? null : Number(point.point_estimate)));
+  document.querySelectorAll('[data-bar-label]').forEach((label, index) => {
+    label.textContent = estimates[index] == null ? '—' : formatInt(estimates[index]);
   });
-  if (!points.length) {
-    document.querySelectorAll('[data-bar-label]').forEach((label) => { label.textContent = '—'; });
-  }
+  const known = estimates.filter((value) => value != null);
+  const low = Math.min(...known, 900);
+  const high = Math.max(...known, 1350);
+  plot(forecastChart, { min: low, max: high, ticks: [low, high], line: known.length === estimates.length ? known : [] });
 }
 
 function renderScenarios(items) {
@@ -436,6 +509,7 @@ document.querySelector('[data-open-investigation]').addEventListener('click', as
       method: 'POST',
       body: { team_id: teamId, snapshot_id: snapshotId, idempotency_key: `ui-${teamId}-${snapshotId}`, cycle_limit: 3 },
     });
+    connectDialog.close();
     await paintRun(await api(`/api/investigations/${opened.run_id}/advance`, { method: 'POST' }));
   } catch (error) {
     setStatus(`Investigação não aberta: ${errorText(error)}`);
