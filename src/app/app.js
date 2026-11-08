@@ -85,11 +85,34 @@ document.querySelectorAll('[data-forecast]').forEach((button) => {
 });
 
 const scenarioData = {
+  b: { head: 'B · Temporários', coverage: 'Não verificado', timing: 'Após contratação e treinamento', risk: 'Modalidade, custo e prazo', status: 'Exploratório' },
+  d: { head: 'D · Redesenhar', coverage: 'Não verificado', timing: 'Depende de nova organização', risk: 'Repousos e cobertura crítica', status: 'Exploratório' },
   a: { head: 'A · Contratar', coverage: 'A validar por skill', timing: 'Após contratação e ramp-up', risk: 'Mentoria e cobertura N1', status: 'Condicional' },
   c: { head: 'C · Realocar', coverage: 'A validar por skill', timing: 'Após formação e realocação', risk: 'Impacto na equipe de origem', status: 'Condicional' },
   e: { head: 'E · Não agir', coverage: 'Gap agregado de 3 posições', timing: 'Imediato', risk: 'Backlog e pressão operacional', status: 'Referência' },
 };
 let selectedScenarios = ['a', 'c'];
+
+// The original demo markup has three cards. Add B/D without adopting
+// unverified static estimates as real operational results.
+for (const item of [
+  { key: 'b', before: 'c', heading: 'Contratar temporariamente',
+    note: 'Opção exploratória: modalidade, custo, qualificação e prazo não validados.' },
+  { key: 'd', before: 'e', heading: 'Redesenhar turnos ou processos',
+    note: 'Sem mudança de escala: cobertura e repousos aguardam validação.' },
+]) {
+  const template = document.querySelector('[data-scenario="c"]');
+  const reference = document.querySelector('[data-scenario="' + item.before + '"]');
+  if (!template || !reference || document.querySelector('[data-scenario="' + item.key + '"]')) continue;
+  const card = template.cloneNode(true);
+  card.dataset.scenario = item.key;
+  card.classList.remove('is-selected');
+  card.querySelector('h2').textContent = item.heading;
+  card.querySelector(':scope > p').textContent = item.note;
+  card.querySelector('.scenario-card__top .eyebrow').textContent = 'CENÁRIO ' + item.key.toUpperCase();
+  card.querySelector('[data-select-scenario]').dataset.selectScenario = item.key;
+  reference.parentNode.insertBefore(card, reference);
+}
 
 function renderComparison() {
   document.querySelectorAll('[data-select-scenario]').forEach((button) => {
@@ -176,8 +199,8 @@ document.querySelector('[data-review-action]').addEventListener('click', (event)
 });
 
 const session = { token: null, runId: null, scenarios: [], approvedId: null };
-const cardKind = { a: 'hire', c: 'reallocate', e: 'do_nothing' };
-const kindTitle = { hire: 'Contratar', reallocate: 'Realocar', do_nothing: 'Não agir' };
+const cardKind = { a: 'hire', b: 'temporary', c: 'reallocate', d: 'redesign', e: 'do_nothing' };
+const kindTitle = { hire: 'Contratar', temporary: 'Temporários', reallocate: 'Realocar ou capacitar', redesign: 'Redesenhar', do_nothing: 'Não agir' };
 
 function errorText(error) {
   const detail = error.body && error.body.detail;
