@@ -406,12 +406,17 @@ function renderForecast(forecast) {
   document.querySelector('[data-forecast-heading]').textContent = forecast.status === 'abstained' ? 'A previsão se absteve.' : 'Estimativa pontual da mediana móvel.';
   document.querySelector('[data-forecast-copy]').textContent = (forecast.limitations || []).join(' ');
   document.querySelector('[data-forecast-foot]').textContent = 'A API não devolve P10, P50 ou P90. Barras abaixo repetem a estimativa pontual quando ela existe.';
+  const numeric = points.map((point) => Number(point.point_estimate))
+    .filter((value) => Number.isFinite(value) && value >= 0);
+  const maxEstimate = numeric.length ? Math.max(...numeric, 1) : 1;
   points.slice(0, 4).forEach((point, index) => {
     const bar = document.querySelector(`[data-bar="${index}"]`);
     const label = document.querySelector(`[data-bar-label="${index}"]`);
     if (!bar || !label || point.point_estimate == null) return;
+    const value = Number(point.point_estimate);
     label.textContent = String(point.point_estimate);
-    bar.style.setProperty('--bar', '70%');
+    bar.style.setProperty('--bar', `${Number.isFinite(value) && value >= 0 ?
+      Math.round(100 * value / maxEstimate) : 0}%`);
   });
   if (!points.length) {
     document.querySelectorAll('[data-bar-label]').forEach((label) => { label.textContent = '—'; });
@@ -429,7 +434,7 @@ function renderScenarios(items) {
     const facts = card.querySelectorAll('.scenario-card__facts strong');
     facts[0].textContent = item.conclusive ? 'Conclusivo' : 'Inconclusivo';
     facts[1].textContent = item.headcount_delta == null ? 'Não calculado' : String(item.headcount_delta);
-    facts[2].textContent = item.residual_hours == null ? 'Sem resíduo' : `${item.residual_hours} h`;
+    facts[2].textContent = item.residual_hours == null ? 'Não calculado' : `${item.residual_hours} h`;
     scenarioData[key] = {
       head: `${key.toUpperCase()} · ${kindTitle[item.kind]}`,
       coverage: item.conclusive ? 'Solver e política permitiram concluir' : 'Inconclusivo',
