@@ -213,21 +213,33 @@ def test_migration_downgrade_removes_p2_tables(tmp_path):
     engine.dispose()
 
 
-def test_upgrade_0004_preserves_rows_and_blocks_rowid_replace(tmp_path):
+@pytest.mark.parametrize('legacy_rowids', [(-1,), (-5, -3), (-5, -1)])
+def test_upgrade_0004_preserves_rows_and_blocks_rowid_replace(tmp_path, legacy_rowids):
     db = tmp_path / 'upgrade.db'
     alembic(db, 'upgrade', '0004')
     engine = create_engine(f'sqlite:///{db.as_posix()}')
+    columns = "id, occurred_at, trace_id, tenant_id, actor_type, action, outcome, details"
     with engine.begin() as conn:
-        conn.execute(text("insert into audit_events (id, occurred_at, trace_id, tenant_id, actor_type, action, outcome, details) values ('original', '2020-01-01', 'x', 't', 'user', 'original.event', 'success', '{}')"))
-        original = conn.execute(text('select rowid, id, action from audit_events')).one()
+        for rowid in legacy_rowids:
+            conn.execute(text(f"insert into audit_events (rowid, {columns}) values (:rowid, :id, '2020-01-01', 'x', 't', 'user', 'original.event', 'success', '{{}}')"), {'rowid': rowid, 'id': str(rowid)})
+        original = conn.execute(text('select id, action from audit_events order by id')).all()
+        schema = conn.execute(text("select type, name, sql from sqlite_master where tbl_name='audit_events' and type in ('index', 'trigger') and sql is not null order by type, name")).all()
     alembic(db, 'upgrade', 'head')
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         assert conn.execute(text('pragma recursive_triggers')).scalar_one() == 0
-        assert conn.execute(text('select rowid, id, action from audit_events')).one() == original
+        assert conn.execute(text('select id, action from audit_events order by id')).all() == original
+        assert conn.execute(text("select type, name, sql from sqlite_master where tbl_name='audit_events' and type in ('index', 'trigger') and sql is not null order by type, name")).all() == schema
+        conn.execute(text(f"insert into audit_events ({columns}) values ('new', '2020-01-01', 'x', 't', 'user', 'new.event', 'success', '{{}}')"))
+    for alias in ('rowid', '_rowid_', 'oid'):
+        with engine.connect() as conn:
+            with pytest.raises(DatabaseError):
+                conn.execute(text(f"insert or replace into audit_events ({alias}, {columns}) values (-1, 'forged', '2020-01-01', 'x', 't', 'user', 'forged.event', 'success', '{{}}')"))
+    alembic(db, 'downgrade', '0004')
+    with engine.connect() as conn:
+        assert conn.execute(text('select id, action from audit_events order by id')).all() == sorted(original + [('new', 'new.event')])
+        assert conn.execute(text("select type, name, sql from sqlite_master where tbl_name='audit_events' and type in ('index', 'trigger') and sql is not null order by type, name")).all() == schema
         with pytest.raises(DatabaseError):
-            conn.execute(text("insert or replace into audit_events (rowid, id, occurred_at, trace_id, tenant_id, actor_type, action, outcome, details) values (:rowid, 'new', '2020-01-01', 'x', 't', 'user', 'forged.event', 'success', '{}')"), {'rowid': original.rowid})
-        conn.rollback()
-        assert conn.execute(text('select rowid, id, action from audit_events')).one() == original
+            conn.execute(text("update audit_events set action='forged.event'"))
     engine.dispose()
 
 
@@ -244,6 +256,7 @@ def test_cpf_grants_and_audit_columns_are_rejected(env):
                 with pytest.raises(ValueError):
                     record_event(session, action='test.event', outcome='success', tenant_id='t', **{field: cpf})
     with Session(app.state.engine) as session:
+        record_event(session, action='test.event', outcome='success', tenant_id='t', resource_id='12345678-1234-4123-8123-123456789012')
         session.execute(text("insert into memberships (tenant_id, user_id, role, team_id) values (:tenant, :user, 'gestor', '12345678909')"), {'tenant': a.capacity.tenant_id, 'user': users['gestor_a']})
         session.commit()
     gestor = login(a.capacity.tenant_id, 'gestor@a.test')
