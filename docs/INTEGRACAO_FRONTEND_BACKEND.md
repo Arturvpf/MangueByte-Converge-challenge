@@ -19,8 +19,9 @@ O novo visual altera a organização da visão geral, investigação, previsão,
 | Entrada com empresa, e-mail e senha | `POST /api/auth/login`, `GET /api/auth/me` | Conectado; bearer token apenas em memória |
 | Equipes disponíveis | `GET /api/teams` | Conectado com escopo imposto pelo backend |
 | Snapshots por equipe | `GET /api/teams/{team_id}/snapshots` | Conectado |
-| Cartões agregados de demanda, capacidade, IPD, gap | `GET /api/teams/{team_id}/metrics?snapshot_id=...` | Conectado; o gráfico histórico da visão geral ainda é ilustrativo |
-| Retomada de investigação após novo login | `GET /api/investigations`, `GET /api/investigations/{id}` | Conectado; o usuário precisa autenticar novamente ao atualizar a página |
+| Cartões agregados de demanda, capacidade, IPD, gap | `GET /api/teams/{team_id}/metrics?snapshot_id=...` | Conectado |
+| Gráfico Demanda × capacidade e painel Fluxo da demanda | `GET /api/teams/{team_id}/demand-flow?snapshot_id=...` | Conectado; demanda dos últimos 6 períodos do CSV; a capacidade é a do último período, repetida como referência (não há histórico de capacidade); fluxo legado aparece como não classificado |
+| Retomada de investigação após novo login | `GET /api/investigations`, `GET /api/investigations/{id}` | Conectado; o login restaura a última investigação só com leitura; o diálogo **Conectar dados** lista as investigações da equipe e o botão **Retomar** pode avançar o fluxo; o usuário precisa autenticar novamente ao atualizar a página |
 | Abertura e retomada do fluxo | `POST /api/investigations`, `POST /api/investigations/{id}/advance` | Conectado; workflow síncrono e determinístico |
 | Respostas às perguntas | `POST /api/investigations/{id}/answers` | Conectado; relatos não se tornam evidências verificadas |
 | Previsão | Campo `forecast` da investigação | Conectado; gráfico usa os pontos da API quando disponíveis; intervalos não são P10/P50/P90 |
@@ -43,7 +44,7 @@ O teste HTTP de integração revelou que `StaticFiles(directory=prototype)` (con
 ## Lacunas e riscos restantes
 
 1. **Falta importação pela própria UI:** ainda é necessário criar e confirmar o CSV via API/Swagger. O frontend apenas seleciona snapshots já disponíveis.
-2. **Landing e gráficos de exemplo:** até carregar métricas há valores sintéticos; mesmo após carregá-las, o gráfico histórico da visão geral continua ilustrativo (a própria UI informa).
+2. **Landing e gráficos de exemplo:** até carregar métricas há valores sintéticos. Depois de carregá-las, o gráfico da visão geral usa a demanda do `demand-flow`; a linha de capacidade continua sendo uma referência constante do último período (a própria UI informa). Recortes com menos de 2 períodos mantêm a série ilustrativa.
 3. **Sem dimensionamento v4.2 concluído:** forecast não alimenta o solver CP-SAT por competência/turno; as famílias B/C/D não têm simulação quantitativa. O frontend exibe apenas o resultado disponibilizado pela API.
 4. **Aprovação operacional indisponível por segurança:** o workflow ainda não produz `v42_validation` independente e válida; o bloqueio não deve ser removido para fins de demonstração.
 5. **Jira real indisponível:** a rota de sincronização ainda não persiste dados operacionais; o fluxo demonstrável usa CSV sintético.

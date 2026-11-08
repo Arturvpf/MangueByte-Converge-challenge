@@ -203,7 +203,7 @@ O CI executa testes de backend, regressões da integração HTTP/DOM, verificaç
 | Aprovação operacional definitiva | **Bloqueada por segurança** até validação independente v4.2 |
 | Contratação ou alteração de escala automática | **Não implementada nem autorizada** |
 
-Os resultados ilustrativos não são indicadores operacionais reais. O frontend pode continuar exibindo séries de exemplo em gráficos que ainda não usam histórico importado; as métricas carregadas da API são identificadas separadamente.
+Os resultados ilustrativos não são indicadores operacionais reais. Antes de carregar um recorte, o frontend exibe séries de exemplo. Depois, o gráfico da visão geral usa a demanda importada (`demand-flow`), com a capacidade do último período como referência constante; as métricas carregadas da API são identificadas separadamente.
 
 O projeto tem mecanismos de minimização de dados, isolamento por empresa/equipe, histórico de cenários e falha segura nas decisões. **Isso não constitui, por si só, homologação jurídica, de segurança ou LGPD para dados reais.**
 
