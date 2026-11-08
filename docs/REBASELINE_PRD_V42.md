@@ -93,3 +93,28 @@ Criar nova versão sem alterar silenciosamente schemas persistidos existentes; d
 - Priorizar integridade, cálculo e validação antes de criar mais agentes ou UX de funcionalidades sem base de dados.
 
 **Limitações:** revisão estática de documentos e código GitHub. Nenhuma suíte de testes/migração foi executada neste rebaseline; regras jurídicas e bases legais exigem validação competente.
+
+## 6. Execução de correções na branch de auditoria (08/11/2026)
+
+**Status:** baseline v4.2 implementado em módulos; **MVP integral ainda não concluído**.
+As alterações foram versionadas em commits da branch
+`audit/p1-p2-reconciliacao-2026-11-08`, sem modificar `main`.
+Teste automatizado está em `.github/workflows/p1-p2-integration.yml`;
+consultar o último commit antes de informar um número de testes aprovado.
+
+| Task | Mudança implementada | Pendência para aceite integral |
+|---|---|---|
+| COM-01 | Contratos `contracts/v42.py` e validação de demanda | Migrações de schema de domínio e matrizes completas de competência |
+| P1-01/P1-02 | CSV com ledger de demanda, deduplicação por skill, endpoint agregado | Conector de eventos real e cobertura horária por competência |
+| P1-05 | Baseline com janelas semanais, validação temporal e faixa empírica | Benchmark sazonal, previsão por skill/turno e validação ampla |
+| P2-03 | Cinco famílias A–E, lacunas e aprovações bloqueadas se inconclusivas | Simular efetivamente as alternativas B/C/D |
+| P2-04 | Solver OR-Tools CP-SAT novo, testado de forma isolada | Integrar ao pipeline, dados de turnos/custos e regras aprovadas |
+| P2-05/P2-06 | Validador independente + gate fail-closed em aprovação | Persistir e vincular evidência do verificador ao cenário |
+| P2-07 | Cinco opções exibidas na interface | Reidratação completa, UI de orçamento e revisão efetiva |
+| INT-02 | Testes novos v4.2 e workflow CI | Testes adversariais e validação interinstitucional |
+| INT-03 | README e matrizes atualizadas | Evidências do piloto de observação e validações externas |
+
+**Regra de segurança:** nenhuma task deve ser marcada como concluída apenas
+porque um módulo compila ou os testes isolados passam. Para liberar recomendações
+operacionais, faltam fontes verificadas, regras e evidências auditadas, integração
+end-to-end, avaliação independente e aprovação de domínio.

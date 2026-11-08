@@ -77,7 +77,7 @@ Importação CSV em `POST /api/imports` e confirmação em `POST /api/imports/{i
 
 `GET /api/teams/{team_id}/metrics?snapshot_id=` soma cada pool uma vez. O bloco homogêneo só aparece quando o arquivo trouxe headcount, jornada, disponibilidade, produtividade e demanda; o exemplo 954,3534 / 14 / 3 sai desses agregados, não de constante escondida.
 
-`POST /api/investigations` responde 202. `POST /api/investigations/{id}/advance` retoma o checkpoint na mesma base: pergunta pendente pausa, resposta continua, reenvio não duplica cenário. Há sempre três cenários (`hire`, `reallocate`, `do_nothing`). Headcount só entra quando o solver e a jornada aprovada existem e a previsão está calibrada; senão o cenário fica inconclusivo. O crítico bloqueia restrição dura e não transforma lacuna em fato. Timeout do solver não é inviabilidade.
+`POST /api/investigations` responde 202. `POST /api/investigations/{id}/advance` retoma o checkpoint na mesma base: pergunta pendente pausa, resposta continua, reenvio não duplica cenário. Na branch v4.2 há cinco categorias estruturadas de cenário (`hire`, `temporary`, `reallocate`, `redesign`, `do_nothing`). As alternativas sem modelagem completa são inconclusivas. Headcount só entra quando o solver e a jornada aprovada existem e a previsão está calibrada; senão o cenário fica inconclusivo. O crítico bloqueia restrição dura e não transforma lacuna em fato. Timeout do solver não é inviabilidade.
 
 `POST /api/scenarios/{id}/decisions` exige `decision:write`. Aprovar cenário inconclusivo, inviável, com crítica bloqueada, com hash diferente ou com regra que deixou de estar `approved` responde 409 e não grava a decisão. Rejeitar ou adiar continua possível. `POST /api/scenarios/{id}/requisition-drafts` só depois de uma aprovação explícita, é idempotente e grava `executed=0`. Não há efeito em sistema externo. `GET /api/investigations/{id}/audit` exige `audit:read` na equipe da investigação. Outra empresa recebe 404. A lista traz os eventos da investigação, dos cenários, das decisões e dos rascunhos; não traz o texto da resposta nem o motivo livre.
 
@@ -121,3 +121,57 @@ set DATABASE_URL=sqlite:///./alinia.db
 - O solver não é OR-Tools. As fixtures legais continuam marcadas como sintéticas.
 - Decisão e rascunho permanecem com efeito administrativo desligado.
 - Aceite de RH, operação, jurídico e privacidade continua pendente para qualquer dado real.
+
+
+## Status do PRD v4.2 — revisão de 08/11/2026
+
+A matriz de aceitação vigente é [REBASELINE_PRD_V42.md](../docs/REBASELINE_PRD_V42.md).
+Este backend **não está pronto para operação empresarial** nem para uso de dados pessoais reais.
+
+**Entregas verificáveis nesta branch:**
+- `app/contracts/v42.py`: contrato agregado de entradas, concluídos, cancelamentos,
+  reaberturas, backlog e demanda externa não registrada; limites de skill/intervalo,
+  qualificação, lead time e relatos não verificados.
+- `app/ingestion/csvparse.py`: colunas opcionais do ledger v4.2, reconciliação por
+  período e deduplicação por competência entre turnos. Arquivos legados permanecem
+  identificados como `legacy_unclassified`, não como demanda registrada.
+- `GET /api/teams/{team_id}/demand-flow?snapshot_id=...`: histórico agregado
+  autorizado por tenant/equipe, sem identificar trabalhadores.
+- `app/forecast/engine.py`: abstenção para séries não semanais ou incomparáveis,
+  avaliação temporal rolante e faixa empírica com janela separada de teste para
+  histórico suficiente; faixas **não** são P10/P50/P90.
+- `app/optimization/cpsat_v42.py`: otimizador CP-SAT de referência com orçamento
+  conhecido, cobertura mínima rígida, SLA flexível, skill, turno, disponibilidade,
+  treinamento validado, chegada de contratação, ramp-up e consumo de mentoria.
+  A modelagem assume buckets explícitos e direitos já verificados por outro módulo.
+  Não substitui um motor completo de escalas e **ainda não é chamado pelo workflow**.
+- `app/optimization/validator_v42.py`: validadores determinísticos de intervalo,
+  competência, prontidão e evidências de políticas, com testes de bloqueio.
+- `app/planning/planner.py`: cinco famílias de cenário A–E na API; B, C e D são
+  propostas exploratórias, não mudanças simuladas; contratação com prazo e custos
+  desconhecidos **não é conclusiva**.
+- `app/decisions/service.py`: aprovações exigem registro de validação
+  independente v4.2 válido no cenário, além das verificações anteriores.
+  O workflow ainda não produz este registro: **aprovações operacionais ficam
+  bloqueadas de forma deliberada** até a integração dos dados e validadores.
+- Workflow GitHub Actions `.github/workflows/p1-p2-integration.yml`: pytest,
+  migrações e build do frontend.
+
+**Limites que ainda impedem o aceite integral:**
+- Jira real não importado/mapeado em produção, sem credenciais autorizadas.
+- O agente investigador-planejador LLM e seu LangGraph produtivo não estão
+  integrados; `jobs/graph.py` continua um mock isolado.
+- O CP-SAT v4.2 não está ligado ao fluxo de cenários; faltam validação de repouso,
+  cronograma completo por pessoa/turno, granularidade de skills e dados históricos.
+- Falta gerar registros `v42_validation` a partir de dados reais validáveis.
+- Falta aprovação técnica e jurídica dos parâmetros por categoria/contrato.
+- Faltam plano de LGPD/RIPD, isolamento contextual, retenção e avaliações de viés.
+- Não há experimento com os três braços e indicadores de valor de clientes reais.
+
+```powershell
+backend/.venv/Scripts/python -m pytest backend/tests -q
+backend/.venv/Scripts/python -m alembic -c backend/alembic.ini upgrade head
+```
+
+Nenhum recurso novo executa contratação, alteração de escala, ponto ou salário.
+A versão exige aceite de RH, Operações, jurídico e privacidade antes de operar.
