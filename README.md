@@ -52,7 +52,7 @@ As pendências, evidências e critérios de aceite estão em [Correções da aud
 | Orquestração | Fluxo persistido síncrono; LangGraph experimental com nós simulados |
 | Qualidade | Pytest, testes de integração, CI com migrações SQLite/PostgreSQL e build Node.js |
 
-\`\`\`text
+```text
 src/                     Landing e protótipo (/app/)
 scripts/                 Servidor estático e build sem dependências
 backend/app/             API, auth, ingestão, dados, métricas, previsão, cenários
@@ -60,7 +60,7 @@ backend/migrations/      Revisões Alembic
 backend/tests/           Testes unitários, integração e regressão
 backend/fixtures/        Dados sintéticos de exemplo
 docs/                    Arquitetura, abordagem e auditoria
-\`\`\`
+```
 
 O fluxo atual é aproximadamente **CSV → snapshot → métricas/investigação → previsão → cenários exploratórios (solver anterior) → revisão humana**. O CP-SAT v4.2 e seu validador independente existem como módulos próprios, mas ainda precisam ser conectados a esse fluxo antes de qualquer aprovação operacional.
 
@@ -73,80 +73,80 @@ O fluxo atual é aproximadamente **CSV → snapshot → métricas/investigação
 - **Node.js 22** e npm, para o site estático e seu build
 - Não é necessário instalar PostgreSQL para começar: o backend usa **SQLite local** por padrão.
 
-Execute os comandos **a partir da raiz do repositório**. Não rode o Python de dentro da pasta \`backend/\`, pois os imports utilizam \`backend.app\`.
+Execute os comandos **a partir da raiz do repositório**. Não rode o Python de dentro da pasta `backend/`, pois os imports utilizam `backend.app`.
 
 ### 4.1. Clonar e selecionar a branch
 
-\`\`\`bash
+```bash
 git clone https://github.com/Arturvpf/MangueByte-Converge-challenge.git
 cd MangueByte-Converge-challenge
 git switch fix/auditoria-v42-p1-p2-2026-11-08
-\`\`\`
+```
 
-Esta é a branch do [PR de correções da auditoria](https://github.com/Arturvpf/MangueByte-Converge-challenge/pull/2), baseada na branch de reconciliação P1/P2. As mudanças ainda não estão na \`main\`.
+Esta é a branch do [PR de correções da auditoria](https://github.com/Arturvpf/MangueByte-Converge-challenge/pull/2), baseada na branch de reconciliação P1/P2. As mudanças ainda não estão na `main`.
 
 ### 4.2. Ambiente Python e dependências
 
 **Windows — PowerShell**
 
-\`\`\`powershell
+```powershell
 py -3.12 -m venv backend/.venv
 .\backend\.venv\Scripts\Activate.ps1
 python -m pip install -r backend/requirements.lock.txt
-\`\`\`
+```
 
 **Linux/macOS**
 
-\`\`\`bash
+```bash
 python3.12 -m venv backend/.venv
 source backend/.venv/bin/activate
 python -m pip install -r backend/requirements.lock.txt
-\`\`\`
+```
 
-Se não conseguir ativar o ambiente, use diretamente \`backend/.venv/Scripts/python\` no Windows ou \`backend/.venv/bin/python\` no Linux/macOS para os comandos seguintes.
+Se não conseguir ativar o ambiente, use diretamente `backend/.venv/Scripts/python` no Windows ou `backend/.venv/bin/python` no Linux/macOS para os comandos seguintes.
 
 ### 4.3. Configurar variáveis de ambiente
 
-O arquivo [\`backend/.env.example\`](backend/.env.example) documenta os nomes das variáveis, **mas não é carregado automaticamente**. Configure-as no terminal em que vai executar a API.
+O arquivo [`backend/.env.example`](backend/.env.example) documenta os nomes das variáveis, **mas não é carregado automaticamente**. Configure-as no terminal em que vai executar a API.
 
 **Windows — PowerShell**
 
-\`\`\`powershell
+```powershell
 $env:DATABASE_URL = "sqlite:///./alinia.db"
 $env:ALINIA_AUTH_SECRET = python -c "import secrets; print(secrets.token_urlsafe(48))"
-\`\`\`
+```
 
 **Linux/macOS**
 
-\`\`\`bash
+```bash
 export DATABASE_URL="sqlite:///./alinia.db"
 export ALINIA_AUTH_SECRET="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
-\`\`\`
+```
 
-O segredo precisa ter pelo menos 32 caracteres. **Para manter sessões válidas após reiniciar o servidor, conserve o mesmo segredo em seu ambiente local**; gerar outro invalida os tokens existentes. Não publique o segredo ou credenciais no Git. \`ALINIA_BOOTSTRAP_PASSWORD\` é opcional: se não estiver definida, a CLI solicita a senha interativamente.
+O segredo precisa ter pelo menos 32 caracteres. **Para manter sessões válidas após reiniciar o servidor, conserve o mesmo segredo em seu ambiente local**; gerar outro invalida os tokens existentes. Não publique o segredo ou credenciais no Git. `ALINIA_BOOTSTRAP_PASSWORD` é opcional: se não estiver definida, a CLI solicita a senha interativamente.
 
 ### 4.4. Criar o banco e usuários de demonstração
 
 Com o ambiente Python ativo e as variáveis configuradas:
 
-\`\`\`bash
+```bash
 python -m alembic -c backend/alembic.ini upgrade head
 python -m backend.app.auth.cli create-tenant --tenant-id demo --name "Empresa Demo"
 python -m backend.app.auth.cli create-user --tenant-id demo --email admin@demo.example --role admin
 python -m backend.app.auth.cli create-user --tenant-id demo --email rh@demo.example --role rh
-\`\`\`
+```
 
 Informe as senhas solicitadas. Use **senhas diferentes e suficientemente fortes**. Esses comandos de criação são para um banco novo; executá-los novamente com os mesmos identificadores retorna conflito.
 
-**Importante:** \`admin\` gerencia contas, mas **não tem permissão para investigar equipes**. Faça login na plataforma com o usuário \`rh@demo.example\` para testar análises e decisões. As regras do PRD v4.2 continuam bloqueando aprovações operacionais sem evidência independente e validação jurídica.
+**Importante:** `admin` gerencia contas, mas **não tem permissão para investigar equipes**. Faça login na plataforma com o usuário `rh@demo.example` para testar análises e decisões. As regras do PRD v4.2 continuam bloqueando aprovações operacionais sem evidência independente e validação jurídica.
 
 ### 4.5. Iniciar a API e a aplicação integrada
 
-\`\`\`bash
+```bash
 python -m uvicorn backend.app.main:create_app --factory --reload
-\`\`\`
+```
 
-O próprio FastAPI serve a API **e** os arquivos de \`src/\` na mesma origem HTTP. Acesse:
+O próprio FastAPI serve a API **e** os arquivos de `src/` na mesma origem HTTP. Acesse:
 
 | Endereço | Uso |
 | --- | --- |
@@ -155,13 +155,13 @@ O próprio FastAPI serve a API **e** os arquivos de \`src/\` na mesma origem HTT
 | [http://127.0.0.1:8000/prototype/](http://127.0.0.1:8000/prototype/) | Landing page |
 | [http://127.0.0.1:8000/prototype/app/](http://127.0.0.1:8000/prototype/app/) | Plataforma com acesso às APIs |
 
-Na plataforma, abra a seção de conexão e informe a empresa \`demo\`, o e-mail \`rh@demo.example\` e a senha configurada. **Para aparecer uma equipe na interface, importe primeiro um snapshot** (etapa seguinte). Até carregar dados pela API, os cartões exibem informações ilustrativas.
+Na plataforma, abra a seção de conexão e informe a empresa `demo`, o e-mail `rh@demo.example` e a senha configurada. **Para aparecer uma equipe na interface, importe primeiro um snapshot** (etapa seguinte). Até carregar dados pela API, os cartões exibem informações ilustrativas.
 
 ### 4.6. Criar um snapshot inicial por CSV (exemplo PowerShell)
 
-Em **outro terminal PowerShell**, com o backend rodando, use apenas os dados sintéticos abaixo. O endpoint recebe **JSON contendo o texto CSV**, e não upload \`multipart/form-data\`.
+Em **outro terminal PowerShell**, com o backend rodando, use apenas os dados sintéticos abaixo. O endpoint recebe **JSON contendo o texto CSV**, e não upload `multipart/form-data`.
 
-\`\`\`powershell
+```powershell
 $base = "http://127.0.0.1:8000"
 $senha = Read-Host "Senha do usuário RH"
 
@@ -183,78 +183,78 @@ $importacao
 if ($importacao.status -eq "ready") {
   Invoke-RestMethod -Method Post -Uri "$base/api/imports/$($importacao.import_id)/confirm" -Headers $headers
 }
-\`\`\`
+```
 
-Após confirmar a importação, **atualize \`/prototype/app/\` e entre novamente**. Selecione \`team-demo\`, carregue as métricas e inicie a investigação.
+Após confirmar a importação, **atualize `/prototype/app/` e entre novamente**. Selecione `team-demo`, carregue as métricas e inicie a investigação.
 
-O exemplo contém **uma única semana**: é esperado que a previsão **se abstenha por histórico insuficiente** e que cenários de contratação não sejam considerados conclusivos. Uma resposta \`409 NOT_CONCLUSIVE\` ao tentar aprovar é um bloqueio deliberado, não um erro de instalação.
+O exemplo contém **uma única semana**: é esperado que a previsão **se abstenha por histórico insuficiente** e que cenários de contratação não sejam considerados conclusivos. Uma resposta `409 NOT_CONCLUSIVE` ao tentar aprovar é um bloqueio deliberado, não um erro de instalação.
 
-Para importar dados com histórico, consulte os contratos de [\`backend/CONTRATOS.md\`](backend/CONTRATOS.md) e o validador em \`backend/app/ingestion/csvparse.py\`. Não inclua CPF, nomes, e-mails, salários individuais ou motivos de afastamento.
+Para importar dados com histórico, consulte os contratos de [`backend/CONTRATOS.md`](backend/CONTRATOS.md) e o validador em `backend/app/ingestion/csvparse.py`. Não inclua CPF, nomes, e-mails, salários individuais ou motivos de afastamento.
 
 ### 4.7. Rodar somente o frontend estático (opcional)
 
 Em um terminal separado, na raiz do projeto:
 
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 
-Abre a landing em **http://127.0.0.1:5173/** e o protótipo em **http://127.0.0.1:5173/app/**. Esse servidor Node.js **não oferece as rotas \`/api\`**: a conexão do protótipo com o backend não funciona nessa porta sem um proxy adicional. Para testar a integração, utilize \`http://127.0.0.1:8000/prototype/app/\` (etapa 4.5).
+Abre a landing em **http://127.0.0.1:5173/** e o protótipo em **http://127.0.0.1:5173/app/**. Esse servidor Node.js **não oferece as rotas `/api`**: a conexão do protótipo com o backend não funciona nessa porta sem um proxy adicional. Para testar a integração, utilize `http://127.0.0.1:8000/prototype/app/` (etapa 4.5).
 
 Comandos adicionais:
 
-\`\`\`bash
+```bash
 npm run build    # copia src/ para dist/, sem bundler
 npm run preview  # build e servidor estático em http://127.0.0.1:4173
-\`\`\`
+```
 
-Os arquivos devem ser servidos via HTTP: não abra o HTML usando \`file://\`.
+Os arquivos devem ser servidos via HTTP: não abra o HTML usando `file://`.
 
 ### 4.8. Executar testes
 
 Com o ambiente Python ativo, da raiz do repositório:
 
-\`\`\`bash
+```bash
 python -m pytest backend/tests -q
 python -m alembic -c backend/alembic.ini upgrade head
 npm run build
-\`\`\`
+```
 
 A suíte cobre contratos, importação, permissões, migrações, planejamento, forecast e regressões. O GitHub Actions também testa a migração de um banco PostgreSQL legado. **Testes passando não equivalem a aceite do PRD ou autorização de uso com dados reais.**
 
 ### 4.9. PostgreSQL (opcional)
 
-Para utilizar PostgreSQL em vez de SQLite, crie um banco local, configure \`DATABASE_URL\` no formato:
+Para utilizar PostgreSQL em vez de SQLite, crie um banco local, configure `DATABASE_URL` no formato:
 
-\`\`\`text
+```text
 postgresql+psycopg://usuario:senha@localhost:5432/alinia
-\`\`\`
+```
 
-Aplique as migrações **nesse banco** antes de iniciar o servidor. Use um gerenciador de segredos ou variável de ambiente para a conexão; codifique caracteres especiais na senha. As migrações \`0009\` e \`0010\` preservam checkpoints Jira legados sem equipe e versões antigas dos cenários; valide backups e restore antes de alterar qualquer banco persistente.
+Aplique as migrações **nesse banco** antes de iniciar o servidor. Use um gerenciador de segredos ou variável de ambiente para a conexão; codifique caracteres especiais na senha. As migrações `0009` e `0010` preservam checkpoints Jira legados sem equipe e versões antigas dos cenários; valide backups e restore antes de alterar qualquer banco persistente.
 
 ## 5. Variáveis de ambiente
 
 | Variável | Necessária? | Descrição |
 | --- | --- | --- |
-| \`DATABASE_URL\` | Não | SQLite local (\`sqlite:///./alinia.db\`) se não configurada |
-| \`ALINIA_AUTH_SECRET\` | **Sim, para login** | Chave local de assinatura dos tokens (mínimo 32 caracteres) |
-| \`ALINIA_ACCESS_TOKEN_TTL_SECONDS\` | Não | Validade do token; padrão: 3600 s |
-| \`ALINIA_BOOTSTRAP_PASSWORD\` | Não | Senha para criação de usuários pela CLI; sem ela a CLI solicita interativamente |
-| \`JIRA_BASE_URL\` | Só para leitura Jira externa | URL HTTPS do Jira autorizado |
-| \`JIRA_PROJECT_KEY\` | Só para leitura Jira externa | Projeto explicitamente autorizado; bloqueia consultas sem escopo |
-| \`JIRA_API_TOKEN\` | Só para leitura Jira externa | Token de leitura; armazenar fora do Git |
+| `DATABASE_URL` | Não | SQLite local (`sqlite:///./alinia.db`) se não configurada |
+| `ALINIA_AUTH_SECRET` | **Sim, para login** | Chave local de assinatura dos tokens (mínimo 32 caracteres) |
+| `ALINIA_ACCESS_TOKEN_TTL_SECONDS` | Não | Validade do token; padrão: 3600 s |
+| `ALINIA_BOOTSTRAP_PASSWORD` | Não | Senha para criação de usuários pela CLI; sem ela a CLI solicita interativamente |
+| `JIRA_BASE_URL` | Só para leitura Jira externa | URL HTTPS do Jira autorizado |
+| `JIRA_PROJECT_KEY` | Só para leitura Jira externa | Projeto explicitamente autorizado; bloqueia consultas sem escopo |
+| `JIRA_API_TOKEN` | Só para leitura Jira externa | Token de leitura; armazenar fora do Git |
 
-**Atenção:** mesmo com as três variáveis Jira, \`POST /api/imports/jira/sync\` ainda retorna \`503 INTEGRATION_UNAVAILABLE\`, pois falta transformar e persistir os eventos do Jira. O endpoint \`POST /api/imports/jira\` usa apenas uma fixture sintética.
+**Atenção:** mesmo com as três variáveis Jira, `POST /api/imports/jira/sync` ainda retorna `503 INTEGRATION_UNAVAILABLE`, pois falta transformar e persistir os eventos do Jira. O endpoint `POST /api/imports/jira` usa apenas uma fixture sintética.
 
 ## 6. Problemas comuns
 
-- **\`503 AUTH_UNAVAILABLE\` no login:** configure \`ALINIA_AUTH_SECRET\` no processo que inicia o backend.
-- **\`404\` em \`/api\` na porta 5173:** você está no servidor estático. Abra a plataforma em \`/prototype/app/\` na porta 8000.
+- **`503 AUTH_UNAVAILABLE` no login:** configure `ALINIA_AUTH_SECRET` no processo que inicia o backend.
+- **`404` em `/api` na porta 5173:** você está no servidor estático. Abra a plataforma em `/prototype/app/` na porta 8000.
 - **Nenhuma equipe aparece no painel:** importe e confirme um CSV com o usuário RH; em seguida atualize a página e faça login novamente.
-- **\`ModuleNotFoundError: backend\`:** execute os comandos na raiz do repositório com o ambiente virtual ativo.
-- **\`no such table\` ou erro de schema:** rode \`python -m alembic -c backend/alembic.ini upgrade head\` usando o mesmo \`DATABASE_URL\` do servidor.
-- **\`409 NOT_CONCLUSIVE\` ao aprovar:** bloqueio esperado: o fluxo não dispõe ainda de todas as evidências v4.2.
-- **\`503 INTEGRATION_UNAVAILABLE\` no Jira:** a sincronização real ainda não foi implementada; use o CSV ou a fixture sintética no desenvolvimento.
+- **`ModuleNotFoundError: backend`:** execute os comandos na raiz do repositório com o ambiente virtual ativo.
+- **`no such table` ou erro de schema:** rode `python -m alembic -c backend/alembic.ini upgrade head` usando o mesmo `DATABASE_URL` do servidor.
+- **`409 NOT_CONCLUSIVE` ao aprovar:** bloqueio esperado: o fluxo não dispõe ainda de todas as evidências v4.2.
+- **`503 INTEGRATION_UNAVAILABLE` no Jira:** a sincronização real ainda não foi implementada; use o CSV ou a fixture sintética no desenvolvimento.
 
 ## 7. Segurança, limitações e próximos passos
 
