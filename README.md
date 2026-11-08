@@ -265,6 +265,7 @@ Para completar o MVP v4.2 faltam: previsão por competência/turno aplicada ao d
 Documentação adicional:
 
 - [Correções da auditoria v4.2](docs/CORRECOES_AUDITORIA_V42.md)
+- [Integração do novo frontend com a API](docs/INTEGRACAO_FRONTEND_BACKEND.md)
 - [Matriz de requisitos / rebaseline v4.2](docs/REBASELINE_PRD_V42.md)
 - [Backend e contratos](backend/README.md)
 - [Abordagem visual da landing](docs/ABORDAGEM.md)
