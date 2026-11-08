@@ -310,6 +310,10 @@ class ForecastPoint(Contract):
     point_estimate: float | None = Field(ge=0)
     lower: float | None = Field(ge=0)
     upper: float | None = Field(ge=0)
+    # Empirical predictive quantiles, NOT the simultaneous confidence band.
+    p10: float | None = Field(default=None, ge=0)
+    p50: float | None = Field(default=None, ge=0)
+    p90: float | None = Field(default=None, ge=0)
 
     @model_validator(mode='after')
     def bounds(self) -> Self:
@@ -317,6 +321,10 @@ class ForecastPoint(Contract):
             raise ValueError('forecast bounds must both be known or null')
         if self.lower is not None and (self.point_estimate is None or not self.lower <= self.point_estimate <= self.upper):
             raise ValueError('forecast estimate must fall within bounds')
+        quantiles = (self.p10, self.p50, self.p90)
+        if any(item is not None for item in quantiles):
+            if any(item is None for item in quantiles) or not self.p10 <= self.p50 <= self.p90:
+                raise ValueError('predictive quantiles must be complete and ordered')
         return self
 
 
