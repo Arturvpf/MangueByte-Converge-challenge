@@ -65,12 +65,15 @@ class CpSatPlan:
 def solve_capacity(
     *, needs: list[IntervalDemand], pools: list[ExistingPool], options: list[HiringOption],
     budget_cents: int | None, policy_evidence_id: str | None, policy_verified: bool,
-    timeout_seconds: float = 5.0,
+    timeout_seconds: float = 5.0, simulation_only: bool = False,
 ) -> CpSatPlan:
     def blocked(reason):
         return CpSatPlan("blocked", {}, {}, {}, {}, None, (reason,))
 
-    if not policy_evidence_id or not policy_verified:
+    # Mathematical what-if exploration can use *unverified* inputs, but
+    # the returned plan must be permanently labelled as non-approvable.
+    # The independent validator never consumes this flag as legal evidence.
+    if (not policy_evidence_id or not policy_verified) and not simulation_only:
         return blocked("POLICY_REVIEW_REQUIRED")
     if budget_cents is None:
         return blocked("BUDGET_UNKNOWN")
@@ -196,5 +199,7 @@ def solve_capacity(
          for option in options},
         {key: solver.value(variable) for key, variable in deficit.items()},
         solver.value(total_cost),
-        ("Resultado restrito às regras, custos e intervalos explicitamente modelados.",),
+        (("SIMULACAO_EXPLORATORIA_SEM_VALIDACAO_JURIDICA_OU_ESCALA",)
+         if simulation_only else ())
+        + ("Resultado restrito às regras, custos e intervalos explicitamente modelados.",),
     )
