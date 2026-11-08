@@ -84,5 +84,7 @@ jobs:
           node-version: '22'
       - name: Validate JavaScript build without external packages
         run: node --version
+      - name: Validate redesigned app JavaScript syntax
+        run: node --check src/app/app.js
       - name: Build
         run: npm run build
