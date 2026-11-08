@@ -262,6 +262,8 @@ def test_flow_resume_decisions_and_isolation(tmp_path):
         assert {item["kind"] for item in scenarios} == {"hire", "temporary", "reallocate", "redesign", "do_nothing"}
         hire = next(item for item in scenarios if item["kind"] == "hire")
         assert hire["conclusive"] is False and hire["headcount_delta"] is None
+        assert any("LEGAL_CONTEXT_REQUIRED" in dep for dep in hire["dependencies"])
+        assert any("FORECAST_NOT_APPLIED" in gap for gap in hire["gaps"])
         denied = client.post(f"/api/scenarios/{hire['scenario_id']}/decisions", json={
             "decision": "approve", "reason": "seguir", "expected_hash": hire["content_hash"], "idempotency_key": "g-1",
         }, headers=gestor)
