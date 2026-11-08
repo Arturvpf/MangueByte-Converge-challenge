@@ -57,7 +57,7 @@ def test_same_skill_in_two_shifts_counts_demand_once():
 
 def test_same_skill_conflicting_duplicate_is_rejected():
     result = parse(csv([row(), row(shift_id="evening", pool_id="pool-b",
-                                  incoming_cases="121")]))
+                                  incoming_cases="121", demand_cases="130", backlog_end="39")]))
     assert any(error["code"] == "conflicting_demand_flow" for error in result["errors"])
 
 
