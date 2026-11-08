@@ -1,0 +1,23 @@
+{
+  "name": "alinia-investigator",
+  "private": true,
+  "type": "module",
+  "description": "agent project: alinia-investigator",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "index": "tsx bot/lib/build-index.ts",
+    "test": "tsx --test bot/lib/containment.test.ts bot/lib/app-guard.test.ts bot/lib/centro-history.test.ts bot/lib/featherless.test.ts",
+    "impact": "tsx scripts/impact-test.ts",
+    "dev": "agent-sdk dev"
+  },
+  "dependencies": {
+    "@grok/agent-sdk": "^0.6.0",
+    "@langchain/core": "^1.3.5",
+    "@langchain/textsplitters": "^1.0.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "typescript": "6.0.3"
+  }
+}
