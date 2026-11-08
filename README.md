@@ -1,81 +1,73 @@
 # Alinia — Workforce Intelligence
 
-**Plataforma experimental de inteligência de força de trabalho**, desenvolvida para investigar desequilíbrios entre demanda e capacidade operacional, comparar alternativas de dimensionamento e apoiar decisões **com revisão humana**.
+**Da pressão operacional a decisões de capacidade com evidências.**
 
-Este repositório reúne a landing page, um protótipo de cinco telas, uma API FastAPI e motores determinísticos de análise e otimização. O documento funcional vigente é o **Workforce Intelligence PRD v4.2**. **O MVP não está concluído, não é um serviço de contratação autônoma e não deve processar dados pessoais reais sem validações adicionais.**
+A **Alinia** é uma plataforma de apoio ao planejamento de força de trabalho. Ela reúne dados agregados de demanda e capacidade, investiga possíveis causas de desequilíbrio, apresenta previsões e organiza alternativas de ação para avaliação de gestores e RH.
 
-## 1. Problema
+> **Entrega:** protótipo funcional integrado a uma API persistente, demonstrável com dados sintéticos. O produto **não realiza decisões de contratação automaticamente** e ainda possui funcionalidades previstas no PRD v4.2 que não estão completas.
 
-Operações de serviços precisam decidir quando **contratar, realocar, capacitar, redesenhar turnos ou não intervir**, frequentemente com informações dispersas entre sistemas e planilhas. A quantidade de solicitações recebidas não equivale à quantidade concluída: backlog, cancelamentos, reaberturas e demanda não atendida mudam o diagnóstico.
+## O problema
 
-Uma média geral de produtividade também pode ocultar déficit de **competências e turnos específicos**. Decisões tomadas apenas com médias e relatos não verificados podem levar a custos desnecessários, cobertura insuficiente e recomendações incompatíveis com jornadas, modalidades contratuais ou regras aplicáveis.
+Decisões sobre dimensionamento de equipes costumam depender de planilhas, indicadores isolados e percepções sobre o volume de trabalho. Isso cria quatro dificuldades:
 
-**O desafio:** transformar dados operacionais auditáveis em cenários comparáveis, com premissas explícitas, incerteza, segurança e decisão final humana — sem confundir previsão ou opinião do gestor com fato comprovado.
+- **Demanda ≠ trabalho concluído:** entradas, backlog, reaberturas e demanda não atendida precisam ser diferenciados.
+- **Médias escondem gargalos:** capacidade agregada não comprova cobertura da competência correta no turno necessário.
+- **Intervenções têm consequências diferentes:** contratar, usar temporários, capacitar, realocar ou reorganizar turnos envolvem prazo, custo, qualificação e restrições distintas.
+- **Uma recomendação exige justificativa:** premissas, fontes, incertezas e regras devem ser rastreáveis antes de qualquer decisão administrativa.
 
-## 2. Solução proposta
+A pergunta que orienta a Alinia é: **como identificar a necessidade real de capacidade e comparar respostas possíveis sem transformar dados incompletos em recomendações definitivas?**
 
-A Alinia busca organizar esse processo em uma sequência verificável:
+## Nossa solução
 
-1. **Receber e validar dados:** importar informações agregadas por equipe, competência e período; distinguir entradas, conclusões, backlog e demanda não atendida.
-2. **Diagnosticar a operação:** calcular disponibilidade, capacidade efetiva, IPD e lacunas; registrar evidências, hipóteses não verificadas e perguntas.
-3. **Prever a demanda:** aplicar um baseline com backtesting temporal, intervalos empíricos quando justificáveis e abstenção se o histórico for insuficiente.
-4. **Comparar cinco famílias de cenário (A–E):** contratação permanente; contratação temporária; realocação/capacitação; redesenho de turnos/processos; nenhuma intervenção.
-5. **Validar e decidir:** verificar restrições rígidas de forma independente, apresentar limitações ao RH e registrar decisões versionadas; nunca executar contratações ou alterações de escala automaticamente.
+A plataforma organiza a jornada em cinco etapas:
 
-O PRD v4.2 prevê **um agente investigador-planejador com ferramentas delimitadas**. O código atual possui investigação determinística e uma experiência experimental de LangGraph, **mas ainda não um agente LLM produtivo integrado ao fluxo**.
-
-### O que funciona e o que permanece pendente
-
-| Capacidade | Estado na branch de correções |
+| Etapa | Valor para o usuário |
 | --- | --- |
-| Landing e interface com cinco telas | Implementadas; dados ilustrativos coexistem com dados carregados da API |
-| Autenticação, papéis e escopo por empresa/equipe | Implementados para o ambiente de desenvolvimento, com limitações de segurança documentadas |
-| Importação CSV, snapshots, ledger agregado e métricas | Implementados com validação e testes |
-| Jira | Fixture sintética funciona; cliente GET tem escopo por projeto; **sincronização real e mapeamento operacional pendentes** |
-| Investigação e retomada | Fluxo determinístico com checkpoints; respostas são relatos não verificados; agente LLM e worker produtivo pendentes |
-| Previsão | Baseline de mediana móvel e backtesting; **a previsão não alimenta quantitativamente o solver por skill/turno** |
-| Otimização | Solver anterior no fluxo; módulo **OR-Tools CP-SAT v4.2** existe e é testado, mas **não está integrado ao workflow** |
-| Cenários A–E | Cinco categorias na API; B/C/D ainda são exploratórios, não simulações completas das intervenções |
-| Revisão e decisões do RH | Registro de rejeição/adiamento e histórico; **aprovação conclusiva v4.2 bloqueada** até validação independente integrada |
-| Execução externa | **Desabilitada**: sem contratação, alteração de escala, ponto ou salário |
+| **1. Receber** | Importar dados operacionais agregados, validar unidades e manter snapshots por equipe |
+| **2. Investigar** | Cruzar demanda e capacidade, registrar hipóteses, evidências, lacunas e perguntas ao gestor |
+| **3. Prever** | Projetar demanda com baseline temporal, backtesting e abstenção quando faltarem dados |
+| **4. Simular e comparar** | Apresentar alternativas de intervenção e suas dependências e limitações |
+| **5. Revisar e decidir** | Submeter os cenários à avaliação do RH, com trilha de auditoria e bloqueios de segurança |
 
-As pendências, evidências e critérios de aceite estão em [Correções da auditoria v4.2](docs/CORRECOES_AUDITORIA_V42.md) e [Rebaseline do PRD v4.2](docs/REBASELINE_PRD_V42.md).
+Os **cinco caminhos de decisão** seguem o PRD v4.2: **A** — contratação permanente; **B** — contratação temporária; **C** — realocação ou capacitação; **D** — redesenho de turnos ou processos; **E** — não intervir (*baseline*).
 
-## 3. Tecnologias e organização
+### Experiência entregue
 
-| Camada | Tecnologias |
-| --- | --- |
-| Frontend | HTML, CSS e JavaScript ES Modules; landing com Lenis vendorizado |
-| API | Python 3.12, FastAPI e Pydantic |
-| Dados | SQLAlchemy, Alembic; SQLite no desenvolvimento, PostgreSQL suportado |
-| Otimização | Solver de fluxo máximo no workflow; OR-Tools CP-SAT v4.2 isolado |
-| Orquestração | Fluxo persistido síncrono; LangGraph experimental com nós simulados |
-| Qualidade | Pytest, testes de integração, CI com migrações SQLite/PostgreSQL e build Node.js |
+O frontend possui cinco áreas navegáveis: **Visão geral**, **Investigação**, **Previsão**, **Cenários** e **Revisão do RH**. A landing page apresenta o conceito do produto; a plataforma permite autenticação, consulta de recortes persistidos e interação com as APIs de investigação e decisão.
 
-```text
-src/                     Landing e protótipo (/app/)
-scripts/                 Servidor estático e build sem dependências
-backend/app/             API, auth, ingestão, dados, métricas, previsão, cenários
-backend/migrations/      Revisões Alembic
-backend/tests/           Testes unitários, integração e regressão
-backend/fixtures/        Dados sintéticos de exemplo
-docs/                    Arquitetura, abordagem e auditoria
+A interface distingue dados ilustrativos de dados recebidos da API. Na revisão, cenários sem validação independente **não podem ser aprovados**. Rejeitar e adiar são decisões registráveis pelo perfil autorizado.
+
+## Visão técnica
+
+```mermaid
+flowchart LR
+    A["CSV ou fixture sintética"] --> B["Validação e snapshots"]
+    B --> C["Métricas e investigação"]
+    C --> D["Forecast baseline"]
+    D --> E["Cenários A–E"]
+    E --> F{"Revisão do RH"}
+    F --> G["Rejeitar ou adiar"]
+    F --> H["Aprovação condicionada a evidências v4.2"]
 ```
 
-O fluxo atual é aproximadamente **CSV → snapshot → métricas/investigação → previsão → cenários exploratórios (solver anterior) → revisão humana**. O CP-SAT v4.2 e seu validador independente existem como módulos próprios, mas ainda precisam ser conectados a esse fluxo antes de qualquer aprovação operacional.
+| Camada | Stack |
+| --- | --- |
+| Interface | HTML, CSS, JavaScript ES Modules; gráficos SVG; Lenis na landing |
+| API | Python 3.12, FastAPI, Pydantic |
+| Persistência | SQLAlchemy, Alembic, SQLite para desenvolvimento; PostgreSQL suportado |
+| Planejamento | Solver determinístico de fluxo máximo no workflow atual; OR-Tools CP-SAT v4.2 como módulo separado |
+| Investigação | Workflow persistido com checkpoints e retomada; LangGraph experimental separado |
+| Qualidade | Pytest, testes de integração, CI para backend/frontend e migrações PostgreSQL |
 
-## 4. Como rodar o projeto localmente
+**Arquitetura atual:** `CSV → snapshot → métricas e investigação → previsão → cenários → revisão humana`. O solver CP-SAT v4.2 e o validador independente já possuem módulos e testes, mas ainda não estão conectados ao fluxo operacional de aprovação.
+
+## Como executar
 
 ### Pré-requisitos
 
-- **Git**
-- **Python 3.12** (a versão utilizada no CI)
-- **Node.js 22** e npm, para o site estático e seu build
-- Não é necessário instalar PostgreSQL para começar: o backend usa **SQLite local** por padrão.
+**Git** e **Python 3.12** são suficientes para iniciar a plataforma completa com SQLite. **Node.js 22** é necessário somente para executar ou gerar o build do site estático. Todos os comandos a seguir partem da **raiz do repositório**.
 
-Execute os comandos **a partir da raiz do repositório**. Não rode o Python de dentro da pasta `backend/`, pois os imports utilizam `backend.app`.
-
-### 4.1. Clonar e selecionar a branch
+### 1. Obter a versão da entrega
 
 ```bash
 git clone https://github.com/Arturvpf/MangueByte-Converge-challenge.git
@@ -83,9 +75,9 @@ cd MangueByte-Converge-challenge
 git switch fix/auditoria-v42-p1-p2-2026-11-08
 ```
 
-Esta é a branch do [PR de correções da auditoria](https://github.com/Arturvpf/MangueByte-Converge-challenge/pull/2), baseada na branch de reconciliação P1/P2. As mudanças ainda não estão na `main`.
+Esta versão está no [PR de integração e correções #2](https://github.com/Arturvpf/MangueByte-Converge-challenge/pull/2), ainda separado da `main`.
 
-### 4.2. Ambiente Python e dependências
+### 2. Instalar o backend
 
 **Windows — PowerShell**
 
@@ -103,13 +95,11 @@ source backend/.venv/bin/activate
 python -m pip install -r backend/requirements.lock.txt
 ```
 
-Se não conseguir ativar o ambiente, use diretamente `backend/.venv/Scripts/python` no Windows ou `backend/.venv/bin/python` no Linux/macOS para os comandos seguintes.
+### 3. Configurar autenticação e banco local
 
-### 4.3. Configurar variáveis de ambiente
+O SQLite já é o banco padrão (`sqlite:///./alinia.db`). Defina a chave de autenticação **no mesmo terminal** que executará o backend.
 
-O arquivo [`backend/.env.example`](backend/.env.example) documenta os nomes das variáveis, **mas não é carregado automaticamente**. Configure-as no terminal em que vai executar a API.
-
-**Windows — PowerShell**
+**PowerShell**
 
 ```powershell
 $env:DATABASE_URL = "sqlite:///./alinia.db"
@@ -123,151 +113,123 @@ export DATABASE_URL="sqlite:///./alinia.db"
 export ALINIA_AUTH_SECRET="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
 ```
 
-O segredo precisa ter pelo menos 32 caracteres. **Para manter sessões válidas após reiniciar o servidor, conserve o mesmo segredo em seu ambiente local**; gerar outro invalida os tokens existentes. Não publique o segredo ou credenciais no Git. `ALINIA_BOOTSTRAP_PASSWORD` é opcional: se não estiver definida, a CLI solicita a senha interativamente.
+O arquivo [`backend/.env.example`](backend/.env.example) descreve as demais variáveis, **mas não é carregado automaticamente**. Não versionar tokens, senhas ou segredos. Para preservar sessões entre reinicializações, reutilize a mesma chave de autenticação.
 
-### 4.4. Criar o banco e usuários de demonstração
-
-Com o ambiente Python ativo e as variáveis configuradas:
+### 4. Preparar o banco e criar o usuário de demonstração
 
 ```bash
 python -m alembic -c backend/alembic.ini upgrade head
 python -m backend.app.auth.cli create-tenant --tenant-id demo --name "Empresa Demo"
-python -m backend.app.auth.cli create-user --tenant-id demo --email admin@demo.example --role admin
 python -m backend.app.auth.cli create-user --tenant-id demo --email rh@demo.example --role rh
 ```
 
-Informe as senhas solicitadas. Use **senhas diferentes e suficientemente fortes**. Esses comandos de criação são para um banco novo; executá-los novamente com os mesmos identificadores retorna conflito.
+A criação do usuário solicita uma senha no terminal. O perfil **RH** pode investigar e registrar decisões; o perfil `admin` é destinado à administração de contas e não substitui o RH na demonstração.
 
-**Importante:** `admin` gerencia contas, mas **não tem permissão para investigar equipes**. Faça login na plataforma com o usuário `rh@demo.example` para testar análises e decisões. As regras do PRD v4.2 continuam bloqueando aprovações operacionais sem evidência independente e validação jurídica.
+Os comandos de criação só precisam ser executados **uma vez em um banco novo**.
 
-### 4.5. Iniciar a API e a aplicação integrada
+### 5. Iniciar a aplicação integrada
 
 ```bash
 python -m uvicorn backend.app.main:create_app --factory --reload
 ```
 
-O próprio FastAPI serve a API **e** os arquivos de `src/` na mesma origem HTTP. Acesse:
-
-| Endereço | Uso |
+| Endereço local | Finalidade |
 | --- | --- |
-| [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health) | Saúde do processo |
-| [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) | Documentação interativa da API |
-| [http://127.0.0.1:8000/prototype/](http://127.0.0.1:8000/prototype/) | Landing page |
-| [http://127.0.0.1:8000/prototype/app/](http://127.0.0.1:8000/prototype/app/) | Plataforma com acesso às APIs |
+| [`/prototype/`](http://127.0.0.1:8000/prototype/) | Landing page |
+| [`/prototype/app/`](http://127.0.0.1:8000/prototype/app/) | **Plataforma integrada ao backend** |
+| [`/docs`](http://127.0.0.1:8000/docs) | Swagger/OpenAPI |
+| [`/health`](http://127.0.0.1:8000/health) | Verificação básica do processo |
 
-Na plataforma, abra a seção de conexão e informe a empresa `demo`, o e-mail `rh@demo.example` e a senha configurada. **Para aparecer uma equipe na interface, importe primeiro um snapshot** (etapa seguinte). Até carregar dados pela API, os cartões exibem informações ilustrativas.
+Todos usam `http://127.0.0.1:8000`. O FastAPI serve os arquivos do frontend e as APIs **na mesma origem**. A aplicação não exige um servidor Node separado para autenticar e consultar dados.
 
-### 4.6. Criar um snapshot inicial por CSV (exemplo PowerShell)
+### 6. Carregar dados sintéticos para a demonstração
 
-Em **outro terminal PowerShell**, com o backend rodando, use apenas os dados sintéticos abaixo. O endpoint recebe **JSON contendo o texto CSV**, e não upload `multipart/form-data`.
+A plataforma lista snapshots existentes, mas **a importação de CSV ainda não está implementada na interface**. O caminho mais curto para preparar uma demonstração é a fixture de Jira, **sem conexão com Jira real**:
 
-```powershell
-$base = "http://127.0.0.1:8000"
-$senha = Read-Host "Senha do usuário RH"
+1. Abra [`http://127.0.0.1:8000/docs`](http://127.0.0.1:8000/docs) e execute `POST /api/auth/login` usando `tenant_id: demo`, `email: rh@demo.example` e sua senha.
+2. Copie o `access_token` e configure-o no botão **Authorize** do Swagger.
+3. Execute `POST /api/imports/jira` com o JSON abaixo. A resposta `status: complete` indica que o snapshot sintético foi persistido.
+4. Abra [a plataforma](http://127.0.0.1:8000/prototype/app/), entre com as mesmas credenciais, selecione a equipe `team-demo` e carregue as métricas.
 
-$login = Invoke-RestMethod -Method Post -Uri "$base/api/auth/login" -ContentType "application/json" -Body (
-  @{tenant_id="demo"; email="rh@demo.example"; password=$senha} | ConvertTo-Json
-)
-$headers = @{Authorization = "Bearer $($login.access_token)"}
-
-$csv = @'
-skill_id,shift_id,pool_id,eligible_hours,available_hours,period_start,period_end_exclusive,timezone,demand_cases,hours_unit,demand_unit,cases_per_hour
-atendimento,manha,pool-demo,10,10,2026-11-02,2026-11-09,America/Recife,14,hours_per_period,cases_per_period,1
-'@
-
-$importacao = Invoke-RestMethod -Method Post -Uri "$base/api/imports" -Headers $headers -ContentType "application/json" -Body (
-  @{team_id="team-demo"; filename="demo.csv"; content=$csv} | ConvertTo-Json
-)
-$importacao
-
-if ($importacao.status -eq "ready") {
-  Invoke-RestMethod -Method Post -Uri "$base/api/imports/$($importacao.import_id)/confirm" -Headers $headers
+```json
+{
+  "team_id": "team-demo",
+  "fixture": "issues"
 }
 ```
 
-Após confirmar a importação, **atualize `/prototype/app/` e entre novamente**. Selecione `team-demo`, carregue as métricas e inicie a investigação.
+**Alternativa:** usar `POST /api/imports` com um CSV agregado (como texto no campo JSON `content`) e depois `POST /api/imports/{import_id}/confirm`. O formato e os campos obrigatórios estão descritos em [`backend/CONTRATOS.md`](backend/CONTRATOS.md) e em `backend/app/ingestion/csvparse.py`. Nenhum dado pessoal deve ser usado na demonstração.
 
-O exemplo contém **uma única semana**: é esperado que a previsão **se abstenha por histórico insuficiente** e que cenários de contratação não sejam considerados conclusivos. Uma resposta `409 NOT_CONCLUSIVE` ao tentar aprovar é um bloqueio deliberado, não um erro de instalação.
+### 7. Percorrer o fluxo no frontend
 
-Para importar dados com histórico, consulte os contratos de [`backend/CONTRATOS.md`](backend/CONTRATOS.md) e o validador em `backend/app/ingestion/csvparse.py`. Não inclua CPF, nomes, e-mails, salários individuais ou motivos de afastamento.
+Com o snapshot carregado, a demonstração sugerida é: **Visão geral → Abrir investigação → Responder às perguntas → Previsão → Comparar A–E → Revisão do RH**.
 
-### 4.7. Rodar somente o frontend estático (opcional)
+A investigação pode exigir mais de uma rodada de respostas. Relatos do gestor são preservados como **não verificados**; não alteram automaticamente a capacidade calculada. Para dados históricos insuficientes, a previsão se abstém e os cenários permanecem inconclusivos. A aprovação bloqueada nesses casos é **comportamento esperado**, não uma falha de instalação.
 
-Em um terminal separado, na raiz do projeto:
+## Testes e build
 
-```bash
-npm run dev
-```
-
-Abre a landing em **http://127.0.0.1:5173/** e o protótipo em **http://127.0.0.1:5173/app/**. Esse servidor Node.js **não oferece as rotas `/api`**: a conexão do protótipo com o backend não funciona nessa porta sem um proxy adicional. Para testar a integração, utilize `http://127.0.0.1:8000/prototype/app/` (etapa 4.5).
-
-Comandos adicionais:
-
-```bash
-npm run build    # copia src/ para dist/, sem bundler
-npm run preview  # build e servidor estático em http://127.0.0.1:4173
-```
-
-Os arquivos devem ser servidos via HTTP: não abra o HTML usando `file://`.
-
-### 4.8. Executar testes
-
-Com o ambiente Python ativo, da raiz do repositório:
+**Backend e migrações** (ambiente Python ativo):
 
 ```bash
 python -m pytest backend/tests -q
 python -m alembic -c backend/alembic.ini upgrade head
-npm run build
 ```
 
-A suíte cobre contratos, importação, permissões, migrações, planejamento, forecast e regressões. O GitHub Actions também testa a migração de um banco PostgreSQL legado. **Testes passando não equivalem a aceite do PRD ou autorização de uso com dados reais.**
+**Frontend estático** (Node.js 22):
 
-### 4.9. PostgreSQL (opcional)
+```bash
+node --check src/app/app.js
+npm run build
+npm run dev
+```
 
-Para utilizar PostgreSQL em vez de SQLite, crie um banco local, configure `DATABASE_URL` no formato:
+`npm run dev` serve apenas os arquivos estáticos em `http://127.0.0.1:5173`. **Para testar a integração com as rotas `/api`, use a plataforma via FastAPI na porta `8000`**, como mostrado acima.
+
+O CI executa testes de backend, regressões da integração HTTP/DOM, verificação de JavaScript, build e migração PostgreSQL a partir de um esquema legado. Veja o [workflow de integração](.github/workflows/p1-p2-integration.yml).
+
+## O que está implementado e o que é evolução
+
+| Componente | Situação da entrega |
+| --- | --- |
+| Landing e novo frontend conectado à API | **Implementado** |
+| Login, papéis, escopo de empresa/equipe e trilha de auditoria | **Implementado para a demonstração** |
+| Importação CSV, fixture sintética, snapshots e métricas | **Implementado** |
+| Investigação com perguntas, checkpoints e retomada | **Implementado (fluxo determinístico)** |
+| Forecast de mediana móvel, backtesting e abstenção | **Implementado como baseline** |
+| Cinco categorias de cenário A–E | **Disponíveis**; B/C/D ainda não são simulações quantitativas completas |
+| Otimizador CP-SAT v4.2 e validador | **Módulos testados**, ainda não integrados ao workflow principal |
+| Agente investigador-planejador com LLM e LangGraph | **Pendente na integração principal** |
+| Jira real | **Pendente**: a fixture funciona, mas `/api/imports/jira/sync` não persiste eventos |
+| Aprovação operacional definitiva | **Bloqueada por segurança** até validação independente v4.2 |
+| Contratação ou alteração de escala automática | **Não implementada nem autorizada** |
+
+Os resultados ilustrativos não são indicadores operacionais reais. O frontend pode continuar exibindo séries de exemplo em gráficos que ainda não usam histórico importado; as métricas carregadas da API são identificadas separadamente.
+
+O projeto tem mecanismos de minimização de dados, isolamento por empresa/equipe, histórico de cenários e falha segura nas decisões. **Isso não constitui, por si só, homologação jurídica, de segurança ou LGPD para dados reais.**
+
+## Organização do repositório
 
 ```text
-postgresql+psycopg://usuario:senha@localhost:5432/alinia
+src/                      Landing page e aplicação web
+scripts/                  Servidor estático e build do frontend
+backend/app/              API e módulos de domínio
+backend/migrations/       Evolução de esquema com Alembic
+backend/fixtures/         Entradas sintéticas para demonstração
+backend/tests/            Testes unitários e de integração
+docs/                     PRD, auditoria e decisões técnicas
+.github/workflows/        Validações automatizadas
 ```
 
-Aplique as migrações **nesse banco** antes de iniciar o servidor. Use um gerenciador de segredos ou variável de ambiente para a conexão; codifique caracteres especiais na senha. As migrações `0009` e `0010` preservam checkpoints Jira legados sem equipe e versões antigas dos cenários; valide backups e restore antes de alterar qualquer banco persistente.
+### Documentação técnica
 
-## 5. Variáveis de ambiente
+- [Integração entre frontend e backend](docs/INTEGRACAO_FRONTEND_BACKEND.md)
+- [Correções e pendências da auditoria v4.2](docs/CORRECOES_AUDITORIA_V42.md)
+- [Matriz de aceite do PRD v4.2](docs/REBASELINE_PRD_V42.md)
+- [Backend: autenticação, políticas, contratos e limitações](backend/README.md)
+- [Metodologia da landing](docs/ABORDAGEM.md)
 
-| Variável | Necessária? | Descrição |
-| --- | --- | --- |
-| `DATABASE_URL` | Não | SQLite local (`sqlite:///./alinia.db`) se não configurada |
-| `ALINIA_AUTH_SECRET` | **Sim, para login** | Chave local de assinatura dos tokens (mínimo 32 caracteres) |
-| `ALINIA_ACCESS_TOKEN_TTL_SECONDS` | Não | Validade do token; padrão: 3600 s |
-| `ALINIA_BOOTSTRAP_PASSWORD` | Não | Senha para criação de usuários pela CLI; sem ela a CLI solicita interativamente |
-| `JIRA_BASE_URL` | Só para leitura Jira externa | URL HTTPS do Jira autorizado |
-| `JIRA_PROJECT_KEY` | Só para leitura Jira externa | Projeto explicitamente autorizado; bloqueia consultas sem escopo |
-| `JIRA_API_TOKEN` | Só para leitura Jira externa | Token de leitura; armazenar fora do Git |
+---
 
-**Atenção:** mesmo com as três variáveis Jira, `POST /api/imports/jira/sync` ainda retorna `503 INTEGRATION_UNAVAILABLE`, pois falta transformar e persistir os eventos do Jira. O endpoint `POST /api/imports/jira` usa apenas uma fixture sintética.
+**Alinia — mais clareza para investigar a necessidade de pessoas, comparar alternativas e decidir com responsabilidade.**
 
-## 6. Problemas comuns
-
-- **`503 AUTH_UNAVAILABLE` no login:** configure `ALINIA_AUTH_SECRET` no processo que inicia o backend.
-- **`404` em `/api` na porta 5173:** você está no servidor estático. Abra a plataforma em `/prototype/app/` na porta 8000.
-- **Nenhuma equipe aparece no painel:** importe e confirme um CSV com o usuário RH; em seguida atualize a página e faça login novamente.
-- **`ModuleNotFoundError: backend`:** execute os comandos na raiz do repositório com o ambiente virtual ativo.
-- **`no such table` ou erro de schema:** rode `python -m alembic -c backend/alembic.ini upgrade head` usando o mesmo `DATABASE_URL` do servidor.
-- **`409 NOT_CONCLUSIVE` ao aprovar:** bloqueio esperado: o fluxo não dispõe ainda de todas as evidências v4.2.
-- **`503 INTEGRATION_UNAVAILABLE` no Jira:** a sincronização real ainda não foi implementada; use o CSV ou a fixture sintética no desenvolvimento.
-
-## 7. Segurança, limitações e próximos passos
-
-O sistema **não realiza contratação automática, seleção/desligamento, alteração de jornada, ponto ou salário**. As regras legais devem ser parametrizadas e aprovadas por responsáveis competentes; valores sintéticos não constituem interpretação jurídica validada. O projeto precisa de avaliação de privacidade e segurança antes de dados de clientes.
-
-Para completar o MVP v4.2 faltam: previsão por competência/turno aplicada ao dimensionamento; integração do CP-SAT e da validação independente ao workflow; simulações reais A–D; Jira somente leitura com ingestão operacional; agente investigador-planejador LangGraph com ferramentas seguras; testes de viés, LGPD/RIPD, aprovação de domínio e experimento de valor em três braços.
-
-Documentação adicional:
-
-- [Correções da auditoria v4.2](docs/CORRECOES_AUDITORIA_V42.md)
-- [Integração do novo frontend com a API](docs/INTEGRACAO_FRONTEND_BACKEND.md)
-- [Matriz de requisitos / rebaseline v4.2](docs/REBASELINE_PRD_V42.md)
-- [Backend e contratos](backend/README.md)
-- [Abordagem visual da landing](docs/ABORDAGEM.md)
-
-**Status:** projeto em desenvolvimento; branch de correções em PR draft, sem validação para produção.
+*Versão de entrega demonstrável com dados sintéticos. A evolução para uso operacional depende da integração dos motores v4.2, validação independente e aprovações de domínio.*
