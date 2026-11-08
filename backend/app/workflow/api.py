@@ -143,7 +143,9 @@ def read_forecast(run_id: str, request: Request, principal: Principal = Depends(
 def list_scenarios(run_id: str, request: Request, principal: Principal = Depends(require_permission(Permission.SCENARIO_READ))):
     def run(session):
         item = _run(session, principal, run_id)
-        rows = session.scalars(select(ScenarioRow).where(ScenarioRow.run_id == item.run_id).order_by(ScenarioRow.kind))
+        rows = session.scalars(select(ScenarioRow).where(
+            ScenarioRow.run_id == item.run_id, ScenarioRow.version == item.cycle_count + 1,
+        ).order_by(ScenarioRow.kind))
         return {"items": [row.payload for row in rows]}
     return _call(request, principal, Permission.SCENARIO_READ, run)
 
