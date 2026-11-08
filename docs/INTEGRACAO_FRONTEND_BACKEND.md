@@ -21,6 +21,7 @@ O novo visual altera a organização da visão geral, investigação, previsão,
 | Snapshots por equipe | `GET /api/teams/{team_id}/snapshots` | Conectado |
 | Cartões agregados de demanda, capacidade, IPD, gap | `GET /api/teams/{team_id}/metrics?snapshot_id=...` | Conectado |
 | Gráfico Demanda × capacidade e painel Fluxo da demanda | `GET /api/teams/{team_id}/demand-flow?snapshot_id=...` | Conectado; demanda dos últimos 6 períodos do CSV; a capacidade é a do último período, repetida como referência (não há histórico de capacidade); fluxo legado aparece como não classificado |
+| Conversa com a Alinia (`src/app/agent.js`) | As rotas desta tabela, mais `GET /api/policies/resolve` | Conectado; cada pergunta é encaminhada a uma ferramenta fixa; o modelo de linguagem ainda não está ligado |
 | Retomada de investigação após novo login | `GET /api/investigations`, `GET /api/investigations/{id}` | Conectado; o login restaura a última investigação só com leitura; o diálogo **Conectar dados** lista as investigações da equipe e o botão **Retomar** pode avançar o fluxo; o usuário precisa autenticar novamente ao atualizar a página |
 | Abertura e retomada do fluxo | `POST /api/investigations`, `POST /api/investigations/{id}/advance` | Conectado; workflow síncrono e determinístico |
 | Respostas às perguntas | `POST /api/investigations/{id}/answers` | Conectado; relatos não se tornam evidências verificadas |
@@ -36,6 +37,19 @@ O novo visual altera a organização da visão geral, investigação, previsão,
 - Botão **Aprovar** habilitado somente com cenário conclusivo **e** validação independente válida; a verificação definitiva continua no backend.
 - Dados externos e respostas de gestores são adicionados ao DOM como `textContent`, não HTML executável.
 - Estado visual de déficit não calculado não é confundido com `0`.
+
+## Conversa com a Alinia
+
+A tela inicial (`#agente`) é a interface de conversa com o agente. Enquanto o modelo de raciocínio da branch `agent/alinia-investigator` não está ligado, a conversa funciona assim:
+
+- **Encaminhamento fixo:** a pergunta é classificada por padrões de texto (situação, investigação, previsão, cenários, contratação, regras, decisão, fontes) e vai para uma ferramenta que lê a API. Pedidos para revelar credenciais, avaliar pessoas ou usar dado individual são recusados antes de qualquer chamada.
+- **Transparência:** cada resposta mostra os passos executados (endpoint e tempo) e o selo de origem de cada número, que abre o detalhe da fonte.
+- **Perguntas ao gestor:** as perguntas pendentes da investigação aparecem na conversa; a resposta vai para `POST /api/investigations/{id}/answers` como relato não verificado, e o ciclo avança.
+- **Limites:** a Alinia não aprova, não rejeita e não adia; ela leva até a Revisão do RH. Sem headcount conclusivo e validado, ela não recomenda número de vagas.
+- **Sem conexão:** a conversa é uma simulação com os dados de exemplo da Unidade Centro, e a interface avisa isso.
+- **Estado:** a conversa fica só em memória e é apagada a cada novo login.
+
+Quando o modelo for ligado, ele passa a escolher a ferramenta e a redigir o texto; a interface (passos, fontes, perguntas e passagem para a decisão) não precisa mudar.
 
 ## Falha de execução identificada e corrigida
 

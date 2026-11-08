@@ -33,7 +33,7 @@ Os **cinco caminhos de decisão** seguem o PRD v4.2: **A** — contratação per
 
 ### Experiência entregue
 
-O frontend possui cinco áreas navegáveis: **Visão geral**, **Investigação**, **Previsão**, **Cenários** e **Revisão do RH**. A landing page apresenta o conceito do produto; a plataforma permite autenticação, consulta de recortes persistidos e interação com as APIs de investigação e decisão.
+A tela inicial da plataforma é a **conversa com a Alinia**, o agente: a pessoa pergunta em linguagem natural e a Alinia mostra os passos que consultou, o selo de origem de cada número, as perguntas ao gestor e a passagem para a decisão humana. Ao lado da conversa ficam cinco áreas navegáveis: **Visão geral**, **Investigação**, **Previsão**, **Cenários** e **Revisão do RH**. A landing page apresenta o conceito do produto; a plataforma permite autenticação, consulta de recortes persistidos e interação com as APIs de investigação e decisão.
 
 A interface distingue dados ilustrativos de dados recebidos da API. Na revisão, cenários sem validação independente **não podem ser aprovados**. Rejeitar e adiar são decisões registráveis pelo perfil autorizado.
 
@@ -162,7 +162,7 @@ A plataforma lista snapshots existentes, mas **a importação de CSV ainda não 
 
 ### 7. Percorrer o fluxo no frontend
 
-Com o snapshot carregado, a demonstração sugerida é: **Visão geral → Abrir investigação → Responder às perguntas → Previsão → Comparar A–E → Revisão do RH**.
+Com o snapshot carregado, a demonstração sugerida é: **Visão geral → Abrir investigação → Responder às perguntas → Previsão → Comparar A–E → Revisão do RH**. O mesmo caminho pode ser feito pela **Conversa com a Alinia**, perguntando, por exemplo, "Por que a equipe não dá conta da demanda?" e respondendo às perguntas do gestor ali mesmo.
 
 A investigação pode exigir mais de uma rodada de respostas. Relatos do gestor são preservados como **não verificados**; não alteram automaticamente a capacidade calculada. Para dados históricos insuficientes, a previsão se abstém e os cenários permanecem inconclusivos. A aprovação bloqueada nesses casos é **comportamento esperado**, não uma falha de instalação.
 
