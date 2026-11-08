@@ -8,8 +8,10 @@
      Unidade Centro, e a interface diz isso.
    Na simulação, a situação, a previsão e as perguntas livres vão ao agente
    (alinia-investigator, com DeepSeek), por /agent/chat na mesma origem. O
-   agente só conhece o caso sintético do Centro, por isso não responde no modo
-   conectado. Se ele não estiver de pé, a ferramenta local responde.
+   servidor anexa a ficha do site (scripts/agent-site-context.mjs), com os
+   mesmos números destas telas, e o modelo responde só a partir dela. Ainda não
+   lê o recorte da API, por isso não responde no modo conectado. Se o agente
+   ou o modelo não estiverem de pé, a ferramenta local responde.
 
    Regras que esta tela não quebra:
    - todo texto vindo de dados ou do usuário entra como textContent;
@@ -107,11 +109,11 @@ const AGENT_MAX = 500;
 const AGENT_INTENTS = new Set(['overview', 'forecast', 'fallback']);
 const AGENT_EVIDENCE = {
   title: 'Resposta do agente',
-  intro: 'Texto redigido pelo modelo a partir da ficha do caso sintético do Centro. Os números vêm da ficha; o modelo é instruído a não criar outros.',
+  intro: 'Texto redigido pelo modelo a partir da ficha do site: os mesmos números da Unidade Centro mostrados nestas telas. O modelo é instruído a não criar outros e a dizer quando o dado não está na ficha.',
   items: [
     ['Rota', 'POST /v1/channels/workflow/chat (alinia-investigator)'],
-    ['Modelo', 'DeepSeek V4.1 Flash, via Featherless. Sem a chave, o agente devolve a ficha sem redação'],
-    ['Dados', 'Caso sintético run-centro-sintetico, não um recorte real'],
+    ['Modelo', 'DeepSeek V4.1 Flash, via Featherless. Sem a chave, a ferramenta local responde'],
+    ['Dados', 'Exemplo de demonstração da Unidade Centro, o mesmo das outras telas. Não é um recorte real'],
     ['Limites', 'Não cadastra vaga, não escolhe nome e não usa dado individual'],
   ],
 };
@@ -951,7 +953,7 @@ export function mountAgent(ctx) {
     },
     fallback(turn) {
       turn.say(connected()
-        ? 'Não tenho uma ferramenta para responder isso com segurança. No modo conectado, respondo por ferramentas que leem o seu recorte; o agente com modelo de linguagem ainda só conhece o caso de exemplo do Centro.'
+        ? 'Não tenho uma ferramenta para responder isso com segurança. No modo conectado, respondo por ferramentas que leem o seu recorte; o agente com modelo de linguagem ainda não lê o recorte da API.'
         : 'Não tenho uma ferramenta para responder isso com segurança, e o agente com modelo de linguagem não está ligado agora.');
       turn.suggest(SUGGESTIONS.slice(0, 4));
     },
