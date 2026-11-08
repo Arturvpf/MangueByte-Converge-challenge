@@ -41,7 +41,7 @@ def _unknown(scenario_id, tenant_id, team_id, snapshot_id, skills):
 def build_scenarios(*, tenant_id: str, team_id: str, snapshot_id: str, pools: dict[str, int], rows: list[Row],
                     demand_hours: dict[str, int] | None, weekly_max: int | None, policy_complete: bool,
                     forecast_calibrated: bool, dependencies: list[str], rule_versions: list[str],
-                     forecast_applied: bool = True):
+                     forecast_applied: bool = True, scenario_version: int = 1):
     skills = sorted({row.skill_id for row in rows})
     reliable = demand_hours is not None and policy_complete and forecast_calibrated and forecast_applied
     base = solve(pools, rows, demand_hours) if demand_hours is not None else None
@@ -61,7 +61,7 @@ def build_scenarios(*, tenant_id: str, team_id: str, snapshot_id: str, pools: di
             conclusive = False
         scenario = _seal({
             "schema_version": "1.0", "scenario_id": scenario_id, "tenant_id": tenant_id, "team_id": team_id,
-            "data_snapshot_id": snapshot_id, "kind": kind, "version": 1, "actions": actions,
+            "data_snapshot_id": snapshot_id, "kind": kind, "version": scenario_version, "actions": actions,
             "assumptions": assumptions, "dependencies": list(dependencies), "gaps": gaps,
             "preliminary_cost": None,  # No validated role/contract cost inputs in this pilot.
             "headcount_delta": headcount, "residual_hours": residual, "conclusive": conclusive,
