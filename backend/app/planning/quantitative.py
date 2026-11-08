@@ -31,7 +31,8 @@ def _ceil(number: Decimal) -> int:
     return int(number.to_integral_value(rounding=ROUND_CEILING))
 
 
-def _week_needs(snapshot: SnapshotData, forecast: ForecastResult, cases_per_hour: Decimal):
+def _week_needs(snapshot: SnapshotData, forecast: ForecastResult, cases_per_hour: Decimal,
+                rework_fraction: Decimal):
     """Split each skill uniformly across its shifts; never pretend this is observed."""
     rows = snapshot.capacity.rows
     skills = {item.skill_id: Decimal(str(item.quantity))
@@ -51,7 +52,7 @@ def _week_needs(snapshot: SnapshotData, forecast: ForecastResult, cases_per_hour
             shifts = sorted({row.shift_id for row in rows if row.skill_id == skill})
             if not shifts:
                 return []
-            hours = _ceil(cases * skills[skill] / total / cases_per_hour)
+            hours = _ceil(cases * (1 + rework_fraction) * skills[skill] / total / cases_per_hour)
             # Keep the sum exact after integer rounding.
             normal, remainder = divmod(hours, len(shifts))
             for j, shift in enumerate(shifts):
@@ -97,8 +98,8 @@ def _pools(snapshot: SnapshotData, needs: list[IntervalDemand], kind: str):
                     value = hours
                 else:
                     value = 0
-                if flexible and ((kind == "reallocate" and need.skill in eligible)
-                                 or (kind == "redesign" and need.shift in shifts)):
+                if flexible and ((kind == "reallocate" and need.shift in shifts)
+                                 or (kind == "redesign" and need.skill in eligible)):
                     value = max(value, hours)
                 if value > 0:
                     out[need.interval_id] = min(hours, value)
@@ -158,7 +159,8 @@ def _roles(snapshot: SnapshotData, needs: list[IntervalDemand], kind: str, start
     return options, limitations
 
 
-def build_whatifs(snapshot: SnapshotData, forecast: ForecastResult, aggregates: dict) -> dict[str, dict]:
+def build_whatifs(snapshot: SnapshotData, forecast: ForecastResult,
+                  aggregates: dict, history: list[dict] | None = None) -> dict[str, dict]:
     """Compute five comparable CP-SAT results; returns {} if units/input are unknown."""
     raw_rate = aggregates.get("cases_per_hour")
     if not raw_rate or not forecast.points:
@@ -169,7 +171,16 @@ def build_whatifs(snapshot: SnapshotData, forecast: ForecastResult, aggregates: 
         return {}
     if not rate.is_finite() or rate <= 0:
         return {}
-    needs = _week_needs(snapshot, forecast, rate)
+    history = history or []
+    recent = history[-8:]
+    measured = [item for item in recent
+                if item.get("demand_semantics") == "incoming_plus_unmet"
+                and item.get("incoming_cases") is not None
+                and item.get("reopened_cases") is not None]
+    reopened = sum(Decimal(str(item["reopened_cases"])) for item in measured)
+    incoming = sum(Decimal(str(item["incoming_cases"])) for item in measured)
+    rework_fraction = (min(Decimal("0.50"), reopened / incoming) if incoming > 0 else Decimal(0))
+    needs = _week_needs(snapshot, forecast, rate, rework_fraction)
     if not needs or any(p.available_hours is None for p in snapshot.capacity.pools):
         return {}
     period_start = min(n.start for n in needs)
@@ -231,6 +242,9 @@ def build_whatifs(snapshot: SnapshotData, forecast: ForecastResult, aggregates: 
             "source_snapshot": snapshot.capacity.data_snapshot_id,
             "forecast_status": forecast.status,
             "forecast_method": forecast.method,
+            "rework_fraction": float(rework_fraction),
+            "backlog_last_observed": (int(history[-1]["backlog_end"])
+                                     if history and history[-1].get("backlog_end") is not None else None),
             "week_count": len(buckets), "weeks": buckets,
             "incremental_cost_brl": float(Decimal(cost) / Decimal(100)) if known_cost else None,
             "headcount": sum(result.hires.values()) if kind in {"hire", "temporary"} and options else None,
@@ -240,6 +254,8 @@ def build_whatifs(snapshot: SnapshotData, forecast: ForecastResult, aggregates: 
                 "Distribuição de demanda entre turnos é hipótese uniforme; demanda real por turno não informada.",
                 "Sem atestado de jornada, cobertura mínima, modalidade contratual ou orçamento.",
                 "Lead times, mobilidade e ramp-up são hipóteses exploratórias.",
+                "Reaberturas históricas aumentam a carga prevista; não são novas chegadas.",
+                f"Fator adicional por reabertura estimado: {rework_fraction:.3f}.",
                 "Nenhum resultado autoriza contratação ou mudança de escala.",
                 *prices, *list(result.limitations),
             ],
