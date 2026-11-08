@@ -100,6 +100,41 @@ def test_data_scope_follows_verified_identity(env):
     assert r.status_code == 401
 
 
+
+@pytest.mark.parametrize('detail', [False, True])
+def test_snapshot_scope_denial_is_audited_once(env, detail):
+    client, app, db, a, b, login, users = env
+    ta, tb = a.capacity.tenant_id, b.capacity.tenant_id
+    other = login(ta, 'outro@a.test')
+    admin = login(ta, 'admin@a.test')
+    rh_b = login(tb, 'rh@b.test')
+    trace = 'a2000000000000000000000000000001' if detail else 'a2000000000000000000000000000002'
+    path = f'/api/teams/{a.team.id}/snapshots'
+    if detail:
+        path += f'/{a.capacity.data_snapshot_id}'
+    response = client.get(path, headers={**other, 'X-Trace-Id': trace})
+    assert response.status_code == 403 and response.headers['x-trace-id'] == trace
+    events = client.get('/api/audit', params={'trace_id': trace}, headers=admin).json()['items']
+    assert len(events) == 1
+    assert (events[0]['action'], events[0]['outcome'], events[0]['actor_user_id']) == (
+        'authz.denied', 'denied', users['gestor_other'])
+    assert events[0]['details'] == {'permission': 'data:read'}
+    assert client.get('/api/audit', params={'trace_id': trace}, headers=rh_b).json()['items'] == []
+
+    # Untrusted route values are never copied into the audit event.
+    secret = '123.456.789-09'
+    trace2 = 'a2000000000000000000000000000003' if detail else 'a2000000000000000000000000000004'
+    path = f'/api/teams/{secret}/snapshots' + ('/missing' if detail else '')
+    assert client.get(path, headers={**other, 'X-Trace-Id': trace2}).status_code == 403
+    events = client.get('/api/audit', params={'trace_id': trace2}, headers=admin).json()['items']
+    assert len(events) == 1 and secret not in json.dumps(events)
+
+    gestor = login(ta, 'gestor@a.test')
+    assert client.get(f'/api/teams/{a.team.id}/snapshots/missing', headers=gestor).status_code == 404
+    # A tenant-wide grant remains scoped to data in its own tenant.
+    assert client.get(f'/api/teams/{a.team.id}/snapshots', headers=rh_b).status_code == 403
+
+
 def test_audit_correlates_trace_and_stays_in_tenant(env):
     client, app, db, a, b, login, users = env
     ta, tb = a.capacity.tenant_id, b.capacity.tenant_id
@@ -162,7 +197,7 @@ def test_validation_errors_never_echo_submitted_values(env):
     for r in responses:
         assert r.status_code == 422 and secret not in r.text
         assert all(set(e) == {'type', 'loc', 'msg'} for e in r.json()['detail'])
-    assert ['body', 'email'] in [e['loc'] for e in responses[0].json()['detail']]
+    assert ['body'] in [e['loc'] for e in responses[0].json()['detail']]
 
 
 def test_audit_columns_never_store_unverified_free_text(env):
@@ -211,3 +246,72 @@ def test_migration_downgrade_removes_p2_tables(tmp_path):
     names = set(inspect(engine).get_table_names())
     assert 'data_snapshots' in names and not names & {'tenants', 'users', 'memberships', 'audit_events'}
     engine.dispose()
+
+
+@pytest.mark.parametrize('legacy_rowids', [(-1,), (-5, -3), (-5, -1)])
+def test_upgrade_0004_preserves_rows_and_blocks_rowid_replace(tmp_path, legacy_rowids):
+    db = tmp_path / 'upgrade.db'
+    alembic(db, 'upgrade', '0004')
+    engine = create_engine(f'sqlite:///{db.as_posix()}')
+    columns = "id, occurred_at, trace_id, tenant_id, actor_type, action, outcome, details"
+    with engine.begin() as conn:
+        for rowid in legacy_rowids:
+            conn.execute(text(f"insert into audit_events (rowid, {columns}) values (:rowid, :id, '2020-01-01', 'x', 't', 'user', 'original.event', 'success', '{{}}')"), {'rowid': rowid, 'id': str(rowid)})
+        original = conn.execute(text('select id, action from audit_events order by id')).all()
+        schema = conn.execute(text("select type, name, sql from sqlite_master where tbl_name='audit_events' and type in ('index', 'trigger') and sql is not null order by type, name")).all()
+    alembic(db, 'upgrade', 'head')
+    with engine.begin() as conn:
+        assert conn.execute(text('pragma recursive_triggers')).scalar_one() == 0
+        assert conn.execute(text('select id, action from audit_events order by id')).all() == original
+        assert conn.execute(text("select type, name, sql from sqlite_master where tbl_name='audit_events' and type in ('index', 'trigger') and sql is not null order by type, name")).all() == schema
+        conn.execute(text(f"insert into audit_events ({columns}) values ('new', '2020-01-01', 'x', 't', 'user', 'new.event', 'success', '{{}}')"))
+    for alias in ('rowid', '_rowid_', 'oid'):
+        with engine.connect() as conn:
+            with pytest.raises(DatabaseError):
+                conn.execute(text(f"insert or replace into audit_events ({alias}, {columns}) values (-1, 'forged', '2020-01-01', 'x', 't', 'user', 'forged.event', 'success', '{{}}')"))
+    alembic(db, 'downgrade', '0004')
+    with engine.connect() as conn:
+        assert conn.execute(text('select id, action from audit_events order by id')).all() == sorted(original + [('new', 'new.event')])
+        assert conn.execute(text("select type, name, sql from sqlite_master where tbl_name='audit_events' and type in ('index', 'trigger') and sql is not null order by type, name")).all() == schema
+        with pytest.raises(DatabaseError):
+            conn.execute(text("update audit_events set action='forged.event'"))
+    engine.dispose()
+
+
+def test_cpf_grants_and_audit_columns_are_rejected(env):
+    from backend.app.audit.log import record_event
+    client, app, db, a, b, login, users = env
+    admin = login(a.capacity.tenant_id, 'admin@a.test')
+    for cpf in ('123.456.789-09', '12345678909', 'team-12345678909'):
+        r = client.post('/api/admin/users', json={'email': 'new@a.test', 'password': PASSWORD,
+                        'memberships': [{'role': 'gestor', 'team_id': cpf}]}, headers=admin)
+        assert r.status_code == 422 and cpf not in r.text
+        with Session(app.state.engine) as session:
+            for field in ('team_id', 'resource_id'):
+                with pytest.raises(ValueError):
+                    record_event(session, action='test.event', outcome='success', tenant_id='t', **{field: cpf})
+    with Session(app.state.engine) as session:
+        record_event(session, action='test.event', outcome='success', tenant_id='t', resource_id='12345678-1234-4123-8123-123456789012')
+        session.execute(text("insert into memberships (tenant_id, user_id, role, team_id) values (:tenant, :user, 'gestor', '12345678909')"), {'tenant': a.capacity.tenant_id, 'user': users['gestor_a']})
+        session.commit()
+    gestor = login(a.capacity.tenant_id, 'gestor@a.test')
+    assert client.get('/api/auth/me', headers=gestor).json()['memberships'] == [{'role': 'gestor', 'team_id': a.team.id}]
+
+
+def test_validation_error_does_not_echo_extra_field_name(env):
+    client, app, db, a, b, login, users = env
+    admin = login(a.capacity.tenant_id, 'admin@a.test')
+    secret = 'secret-field-name-123'
+    r = client.post('/api/admin/users', json={'email': 'new@a.test', 'password': PASSWORD,
+                    'memberships': [{'role': 'gestor', 'team_id': a.team.id, secret: 'x'}]}, headers=admin)
+    assert r.status_code == 422 and secret not in r.text
+
+
+def test_uppercase_trace_filter_matches_header(env):
+    client, app, db, a, b, login, users = env
+    admin = login(a.capacity.tenant_id, 'admin@a.test')
+    trace = 'ABCDEF12000040008000000000000001'
+    client.get('/api/audit', headers={**admin, 'X-Trace-Id': trace})
+    for value in (trace, 'ABCDEF12-0000-4000-8000-000000000001'):
+        r = client.get('/api/audit', params={'trace_id': value}, headers=admin)
+        assert r.status_code == 200 and any(e['trace_id'] == trace.lower() for e in r.json()['items'])

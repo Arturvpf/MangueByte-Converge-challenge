@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.app.audit.log import InvalidCursor, MAX_LIMIT, as_utc, query_events, record_event
-from backend.app.audit.tracing import TRACE_ID_PATTERN, normalize_trace_id
+from backend.app.audit.tracing import normalize_trace_id
 from backend.app.auth.dependencies import get_principal
 from backend.app.auth.permissions import Permission, Principal
 from backend.app.core.ids import ID_PATTERN
@@ -25,7 +25,7 @@ def _item(e):
 
 
 @router.get("/audit")
-def list_audit(trace_id: str | None = Query(None, pattern=TRACE_ID_PATTERN.pattern),
+def list_audit(trace_id: str | None = Query(None, max_length=36),
                action: str | None = Query(None, max_length=64),
                resource_type: str | None = Query(None, max_length=64),
                resource_id: str | None = Query(None, pattern=ID_PATTERN),

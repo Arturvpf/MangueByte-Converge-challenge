@@ -10,6 +10,7 @@ from backend.app.audit.tracing import current_trace_id
 from backend.app.auth.models import MembershipRow, Tenant, User
 from backend.app.auth.permissions import TENANT_WIDE_ROLES, Membership, Permission, Principal, Role
 from backend.app.auth.tokens import InvalidToken, verify_token
+from backend.app.core.ids import valid_id
 
 # Denied path values are attacker-controlled: only id-shaped values reach the audit details.
 AUDITABLE_TEAM = re.compile(r"[A-Za-z0-9._~-]{1,128}")
@@ -51,7 +52,7 @@ def load_principal(session: Session, claims: dict) -> Principal | None:
             role = Role(row.role)
         except ValueError:  # unknown role stored: grants nothing
             continue
-        if (row.team_id is None and role not in TENANT_WIDE_ROLES) or (row.team_id is not None and not row.team_id.strip()):
+        if (row.team_id is None and role not in TENANT_WIDE_ROLES) or (row.team_id is not None and not valid_id(row.team_id)):
             continue  # invalid stored grant (e.g. tenant-wide gestor): never widen scope
         memberships.append(Membership(role, row.team_id))
     return Principal(user.user_id, user.tenant_id, tuple(memberships))
