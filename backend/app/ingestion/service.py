@@ -94,12 +94,19 @@ def import_jira_fixture(session: Session, principal: Principal, team_id: str) ->
     _guard_team(principal, team_id)
     document = load_fixture("issues")
     issues = document["issues"]
+    source_key = "fixture:issues"
     known = set(session.scalars(select(JiraCheckpoint.issue_id).where(
-        JiraCheckpoint.tenant_id == principal.tenant_id, JiraCheckpoint.issue_id.in_([item["id"] for item in issues]),
+        JiraCheckpoint.tenant_id == principal.tenant_id,
+        JiraCheckpoint.team_id == team_id,
+        JiraCheckpoint.source_key == source_key,
+        JiraCheckpoint.issue_id.in_([item["id"] for item in issues]),
     )))
     if known and known >= {item["id"] for item in issues}:
         snapshot_id = session.scalar(select(JiraCheckpoint.snapshot_id).where(
-            JiraCheckpoint.tenant_id == principal.tenant_id, JiraCheckpoint.issue_id == next(iter(known)),
+            JiraCheckpoint.tenant_id == principal.tenant_id,
+            JiraCheckpoint.team_id == team_id,
+            JiraCheckpoint.source_key == source_key,
+            JiraCheckpoint.issue_id == next(iter(known)),
         ))
         return {"duplicated": True, "snapshot_id": snapshot_id, "import_id": None, "status": "complete"}
     fresh = [item for item in issues if item["id"] not in known]
@@ -111,7 +118,8 @@ def import_jira_fixture(session: Session, principal: Principal, team_id: str) ->
     row.preview = {**row.preview, "source": {**row.preview["source"], "kind": "jira"}}
     row = confirm_import(session, principal, row.import_id)
     for item in fresh:
-        session.add(JiraCheckpoint(tenant_id=principal.tenant_id, issue_id=item["id"], snapshot_id=row.snapshot_id))
+        session.add(JiraCheckpoint(tenant_id=principal.tenant_id, team_id=team_id, source_key=source_key,
+                                   issue_id=item["id"], snapshot_id=row.snapshot_id))
     session.flush()
     return {"duplicated": False, "snapshot_id": row.snapshot_id, "import_id": row.import_id, "status": row.status}
 
