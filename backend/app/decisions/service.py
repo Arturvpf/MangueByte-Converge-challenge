@@ -49,6 +49,7 @@ def decide(session: Session, principal: Principal, scenario_id: str, *, decision
         simulation = session.scalar(select(SimulationRow).where(SimulationRow.scenario_id == scenario_id))
         review = session.scalar(select(CriticRow).where(CriticRow.scenario_id == scenario_id))
         if (not row.payload.get("conclusive") or simulation is None or simulation.payload.get("status") not in {"optimal", "feasible"}
+                or (row.kind == "hire" and (row.payload.get("residual_hours") is None or row.payload.get("residual_hours") > 0))
                 or review is None or review.payload.get("verdict") == "blocked" or review.payload.get("hard_constraint_failed")):
             raise FlowError(409, "NOT_CONCLUSIVE", row.team_id)
     record = DecisionRecord.model_validate({

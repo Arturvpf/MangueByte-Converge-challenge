@@ -35,7 +35,10 @@ def create_app(settings: Settings | None = None, modules: tuple[DomainModule, ..
     async def validation_error(request: Request, exc: RequestValidationError):
         # FastAPI's default 422 echoes the submitted value ("input", "ctx"), which
         # would return passwords and personal data. Report only where and why.
-        errors = [{"type": e.get("type"), "loc": list(e.get("loc", ())), "msg": e.get("msg")} for e in exc.errors()]
+        # Do not reflect attacker-controlled field names or validator messages.
+        sources = {"body", "query", "path", "header", "cookie"}
+        errors = [{"type": "validation_error", "loc": [loc[0]] if loc and loc[0] in sources else [],
+                   "msg": "Invalid request"} for e in exc.errors() for loc in [e.get("loc", ())]]
         return JSONResponse(status_code=422, content={"detail": errors})
 
     @app.get("/health", tags=["health"])

@@ -53,12 +53,14 @@ def build_scenarios(*, tenant_id: str, team_id: str, snapshot_id: str, pools: di
             assumptions = [*assumptions, "backlog operacional igual ao residual de horas; não é simulação de fila"]
         conclusive = reliable and result is not None and result.status in {"optimal", "feasible"}
         if kind == "hire":
-            conclusive = conclusive and headcount is not None and weekly_max is not None
+            # A successful max-flow search is not evidence that every required skill is covered.
+            conclusive = (conclusive and headcount is not None and weekly_max is not None
+                          and residual == 0 and not gaps)
         scenario = _seal({
             "schema_version": "1.0", "scenario_id": scenario_id, "tenant_id": tenant_id, "team_id": team_id,
             "data_snapshot_id": snapshot_id, "kind": kind, "version": 1, "actions": actions,
             "assumptions": assumptions, "dependencies": list(dependencies), "gaps": gaps,
-            "preliminary_cost": None if result is None or result.cost is None else str(result.cost),
+            "preliminary_cost": None,  # No validated role/contract cost inputs in this pilot.
             "headcount_delta": headcount, "residual_hours": residual, "conclusive": conclusive,
             "content_hash": "0" * 64, "rule_versions": list(rule_versions),
         })
@@ -78,16 +80,26 @@ def build_scenarios(*, tenant_id: str, team_id: str, snapshot_id: str, pools: di
         ["a realocação usa o mesmo solver; não inventa hora nova"])
     headcount = None
     hired = base
-    hire_assumptions = ["contratação só entra como pool adicional no solver"]
+    hire_assumptions = ["contratação só entra como pool adicional no solver",
+                        "Custos de contratação ainda não foram fornecidos; custo permanece desconhecido."]
     if base is not None and weekly_max and forecast_calibrated:
         extra = sum(base.residual_hours.values())
         if extra:
-            skill = max(base.residual_hours, key=base.residual_hours.get)
             hired_pools = dict(pools)
-            hired_pools["pool-hire"] = extra
-            hired = solve(hired_pools, [*rows, Row(skill, "hire", ("pool-hire",), extra)], demand_hours)
+            hired_rows = list(rows)
+            # New capacity is explicitly skill-specific; it must not be attributed entirely
+            # to the largest gap while leaving other required skills uncovered.
+            for index, (skill, missing) in enumerate(sorted(base.residual_hours.items())):
+                if not missing:
+                    continue
+                pool_id = f"pool-hire-{index}"
+                hired_pools[pool_id] = missing
+                hired_rows.append(Row(skill, "hire", (pool_id,), missing))
+            hired = solve(hired_pools, hired_rows, demand_hours)
             headcount = (extra + weekly_max - 1) // weekly_max
-            hire_assumptions.append("headcount = teto inteiro do residual de horas dividido pela jornada semanal aprovada")
+            hire_assumptions.append("headcount agregado estimado sobre horas faltantes; composição de cargos não validada")
+            if len([x for x in base.residual_hours.values() if x > 0]) > 1:
+                capacity_gap.append("múltiplas competências: headcount agregado não prova composição contratável ou turnos viáveis")
         else:
             headcount = 0
     elif weekly_max is None:

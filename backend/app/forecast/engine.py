@@ -65,9 +65,12 @@ def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, time
             "period": Period(start=start, end_exclusive=start + timedelta(days=7), timezone=timezone),
             "point_estimate": float(estimate), "lower": None, "upper": None,
         }))
-    status = "calibrated" if mae is not None else "uncalibrated"
+    # One successful backtest window is not enough to claim a calibrated forecast.
+    status = "calibrated" if mae is not None and len(values) >= 12 and wape is not None else "uncalibrated"
     if mae is None:
         limitations.append("Sem janela de backtest após os 8 primeiros períodos; estimativa não calibrada.")
+    elif status != "calibrated":
+        limitations.append("Menos de quatro origens de backtest ou WAPE indefinido; não afirmar calibração.")
     backtest = None
     if mae is not None:
         backtest = Backtest.model_validate({
