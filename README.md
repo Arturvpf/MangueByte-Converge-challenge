@@ -2,9 +2,9 @@
 
 **Um agente de IA para investigar a demanda, entender a capacidade das equipes e construir alternativas de planejamento com evidências.**
 
-A **Alinia** é uma proposta de plataforma **AI-native de Workforce Intelligence** para operações de serviços: em vez de exigir que gestores cruzem planilhas, investiguem desvios e montem cenários manualmente, **um agente investigador-planejador coordena a jornada de ponta a ponta** — recebe sinais operacionais, consulta fontes autorizadas, formula hipóteses, solicita informações, aciona modelos e ferramentas de cálculo, compara intervenções e apresenta recomendações verificáveis para decisão humana.
+A **Alinia** é uma plataforma experimental **AI-native de Workforce Intelligence** para operações de serviços. Ela une uma **conversa em linguagem natural**, ferramentas de investigação conectadas a uma API de dados operacionais e uma base determinística para métricas, previsão e cenários. A visão do produto é que um agente investigador-planejador coordene, de ponta a ponta, a coleta, as análises e a preparação de alternativas — sempre com evidências e decisão humana.
 
-> **Nossa proposta:** um agente de IA que conduz a investigação de ponta a ponta, com acesso controlado a ferramentas de coleta, previsão, otimização e análise. Os cálculos e as verificações continuam independentes do modelo; a decisão permanece humana. **A versão disponível já permite demonstrar o frontend e a base de análise com dados sintéticos; a autonomia completa do agente é a próxima etapa.**
+> **O que já existe na `main`:** uma interface de conversa com a Alinia, um serviço de agente separado com **DeepSeek via Featherless** para o caso sintético da equipe Centro, ferramentas de leitura da API, um workflow de investigação determinístico e cinco categorias de cenários. **O LLM ainda não orquestra automaticamente o fluxo completo nem gera decisões de contratação.**
 
 ## O problema que queremos resolver
 
@@ -25,7 +25,7 @@ A Alinia foi concebida inicialmente para **operações de serviços que trabalha
 
 ## A solução: um agente investigador-planejador
 
-Na arquitetura final, o usuário não precisa executar manualmente cada cálculo ou escolher, por conta própria, a sequência das análises. **O agente conduz o processo** dentro de permissões, ferramentas e regras verificáveis.
+Na experiência pretendida, o usuário não precisa definir manualmente a ordem de cada análise. **O agente deverá conduzir a investigação**, acionando ferramentas autorizadas, enquanto os motores quantitativos e as validações permanecem responsáveis pelos resultados verificáveis. A versão atual já demonstra partes desse processo, mas ainda não oferece orquestração integral pelo LLM.
 
 | Etapa | Atuação planejada do agente de IA | Ferramentas e controles envolvidos |
 | --- | --- | --- |
@@ -56,7 +56,7 @@ O agente **propõe e interpreta**. Os motores determinísticos calculam disponib
 
 ## Arquitetura: IA para investigar, ferramentas para validar
 
-**Um único agente investigador-planejador** coordena a jornada. Ele decide quais informações buscar, quando aprofundar uma hipótese e quais análises solicitar, mas **não substitui os motores de cálculo, as regras de autorização ou os validadores independentes**. Essa separação permite aproveitar a flexibilidade do modelo de linguagem sem depender dele para resultados matemáticos ou decisões sensíveis.
+**A arquitetura-alvo utiliza um único agente investigador-planejador.** Ele deverá decidir quais informações buscar, quando aprofundar hipóteses e quais análises solicitar, sem substituir motores de cálculo, permissões ou validadores. **Na implementação atual**, o chat demonstra respostas com LLM sobre um caso sintético e usa roteamento por intenções e ferramentas fixas para consultas à API; essa separação ainda não representa a orquestração autônoma descrita no diagrama.
 
 ```mermaid
 flowchart TD
@@ -108,27 +108,32 @@ Se a previsão se abstiver, faltar uma regra ou a cobertura obrigatória falhar,
 
 ## O que já pode ser demonstrado
 
-Construímos primeiro a **base de dados, cálculo, auditoria e interface** que sustenta a experiência. A próxima evolução é permitir que o agente escolha e coordene essas ferramentas conforme cada investigação — sem transformar estimativas em fatos nem ultrapassar os limites de autonomia.
+A `main` possui duas experiências complementares, explicitamente identificadas na interface:
 
-A tela inicial da plataforma é a **conversa com a Alinia**, o agente: a pessoa pergunta em linguagem natural e a Alinia mostra os passos que consultou, o selo de origem de cada número, as perguntas ao gestor e a passagem para a decisão humana. Ao lado da conversa ficam cinco áreas navegáveis: **Visão geral**, **Investigação**, **Previsão**, **Cenários** e **Revisão do RH**. A landing page apresenta o conceito do produto; a plataforma permite autenticação, consulta de recortes persistidos e interação com as APIs de investigação e decisão.
+| Modo | Como funciona hoje | Limite |
+| --- | --- | --- |
+| **Conversa sintética com a Alinia** | A tela inicial usa o caso fictício **Unidade Centro**. Com o servidor do agente ativo, perguntas sobre situação, previsão e questões livres podem ser respondidas pelo **DeepSeek via Featherless**, utilizando fatos sintéticos e histórico gerado de **60 meses**. | O LLM consulta um caso sintético fixo; não decide contratações nem executa CP-SAT a partir do chat. Sem agente ou credencial, existe resposta demonstrativa local. |
+| **Investigação conectada ao backend** | Após autenticação, a interface usa ferramentas com encaminhamento por intenção para consultar **snapshots, métricas, ledger de demanda, investigações, forecast, políticas e cenários** da API FastAPI. Exibe etapas e origem dos dados; pode registrar respostas do gestor como relatos. | A seleção das ferramentas é **determinística**, não feita pelo LLM. O serviço DeepSeek demonstrativo não lê automaticamente a equipe autenticada. |
 
-A interface distingue dados ilustrativos de dados recebidos da API. Na revisão, cenários sem validação independente **não podem ser aprovados**. Rejeitar e adiar são decisões registráveis pelo perfil autorizado.
+A aplicação web inclui **Conversa com a Alinia**, **Visão geral**, **Investigação**, **Previsão**, **Cenários** e **Revisão do RH**. A landing apresenta o problema e a proposta.
 
-| Componente | Situação atual |
+| Componente na `main` | Situação verificada no código |
 | --- | --- |
-| Novo frontend com Visão geral, Investigação, Previsão, Cenários e Revisão do RH | **Implementado e conectado à API** |
-| Conversa com a Alinia, tela inicial da plataforma | **Implementada e conectada à API** por ferramentas fixas; o modelo de linguagem ainda não escolhe as ferramentas |
-| Autenticação, escopo por empresa/equipe, snapshots, métricas e auditoria | **Implementado para demonstração** |
-| CSV e fixture de Jira com dados sintéticos | **Implementado**; coleta ativa pelo agente e Jira real ainda pendentes |
-| Investigação com checkpoints, perguntas e retomada | **Implementada de forma determinística**; não é ainda a orquestração autônoma do LLM |
-| Previsão com mediana móvel, backtesting e abstenção | **Baseline implementado**; faltam previsões aplicadas por skill e turno |
-| Cenários A–E | **Estruturados na API**; B/C/D ainda não são simulações quantitativas completas |
-| Otimizador CP-SAT e validador independente | **Módulos existentes e testados**, ainda não conectados ao workflow principal |
-| **Agente único conduzindo coleta → investigação → planejamento → simulação** | **Próxima etapa: integração ao fluxo principal** |
-| Sincronização operacional com Jira real | **Pendente** |
-| Aprovação definitiva e requisição operacional | **Bloqueadas** até validação independente e revisão autorizada |
+| Interface de chat e roteamento de intenções | **Implementados** em `src/app/agent.js` |
+| Proxy `/agent/chat` e `/agent/health` no servidor Node de desenvolvimento | **Implementado** em `scripts/serve.mjs`; não existe no servidor FastAPI |
+| Serviço do agente, canal HTTP e streaming de respostas | **Implementados** em `alinia-investigator/` |
+| Modelo DeepSeek via Featherless | **Integrado ao chat sintético**, condicionado a chave de API e disponibilidade do provedor |
+| Histórico sintético Centro (60 meses), resumo de capacidade e filtros de privacidade | **Disponíveis** no projeto do agente |
+| Autenticação, controle de acesso, importação CSV, fixture Jira, snapshots e métricas | **Implementados** no backend |
+| Workflow de investigação com perguntas, checkpoints, revisão e retomada | **Implementado de forma determinística** |
+| Forecast por mediana móvel, backtesting e abstenção | **Baseline implementado**; P10/P50/P90 e planejamento futuro por skill/turno ainda não estão na `main` |
+| Cinco tipos de cenário A–E | **Disponíveis na API**; intervenções B/C/D não estão simuladas quantitativamente de ponta a ponta |
+| CP-SAT e validador independente | **Módulos existentes**, ainda não conectados ao workflow principal |
+| Jira real, simulação de filas e aprovação operacional completa | **Pendentes** |
 
-Um **protótipo separado do investigador de IA** está disponível na branch [`agent/alinia-investigator`](https://github.com/Arturvpf/MangueByte-Converge-challenge/tree/agent/alinia-investigator), explorando consultas a dados, recuperação de regras e filtros de privacidade. Ele ainda não coordena o fluxo principal de ponta a ponta; por isso, seus resultados não são apresentados como uma integração concluída.
+**Segurança:** o agente de demonstração não aprova, rejeita nem adia decisões no lugar do RH. A API preserva controle de acesso, verificação de versão e bloqueios para aprovação de cenários sem evidência independente. Dados de exemplo não são medições de uma empresa real.
+
+**Observação:** o diretório [`alinia-investigator/`](alinia-investigator/) **já está na `main`**. Não é necessário mudar para outra branch para executá-lo. Os resultados da IA e do workflow continuam sendo componentes distintos que ainda precisam de integração operacional completa.
 
 ### Como vamos medir o valor da IA
 
@@ -156,8 +161,9 @@ Com evidências suficientes, o agente aciona ferramentas para projetar demanda e
 | API e contratos | Python 3.12, FastAPI, Pydantic |
 | Dados e auditoria | SQLAlchemy, Alembic, SQLite local e PostgreSQL |
 | Ferramentas de planejamento | Motor de métricas, baseline de previsão e otimizador OR-Tools CP-SAT (módulo separado) |
-| Orquestração de IA | **LangGraph como direção técnica do projeto**; fluxo produtivo do agente ainda não integrado |
-| Qualidade | Pytest, regressões de frontend/API, GitHub Actions |
+| Serviço do agente | **TypeScript, Agent SDK, DeepSeek/Featherless, LangChain** para recuperação de regras e dados sintéticos |
+| Orquestração e workflow | Workflow Python persistido; agente TypeScript separado, com ferramentas de leitura; LangGraph experimental no backend | 
+| Qualidade | Pytest, testes do agente (`npm test`), verificação TypeScript, CI de backend/frontend |
 
 ---
 
@@ -165,7 +171,7 @@ Com evidências suficientes, o agente aciona ferramentas para projetar demanda e
 
 ### Pré-requisitos
 
-**Git** e **Python 3.12** são suficientes para iniciar a plataforma completa com SQLite. **Node.js 22** é necessário somente para executar ou gerar o build do site estático. Todos os comandos a seguir partem da **raiz do repositório**.
+Para o **backend e o painel conectado**, use **Git e Python 3.12**. Para o **chat com o modelo DeepSeek e o proxy local**, utilize também **Node.js 22+ e npm**. A conexão ao provedor de LLM depende de uma chave Featherless; a demonstração sintética oferece respostas locais de contingência quando ela não estiver disponível. Os comandos abaixo partem da **raiz do repositório**, salvo quando indicado.
 
 ### 1. Clonar o projeto
 
@@ -226,7 +232,7 @@ A criação do usuário solicita uma senha no terminal. O perfil **RH** pode inv
 
 Os comandos de criação só precisam ser executados **uma vez em um banco novo**.
 
-### 5. Iniciar a aplicação integrada
+### 5. Iniciar o backend e acessar as análises
 
 ```bash
 python -m uvicorn backend.app.main:create_app --factory --reload
@@ -239,7 +245,45 @@ python -m uvicorn backend.app.main:create_app --factory --reload
 | [`/docs`](http://127.0.0.1:8000/docs) | Swagger/OpenAPI |
 | [`/health`](http://127.0.0.1:8000/health) | Verificação básica do processo |
 
-Todos usam `http://127.0.0.1:8000`. O FastAPI serve os arquivos do frontend e as APIs **na mesma origem**. A aplicação não exige um servidor Node separado para autenticar e consultar dados.
+Todos usam `http://127.0.0.1:8000`. O FastAPI serve o frontend e as rotas **`/api`** na mesma origem. **Esse modo não fornece o proxy `/agent/*` para o DeepSeek**: a conversa da equipe autenticada usa as ferramentas determinísticas locais. O chat LLM do exemplo Centro é executado pelo modo Node da etapa 5.1.
+
+### 5.1. Executar a conversa com DeepSeek (caso sintético Centro)
+
+A `main` já contém o serviço `alinia-investigator/`, a tela `src/app/agent.js` e o proxy local. Esse modo demonstra respostas em linguagem natural sobre a **equipe Centro sintética**; não usa os snapshots da sua sessão FastAPI.
+
+Em um **segundo terminal**, instale as dependências do agente:
+
+```bash
+cd alinia-investigator
+npm ci
+npm run index
+cd ..
+```
+
+Configure `FEATHERLESS_API_KEY` no **ambiente do processo** que iniciará o agente (consulte [`alinia-investigator/.env.example`](alinia-investigator/.env.example)). Nunca coloque essa chave no JavaScript do frontend ou no Git. `FEATHERLESS_MODEL` é opcional e possui um valor padrão no código. Se não houver credencial, o serviço responde com fatos locais do caso sintético, **sem geração de texto pelo modelo**.
+
+No **segundo terminal**, a partir da raiz:
+
+```bash
+npm run agent
+```
+
+Em um **terceiro terminal**, também na raiz:
+
+```bash
+npm run dev
+```
+
+Abra **http://127.0.0.1:5173/app/**. Nesse modo, o frontend envia `POST /agent/chat` ao servidor Node, que encaminha ao serviço do agente em `http://127.0.0.1:3141` (ou `ALINIA_AGENT_URL`).
+
+**Diferença importante entre as portas:**
+
+| URL | Funcionalidade |
+| --- | --- |
+| `http://127.0.0.1:5173/app/` | Demonstra o **chat LLM sintético** via proxy `/agent/*`; não possui proxy para as APIs FastAPI `/api` |
+| `http://127.0.0.1:8000/prototype/app/` | Demonstra o **painel autenticado e as investigações reais do backend**; não possui proxy `/agent/*` |
+
+Para perguntas sobre **seus próprios snapshots**, utilize a porta **8000**; para experimentar o **modelo DeepSeek com o caso sintético Centro**, utilize a porta **5173** com os dois processos Node ligados. **Essas duas experiências ainda não estão reunidas em uma única origem HTTP.**
 
 ### 6. Carregar dados sintéticos para a demonstração
 
@@ -259,9 +303,9 @@ A plataforma lista snapshots existentes, mas **a importação de CSV ainda não 
 
 **Alternativa:** usar `POST /api/imports` com um CSV agregado (como texto no campo JSON `content`) e depois `POST /api/imports/{import_id}/confirm`. O formato e os campos obrigatórios estão descritos em [`backend/CONTRATOS.md`](backend/CONTRATOS.md) e em `backend/app/ingestion/csvparse.py`. Nenhum dado pessoal deve ser usado na demonstração.
 
-### 7. Percorrer o fluxo no frontend
+### 7. Percorrer o fluxo conectado ao backend
 
-Com o snapshot carregado, a demonstração sugerida é: **Visão geral → Abrir investigação → Responder às perguntas → Previsão → Comparar A–E → Revisão do RH**. O mesmo caminho pode ser feito pela **Conversa com a Alinia**, perguntando, por exemplo, "Por que a equipe não dá conta da demanda?" e respondendo às perguntas do gestor ali mesmo.
+Na porta **8000**, com o snapshot carregado, percorra **Conversa com a Alinia → Visão geral → Investigação → Previsão → Cenários A–E → Revisão do RH**. A conversa usa ferramentas de leitura da API para apresentar as fontes e encaminhar perguntas ao gestor. **Não é o mesmo chat DeepSeek que responde no modo sintético da porta 5173.**
 
 **Nesta entrega, a execução demonstrada é determinística**: a investigação pode exigir mais de uma rodada de respostas, mas o agente LLM ainda não escolhe nem executa as ferramentas do fluxo principal. Relatos do gestor continuam **não verificados** e não alteram automaticamente a capacidade calculada. Com histórico insuficiente, a previsão se abstém e os cenários ficam inconclusivos. O bloqueio de aprovação é **comportamento esperado**, não falha de instalação.
 
@@ -274,21 +318,27 @@ python -m pytest backend/tests -q
 python -m alembic -c backend/alembic.ini upgrade head
 ```
 
-**Frontend estático** (Node.js 22):
+**Frontend estático e agente** (Node.js 22+):
 
 ```bash
 node --check src/app/app.js
+node --check src/app/agent.js
 npm run build
+cd alinia-investigator
+npm ci
+npm run check
+npm test
+cd ..
 npm run dev
 ```
 
-`npm run dev` serve apenas os arquivos estáticos em `http://127.0.0.1:5173`. **Para testar a integração com as rotas `/api`, use a plataforma via FastAPI na porta `8000`**, como mostrado acima.
+`npm run dev` serve os arquivos estáticos e repassa apenas **`/agent/*`** para o agente na porta 3141. Não repassa **`/api/*`** ao FastAPI. Para investigar um snapshot autenticado, use **`/prototype/app/` na porta 8000**.
 
-O CI executa testes de backend, regressões da integração HTTP/DOM, verificação de JavaScript, build e migração PostgreSQL a partir de um esquema legado. Veja o [workflow de integração](.github/workflows/p1-p2-integration.yml).
+O workflow atual de CI cobre backend, contratos, migrações, sintaxe do `src/app/app.js` e build da página. Os testes TypeScript do agente podem ser executados separadamente com `npm run check` e `npm test`; não assuma que o CI atual os valida automaticamente. Veja o [workflow de integração](.github/workflows/p1-p2-integration.yml).
 
 ## Evolução da plataforma
 
-O próximo marco é ligar o **agente investigador-planejador** ao fluxo já persistido. Ele poderá partir de um alerta de demanda, buscar dados autorizados, levantar hipóteses, pedir esclarecimentos, acionar previsão e otimização, reconstruir alternativas inviáveis e encaminhar ao RH uma análise com evidências, custos, limites e incertezas. Os validadores independentes continuarão determinando quais propostas podem avançar.
+Já existe um chat de exemplo que consulta fatos sintéticos e pode gerar respostas com DeepSeek. O próximo marco é **ligar esse agente às investigações autenticadas do backend**, com um contexto por equipe e execução, ferramentas tipadas para previsão e otimização, seleção de ferramentas pelo próprio agente e guardrails persistidos. O modelo deverá investigar, pedir esclarecimentos e apresentar alternativas com evidências; validadores independentes continuarão determinando quais propostas podem avançar.
 
 Antes de um piloto empresarial, ainda são necessários: sincronização Jira real somente leitura, simulações quantitativas A–D, previsão por skill/turno, validação de política por categoria/contrato, proteção de dados e testes de segurança do agente (inclusive prompt injection e saídas de ferramentas), avaliações de viés e experimento de ganho incremental do LLM.
 
@@ -299,8 +349,9 @@ Os resultados ilustrativos não são indicadores operacionais reais. Antes de ca
 ## Organização do repositório
 
 ```text
-src/                      Landing page e aplicação web
-scripts/                  Servidor estático e build do frontend
+src/                      Landing page, painel e conversa com a Alinia
+alinia-investigator/      Agente TypeScript, canal HTTP, LLM, regras e dados sintéticos
+scripts/                  Servidor estático, proxy do agente e build
 backend/app/              API e módulos de domínio
 backend/migrations/       Evolução de esquema com Alembic
 backend/fixtures/         Entradas sintéticas para demonstração
@@ -311,7 +362,8 @@ docs/                     Arquitetura, integração, requisitos e decisões téc
 
 ### Documentação técnica
 
-- [Integração entre frontend e backend](docs/INTEGRACAO_FRONTEND_BACKEND.md)
+- [Integração entre frontend, backend e chat](docs/INTEGRACAO_FRONTEND_BACKEND.md)
+- [Código e ferramentas do agente](alinia-investigator/)
 - [Backend: arquitetura, autenticação, políticas e contratos](backend/README.md)
 - [Contratos de dados e endpoints](backend/CONTRATOS.md)
 - [Conceito e identidade visual](docs/ABORDAGEM.md)
@@ -320,4 +372,4 @@ docs/                     Arquitetura, integração, requisitos e decisões téc
 
 **Alinia — um agente para investigar, reunir evidências e construir alternativas; pessoas continuam responsáveis pelas decisões.**
 
-*A versão disponível reúne o frontend e a fundação de análise com dados sintéticos. A condução autônoma pelo agente de IA permanece como evolução arquitetural; decisões administrativas exigem validação independente e aprovação humana.*
+*A `main` já reúne interface de conversa, chat sintético com DeepSeek/Featherless, ferramentas de leitura do backend e uma base determinística de análise. A orquestração autônoma de ponta a ponta ainda está em desenvolvimento; decisões administrativas exigem validação independente e aprovação humana.*
