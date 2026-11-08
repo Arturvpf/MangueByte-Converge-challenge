@@ -1,0 +1,120 @@
+{
+  "synthetic": true,
+  "request": {
+    "schema_version": "1.0",
+    "tenant_id": "tenant-demo-a",
+    "team_id": "team-aurora",
+    "run_id": "run-aurora",
+    "data_snapshot_id": "snap-aurora-1",
+    "policy_version_ids": [],
+    "requested_at": "2026-11-07T12:00:00-03:00",
+    "idempotency_key": "key-aurora"
+  },
+  "capacity": {
+    "schema_version": "1.0",
+    "tenant_id": "tenant-demo-a",
+    "team_id": "team-aurora",
+    "data_snapshot_id": "snap-aurora-1",
+    "period": {
+      "start": "2026-11-02",
+      "end_exclusive": "2026-11-09",
+      "timezone": "America/Fortaleza"
+    },
+    "hours_unit": "hours_per_period",
+    "rows": [
+      {
+        "skill_id": "skill-support",
+        "shift_id": "shift-day",
+        "eligible_hours": 320.0,
+        "availability_fraction": 0.9,
+        "cost_min": null,
+        "cost_max": null,
+        "currency": null
+      }
+    ],
+    "limitations": [
+      "Horas por skill podem se sobrepor; não somar sem deduplicação."
+    ]
+  },
+  "investigation_response": {
+    "schema_version": "1.0",
+    "tenant_id": "tenant-demo-a",
+    "team_id": "team-aurora",
+    "status": "ok",
+    "result": {
+      "schema_version": "1.0",
+      "tenant_id": "tenant-demo-a",
+      "team_id": "team-aurora",
+      "data_snapshot_id": "snap-aurora-1",
+      "hypotheses": [
+        {
+          "hypothesis_id": "hyp-1",
+          "statement": "Demanda varia no período",
+          "critical": true,
+          "verification": "unverified",
+          "evidence_ids": [],
+          "confidence": null
+        }
+      ],
+      "evidence_refs": [
+        {
+          "evidence_id": "evidence-aurora",
+          "tenant_id": "tenant-demo-a",
+          "team_id": "team-aurora",
+          "data_snapshot_id": "snap-aurora-1",
+          "description": "Contagem agregada sintética de demanda"
+        }
+      ],
+      "questions": [
+        {
+          "question_id": "q-1",
+          "text": "Qual a disponibilidade efetiva agregada?",
+          "status": "pending",
+          "answer": null
+        }
+      ],
+      "limitations": [
+        "Exemplo sintético; não representa pessoas reais."
+      ],
+      "confidence": null
+    },
+    "error": null,
+    "evidence_refs": [
+      {
+        "evidence_id": "evidence-aurora",
+        "tenant_id": "tenant-demo-a",
+        "team_id": "team-aurora",
+        "data_snapshot_id": "snap-aurora-1",
+        "description": "Contagem agregada sintética de demanda"
+      }
+    ],
+    "data_version": "snap-aurora-1",
+    "model_version": null,
+    "rule_versions": [],
+    "generated_at": "2026-11-07T12:05:00-03:00",
+    "limitations": [],
+    "trace_id": "trace-aurora"
+  },
+  "forecast": {
+    "schema_version": "1.0",
+    "tenant_id": "tenant-demo-a",
+    "team_id": "team-aurora",
+    "data_snapshot_id": "snap-aurora-1",
+    "model_version": "demo-1",
+    "method": "abstenção",
+    "status": "abstained",
+    "unit": "cases_per_period",
+    "history_end_exclusive": "2026-11-09",
+    "horizon": {
+      "start": "2026-11-09",
+      "end_exclusive": "2026-12-07",
+      "timezone": "America/Fortaleza"
+    },
+    "points": [],
+    "interval_description": null,
+    "backtest": null,
+    "limitations": [
+      "Exemplo sintético; não calibrado para operação."
+    ]
+  }
+}

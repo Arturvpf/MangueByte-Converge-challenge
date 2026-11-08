@@ -1,0 +1,126 @@
+{
+  "synthetic": true,
+  "request": {
+    "schema_version": "1.0",
+    "tenant_id": "tenant-demo-b",
+    "team_id": "team-mar",
+    "run_id": "run-mar",
+    "data_snapshot_id": "snap-mar-1",
+    "policy_version_ids": [],
+    "requested_at": "2026-11-07T12:00:00-03:00",
+    "idempotency_key": "key-mar"
+  },
+  "capacity": {
+    "schema_version": "1.0",
+    "tenant_id": "tenant-demo-b",
+    "team_id": "team-mar",
+    "data_snapshot_id": "snap-mar-1",
+    "period": {
+      "start": "2026-11-02",
+      "end_exclusive": "2026-11-09",
+      "timezone": "America/Fortaleza"
+    },
+    "hours_unit": "hours_per_period",
+    "rows": [
+      {
+        "skill_id": "skill-support",
+        "shift_id": "shift-day",
+        "eligible_hours": 280.0,
+        "availability_fraction": null,
+        "cost_min": null,
+        "cost_max": null,
+        "currency": null
+      }
+    ],
+    "limitations": [
+      "Horas por skill podem se sobrepor; não somar sem deduplicação."
+    ]
+  },
+  "investigation_response": {
+    "schema_version": "1.0",
+    "tenant_id": "tenant-demo-b",
+    "team_id": "team-mar",
+    "status": "ok",
+    "result": {
+      "schema_version": "1.0",
+      "tenant_id": "tenant-demo-b",
+      "team_id": "team-mar",
+      "data_snapshot_id": "snap-mar-1",
+      "hypotheses": [
+        {
+          "hypothesis_id": "hyp-1",
+          "statement": "Demanda varia no período",
+          "critical": true,
+          "verification": "supported",
+          "evidence_ids": [
+            "evidence-mar"
+          ],
+          "confidence": 0.7
+        }
+      ],
+      "evidence_refs": [
+        {
+          "evidence_id": "evidence-mar",
+          "tenant_id": "tenant-demo-b",
+          "team_id": "team-mar",
+          "data_snapshot_id": "snap-mar-1",
+          "description": "Contagem agregada sintética de demanda"
+        }
+      ],
+      "questions": [],
+      "limitations": [
+        "Exemplo sintético; não representa pessoas reais."
+      ],
+      "confidence": 0.7
+    },
+    "error": null,
+    "evidence_refs": [
+      {
+        "evidence_id": "evidence-mar",
+        "tenant_id": "tenant-demo-b",
+        "team_id": "team-mar",
+        "data_snapshot_id": "snap-mar-1",
+        "description": "Contagem agregada sintética de demanda"
+      }
+    ],
+    "data_version": "snap-mar-1",
+    "model_version": null,
+    "rule_versions": [],
+    "generated_at": "2026-11-07T12:05:00-03:00",
+    "limitations": [],
+    "trace_id": "trace-mar"
+  },
+  "forecast": {
+    "schema_version": "1.0",
+    "tenant_id": "tenant-demo-b",
+    "team_id": "team-mar",
+    "data_snapshot_id": "snap-mar-1",
+    "model_version": "demo-1",
+    "method": "mediana móvel demonstrativa",
+    "status": "uncalibrated",
+    "unit": "cases_per_period",
+    "history_end_exclusive": "2026-11-09",
+    "horizon": {
+      "start": "2026-11-09",
+      "end_exclusive": "2026-12-07",
+      "timezone": "America/Fortaleza"
+    },
+    "points": [
+      {
+        "period": {
+          "start": "2026-11-09",
+          "end_exclusive": "2026-12-07",
+          "timezone": "America/Fortaleza"
+        },
+        "point_estimate": 400.0,
+        "lower": null,
+        "upper": null
+      }
+    ],
+    "interval_description": null,
+    "backtest": null,
+    "limitations": [
+      "Exemplo sintético; não calibrado para operação."
+    ]
+  }
+}
