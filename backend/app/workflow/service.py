@@ -136,7 +136,11 @@ def _policy(session, run, on_date):
                 weekly = int(hours)
     versions = [item.version_id for item in resolution.items if item.version_id]
     dependencies = [f"{item.rule_key}:{item.reason}" for item in resolution.items if item.status != "resolved"]
-    return resolution.complete, weekly, versions, dependencies
+    # A general rule does not prove applicability to unknown employee
+    # categories, contracts or collective agreements. CSV snapshots currently
+    # do not include an authorized legal-context attestation. Fail closed.
+    dependencies.append("LEGAL_CONTEXT_REQUIRED: categoria, contrato e instrumento coletivo validados pelo RH/jurídico")
+    return False, weekly, versions, dependencies
 
 
 def _pending(report: dict | None) -> bool:
@@ -227,13 +231,23 @@ def _investigate(session, principal, run: InvestigationRun):
 
 
 def _plan(session, principal, run: InvestigationRun):
-    if session.scalar(select(ScenarioRow.scenario_id).where(ScenarioRow.run_id == run.run_id)) is not None:
+    if session.scalar(select(ScenarioRow.scenario_id).where(
+        ScenarioRow.run_id == run.run_id, ScenarioRow.version == run.cycle_count + 1,
+    )) is not None:
         return
     snapshot = _snapshot(session, principal, run.team_id, run.snapshot_id)
     _observations, aggregates = _history(session, run)
     parsed = _inputs(snapshot, aggregates)
     pools, rows, demand = (None, [], None) if parsed is None else parsed
     complete, weekly, versions, dependencies = _policy(session, run, snapshot.capacity.period.start)
+    # Answers are manager reports, not verified measurements. Carry only the
+    # question IDs as unverified dependencies; never inject arbitrary text into
+    # a solver, legal check or scenario cost estimate.
+    dependencies.extend(
+        "MANAGER_REPORT_UNVERIFIED:" + question["question_id"]
+        for question in (run.report or {}).get("questions", [])
+        if question.get("status") == "answered"
+    )
     forecast = ForecastResult.model_validate_json(json.dumps(run.forecast))
     # Re-check every operational date in the forecast window. An approved rule
     # valid at snapshot time is not automatically valid for future schedules.
@@ -252,6 +266,8 @@ def _plan(session, principal, run: InvestigationRun):
         tenant_id=run.tenant_id, team_id=run.team_id, snapshot_id=run.snapshot_id,
         pools=pools or {}, rows=rows, demand_hours=demand, weekly_max=weekly, policy_complete=complete,
         forecast_calibrated=forecast.status == "calibrated", dependencies=dependencies, rule_versions=versions,
+        forecast_applied=False,  # Explicit fail-closed until skill/shift forecast drives the solver.
+        scenario_version=run.cycle_count + 1,
     )
     for scenario, simulation in pairs:
         session.add(ScenarioRow(
@@ -271,7 +287,9 @@ def _review(session, principal, run: InvestigationRun):
     complete, _weekly, _versions, _dependencies = _policy(session, run, snapshot.capacity.period.start)
     forecast_status = run.forecast["status"]
     requested = False
-    scenarios = list(session.scalars(select(ScenarioRow).where(ScenarioRow.run_id == run.run_id)))
+    scenarios = list(session.scalars(select(ScenarioRow).where(
+        ScenarioRow.run_id == run.run_id, ScenarioRow.version == run.cycle_count + 1,
+    )))
     for scenario_row in scenarios:
         scenario = ScenarioCandidate.model_validate_json(json.dumps(scenario_row.payload))
         simulation_row = session.scalar(select(SimulationRow).where(SimulationRow.scenario_id == scenario_row.scenario_id))

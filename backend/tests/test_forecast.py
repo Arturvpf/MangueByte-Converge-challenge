@@ -50,7 +50,7 @@ def test_multiple_rolling_origins_required_before_calibration():
 def test_long_stable_weekly_history_has_tested_empirical_interval():
     result = forecast_series(
         tenant_id="tenant-demo-a", team_id="team-aurora", data_snapshot_id="snap-long",
-        timezone="America/Fortaleza", observations=weeks([10] * 28),
+        timezone="America/Fortaleza", observations=weeks([10] * 40),
     )
     assert result.status == "calibrated"
     assert result.interval_description is not None
@@ -65,3 +65,21 @@ def test_gap_in_weekly_history_abstains_even_with_long_series():
         timezone="America/Fortaleza", observations=rows[:12] + shifted,
     )
     assert result.status == "abstained"
+
+
+def test_28_weeks_cannot_validate_four_week_simultaneous_interval():
+    result = forecast_series(
+        tenant_id="tenant-demo-a", team_id="team-aurora", data_snapshot_id="short-horizon",
+        timezone="America/Fortaleza", observations=weeks([10] * 28),
+    )
+    assert result.status == "uncalibrated"
+    assert result.interval_description is None
+
+
+def test_drift_in_holdout_blocks_empirical_calibration():
+    result = forecast_series(
+        tenant_id="tenant-demo-a", team_id="team-aurora", data_snapshot_id="drift",
+        timezone="America/Fortaleza", observations=weeks([10] * 31 + [40] * 9),
+    )
+    assert result.status == "uncalibrated"
+    assert result.interval_description is None

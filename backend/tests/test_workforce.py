@@ -95,9 +95,29 @@ def test_jira_fixture_dedup_and_live_unavailable():
     class SettingsLike:
         jira_base_url = "https://example.invalid"
         jira_api_token = "synthetic-token"
+        jira_project_key = "DEMO"
 
     assert [item["id"] for item in fetch_issues(SettingsLike(), transport)] == ["DEMO-1", "DEMO-2"]
     assert calls == ["GET", "GET"]
+    def inspect_transport(method, url, params, headers):
+        assert params["jql"].startswith('project = "DEMO"')
+        assert "summary" not in params["fields"]
+        assert "created" in params["fields"]
+        assert method == "GET"
+        return {"total": 0, "issues": []}
+
+    assert fetch_issues(SettingsLike(), inspect_transport) == []
+
+    class UnscopedSettings:
+        jira_base_url = "https://example.invalid"
+        jira_api_token = "synthetic-token"
+        jira_project_key = None
+
+    try:
+        fetch_issues(UnscopedSettings(), inspect_transport)
+        raise AssertionError("unscoped Jira query should be blocked")
+    except IntegrationUnavailable as exc:
+        assert "JIRA_PROJECT_KEY" in str(exc)
     try:
         fetch_issues(Settings(database_url="sqlite://"))
         raise AssertionError("expected unavailable")
@@ -209,6 +229,15 @@ def test_flow_resume_decisions_and_isolation(tmp_path):
         resumed = client.post(f"/api/investigations/{opened.json()['run_id']}/advance", headers=gestor)
         assert resumed.json()["state"] == "WAITING_INPUT"
         assert any(item["question_id"].startswith("q-revision") for item in resumed.json()["report"]["questions"])
+        previous = client.get(
+            f"/api/investigations/{opened.json()['run_id']}/scenarios", headers=gestor,
+        ).json()["items"]
+        assert len(previous) == 0  # The current review cycle has not produced a revised plan yet.
+        with Session(app.state.engine) as session:
+            old_ids = set(session.scalars(select(ScenarioRow.scenario_id).where(
+                ScenarioRow.run_id == opened.json()["run_id"], ScenarioRow.version == 1,
+            )))
+            assert len(old_ids) == 5
         for question in resumed.json()["report"]["questions"]:
             if question["status"] == "pending":
                 client.post(f"/api/investigations/{opened.json()['run_id']}/answers", json={
@@ -217,10 +246,28 @@ def test_flow_resume_decisions_and_isolation(tmp_path):
                 }, headers=gestor)
         ready = client.post(f"/api/investigations/{opened.json()['run_id']}/advance", headers=gestor)
         assert ready.json()["state"] == "AWAITING_HUMAN", ready.text
+        with Session(app.state.engine) as session:
+            versioned = list(session.scalars(select(ScenarioRow).where(
+                ScenarioRow.run_id == opened.json()["run_id"],
+            )))
+            assert len(versioned) == 10
+            assert {item.version for item in versioned} == {1, 2}
+        old_hire = next(item for item in versioned if item.kind == "hire" and item.version == 1)
+        stale = client.post(f"/api/scenarios/{old_hire.scenario_id}/decisions", json={
+            "decision": "approve", "reason": "old plan", "expected_hash": old_hire.content_hash,
+            "idempotency_key": "stale-v1",
+        }, headers=rh)
+        assert stale.status_code == 409
         scenarios = client.get(f"/api/investigations/{opened.json()['run_id']}/scenarios", headers=gestor).json()["items"]
         assert {item["kind"] for item in scenarios} == {"hire", "temporary", "reallocate", "redesign", "do_nothing"}
+        assert all(
+            any(dep.startswith("MANAGER_REPORT_UNVERIFIED:") for dep in item["dependencies"])
+            for item in scenarios
+        )
         hire = next(item for item in scenarios if item["kind"] == "hire")
         assert hire["conclusive"] is False and hire["headcount_delta"] is None
+        assert any("LEGAL_CONTEXT_REQUIRED" in dep for dep in hire["dependencies"])
+        assert any("FORECAST_NOT_APPLIED" in gap for gap in hire["gaps"])
         denied = client.post(f"/api/scenarios/{hire['scenario_id']}/decisions", json={
             "decision": "approve", "reason": "seguir", "expected_hash": hire["content_hash"], "idempotency_key": "g-1",
         }, headers=gestor)

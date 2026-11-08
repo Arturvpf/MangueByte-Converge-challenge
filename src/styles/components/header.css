@@ -13,7 +13,7 @@
   --rail-a: var(--color-gray-200);
   --rail-b: var(--color-white);
   --rail-offset: calc(var(--container) / 2 + 1px);
-  background-color: rgba(250, 250, 250, 0.82);
+  background-color: rgba(255, 255, 255, 0.82);
   background-image:
     linear-gradient(90deg, var(--rail-a) 0 1px, var(--rail-b) 1px 2px),
     linear-gradient(90deg, var(--rail-b) 0 1px, var(--rail-a) 1px 2px);
@@ -125,7 +125,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 24px var(--gutter);
-  background: var(--color-gray-50);
+  background: var(--color-white);
   opacity: 0;
   visibility: hidden;
   transform: translateY(-8px);

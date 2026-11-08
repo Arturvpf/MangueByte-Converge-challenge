@@ -151,7 +151,10 @@ class RequisitionDraftRow(Base):
 
 
 class JiraCheckpoint(Base):
+    """Deduplication is scoped to the exact authorized team and Jira source."""
     __tablename__ = "jira_checkpoints"
     tenant_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    team_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source_key: Mapped[str] = mapped_column(String(200), primary_key=True)
     issue_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     snapshot_id: Mapped[str] = mapped_column(String(128), nullable=False)

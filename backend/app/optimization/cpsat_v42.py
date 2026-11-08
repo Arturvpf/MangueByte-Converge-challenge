@@ -160,10 +160,11 @@ def solve_capacity(
                       max((pool.caps_by_interval.get(k, 0) for k in group), default=0))
 
     for option in options:
-        used = [v for (oid, _), v in hired.items() if oid == option.role_id]
+        # HiringOption.hours_per_person is capacity PER time window, not across
+        # the whole multi-week horizon. Counting it once globally incorrectly
+        # makes a person unavailable after their first week.
         effective = option.hours_per_person * option.ramp_percent // 100
-        model.add(sum(used) <= hires[option.role_id] * effective)
-        # No cross-skill double counting even within one interval.
+        # No cross-skill double counting within any shared time window.
         for group in same_window.values():
             model.add(sum(hired[(option.role_id, k)] for k in group
                           if (option.role_id, k) in hired) <=

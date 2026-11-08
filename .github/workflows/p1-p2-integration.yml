@@ -3,8 +3,9 @@ on:
   push:
     branches:
       - 'audit/**'
+      - 'fix/**'
   pull_request:
-    branches: [main]
+    branches: [main, 'audit/**']
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -24,6 +25,55 @@ jobs:
         env:
           DATABASE_URL: sqlite:///./ci_alinia.db
         run: python -m alembic -c backend/alembic.ini upgrade head
+  postgresql-migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: alinia_ci
+          POSTGRES_USER: alinia
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U alinia -d alinia_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://alinia:ci-only-password@localhost:5432/alinia_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencies
+        run: python -m pip install -r backend/requirements.lock.txt
+      - name: Upgrade legacy schema to v4.2 reconciliation
+        run: python -m alembic -c backend/alembic.ini upgrade 0008_scenario_families
+      - name: Seed historical unscoped Jira state
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+          with psycopg.connect(os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")) as db:
+              db.execute("INSERT INTO jira_checkpoints VALUES ('tenant-a','DEMO-1','historic-snapshot')")
+          PY
+      - name: Migrate historical database to new head
+        run: python -m alembic -c backend/alembic.ini upgrade head
+      - name: Verify archived legacy data and schema
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+          with psycopg.connect(os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")) as db:
+              assert db.execute("SELECT snapshot_id FROM jira_checkpoints_legacy_unscoped").fetchone() == ("historic-snapshot",)
+              assert db.execute("SELECT count(*) FROM jira_checkpoints").fetchone() == (0,)
+              assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0010_scenario_cycle_versions",)
+          PY
+
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -34,5 +84,7 @@ jobs:
           node-version: '22'
       - name: Validate JavaScript build without external packages
         run: node --version
+      - name: Validate redesigned app JavaScript syntax
+        run: node --check src/app/app.js
       - name: Build
         run: npm run build

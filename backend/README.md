@@ -1,6 +1,6 @@
 # Backend Alinia
 
-Base COM-02 com Python 3.12, FastAPI, SQLAlchemy e Alembic. Execute os comandos na raiz do repositório. Em PowerShell:
+Base COM-02 com Python 3.12, FastAPI, SQLAlchemy e Alembic. **Para uma instalação completa, incluindo a diferença entre servidor estático e frontend integrado, veja primeiro o [README principal](../README.md).** Este arquivo detalha os contratos, permissões e módulos internos. As seções de histórico abaixo descrevem também limitações da implementação anterior à reconciliação PRD v4.2. Execute os comandos na raiz do repositório. Em PowerShell:
 
 ```powershell
 python -m venv backend/.venv
@@ -71,17 +71,17 @@ As fixtures em `backend/fixtures/policies/synthetic.json` são sintéticas (`sou
 
 ## Fluxo do piloto (P1-02 a P1-07 e P2-03 a P2-06)
 
-Sem dependências novas. O solver em `app/optimization` é um fluxo máximo determinístico em horas inteiras; não é OR-Tools. O forecast é mediana móvel: menos de oito períodos abstém, e nenhuma faixa é chamada de P10, P50 ou P90. O investigador em `app/investigation` só marca hipótese como sustentada quando há evidência; texto dentro dos dados não muda permissão.
+O fluxo principal ainda utiliza o solver de fluxo máximo determinístico em horas inteiras. Há também um **OR-Tools CP-SAT v4.2** em `app/optimization/cpsat_v42.py`, testado isoladamente e ainda **não conectado ao workflow**. Não apresente o solver do fluxo principal como CP-SAT. O forecast é mediana móvel: menos de oito períodos abstém, e nenhuma faixa é chamada de P10, P50 ou P90. O investigador em `app/investigation` só marca hipótese como sustentada quando há evidência; texto dentro dos dados não muda permissão.
 
-Importação CSV em `POST /api/imports` e confirmação em `POST /api/imports/{id}/confirm`. Repetir o arquivo não cria outro snapshot. Colunas de salário, CPF, e-mail, nome ou motivo de afastamento rejeitam o arquivo, e a resposta não devolve o valor da célula. Unidade ausente ou incompatível fica no erro da linha; importação inválida não fica `complete`. `POST /api/imports/jira` lê só a fixture sintética. `POST /api/imports/jira/sync` não escreve no Jira e, sem `JIRA_BASE_URL` e `JIRA_API_TOKEN`, responde `INTEGRATION_UNAVAILABLE`. A validação contra um Jira real continua pendente.
+Importação CSV em `POST /api/imports` e confirmação em `POST /api/imports/{id}/confirm`. Repetir o arquivo não cria outro snapshot. Colunas de salário, CPF, e-mail, nome ou motivo de afastamento rejeitam o arquivo, e a resposta não devolve o valor da célula. Unidade ausente ou incompatível fica no erro da linha; importação inválida não fica `complete`. `POST /api/imports/jira` lê só a fixture sintética. `POST /api/imports/jira/sync` não escreve no Jira. A leitura externa requer `JIRA_BASE_URL`, `JIRA_PROJECT_KEY` e `JIRA_API_TOKEN` e evita o campo pessoal `summary`; mesmo com essas variáveis, **a sincronização ainda responde 503**, porque não há mapeamento e persistência dos eventos. A validação contra um Jira real continua pendente.
 
 `GET /api/teams/{team_id}/metrics?snapshot_id=` soma cada pool uma vez. O bloco homogêneo só aparece quando o arquivo trouxe headcount, jornada, disponibilidade, produtividade e demanda; o exemplo 954,3534 / 14 / 3 sai desses agregados, não de constante escondida.
 
-`POST /api/investigations` responde 202. `POST /api/investigations/{id}/advance` retoma o checkpoint na mesma base: pergunta pendente pausa, resposta continua, reenvio não duplica cenário. Na branch v4.2 há cinco categorias estruturadas de cenário (`hire`, `temporary`, `reallocate`, `redesign`, `do_nothing`). As alternativas sem modelagem completa são inconclusivas. Headcount só entra quando o solver e a jornada aprovada existem e a previsão está calibrada; senão o cenário fica inconclusivo. O crítico bloqueia restrição dura e não transforma lacuna em fato. Timeout do solver não é inviabilidade.
+`POST /api/investigations` responde 202. `POST /api/investigations/{id}/advance` retoma o checkpoint na mesma base: pergunta pendente pausa, resposta continua, reenvio não duplica cenário. Na branch v4.2 há cinco categorias estruturadas de cenário (`hire`, `temporary`, `reallocate`, `redesign`, `do_nothing`). As alternativas sem modelagem completa são inconclusivas. O código pode produzir **headcount exploratório**, mas o fluxo de decisão não considera uma contratação conclusiva enquanto forecast por skill/turno, contexto jurídico e validação independente v4.2 não estiverem conectados. O crítico bloqueia restrição dura e não transforma lacuna em fato. Timeout do solver não é inviabilidade.
 
-`POST /api/scenarios/{id}/decisions` exige `decision:write`. Aprovar cenário inconclusivo, inviável, com crítica bloqueada, com hash diferente ou com regra que deixou de estar `approved` responde 409 e não grava a decisão. Rejeitar ou adiar continua possível. `POST /api/scenarios/{id}/requisition-drafts` só depois de uma aprovação explícita, é idempotente e grava `executed=0`. Não há efeito em sistema externo. `GET /api/investigations/{id}/audit` exige `audit:read` na equipe da investigação. Outra empresa recebe 404. A lista traz os eventos da investigação, dos cenários, das decisões e dos rascunhos; não traz o texto da resposta nem o motivo livre.
+`POST /api/scenarios/{id}/decisions` exige `decision:write`. Aprovar cenário inconclusivo, inviável, com crítica bloqueada, hash diferente, versão de cenário obsoleta ou regra que deixou de estar `approved` responde 409 e não grava a decisão. **O workflow ainda não produz `v42_validation` válida: todas as aprovações operacionais seguem deliberadamente bloqueadas.** Rejeitar ou adiar continua possível. `POST /api/scenarios/{id}/requisition-drafts` só depois de uma aprovação explícita, é idempotente e grava `executed=0`. Não há efeito em sistema externo. `GET /api/investigations/{id}/audit` exige `audit:read` na equipe da investigação. Outra empresa recebe 404. A lista traz os eventos da investigação, dos cenários, das decisões e dos rascunhos; não traz o texto da resposta nem o motivo livre.
 
-O motor em `app/jobs` continua sendo o mock isolado, com tabelas próprias. O fluxo acima usa as tabelas da migração `0006`. Não há processo worker separado: a retomada é o `advance` lendo o banco. Não há LangGraph.
+O motor em `app/jobs` continua sendo um **LangGraph com nós simulados**, isolado e com tabelas próprias. Ele não é um agente LLM de produção e não está ligado à API de investigação. O fluxo acima usa as tabelas das migrações de domínio. Não há processo worker separado: a retomada operacional é o `advance` lendo o banco.
 
 ## Limitações do piloto
 
@@ -89,7 +89,7 @@ Aceite técnico não substitui revisão de RH, operação, jurídico ou privacid
 
 ## Configuração de exemplo
 
-`backend/.env.example` lista as variáveis e não contém segredo. O processo não lê esse arquivo: exporte as variáveis no ambiente. Sem `ALINIA_AUTH_SECRET` de pelo menos 32 caracteres, o login responde 503. `JIRA_BASE_URL` e `JIRA_API_TOKEN` ficam vazios até existir credencial local; o sync continua indisponível.
+`backend/.env.example` lista as variáveis e não contém segredo. O processo não lê esse arquivo: exporte as variáveis no ambiente. Sem `ALINIA_AUTH_SECRET` de pelo menos 32 caracteres, o login responde 503. `JIRA_BASE_URL`, `JIRA_PROJECT_KEY` e `JIRA_API_TOKEN` ficam vazios até existir uma integração autorizada; o sync continua indisponível.
 
 No CMD:
 
@@ -104,7 +104,7 @@ set DATABASE_URL=sqlite:///./alinia.db
 2. Crie duas empresas e, na primeira, dois usuários de RH. Um único RH não aprova regra. Crie também um RH na segunda empresa e um gestor da equipe `team-aurora`.
 3. Importe um CSV para `team-aurora` e outro para `team-mar`. As colunas obrigatórias são `skill_id`, `shift_id`, `pool_id`, `eligible_hours`, `available_hours`, `period_start`, `period_end_exclusive`, `timezone`, `demand_cases`, `hours_unit`, `demand_unit`. Confirme cada importação.
 4. A métrica de uma equipe com o snapshot da outra responde 404. A segunda empresa também recebe 404 ao ler a investigação da primeira.
-5. Abra a investigação, avance, responda e compare os três cenários. Com uma semana só, a previsão abstém e a aprovação fica inconclusiva. Nove semanas com horas inteiras e o catálogo sintético aprovado podem tornar a contratação conclusiva. O catálogo está em `backend/fixtures/policies/synthetic.json` e entra pelo serviço, não por insert direto.
+5. Abra a investigação, avance, responda e compare as **cinco categorias A–E**. Com uma semana só, a previsão abstém. Mesmo com histórico longo e políticas sintéticas aprovadas, a contratação continua **não conclusiva** até existir previsão aplicada por competência/turno, validação jurídica e verificação independente. O catálogo em `backend/fixtures/policies/synthetic.json` é apenas exemplo e entra pelo serviço, não por insert direto.
 6. Aprove só com o hash atual. Se a jornada usada no cenário for revogada antes, a aprovação responde 409. O rascunho só existe depois de uma aprovação e permanece com `executed` falso.
 
 ## Recuperação
@@ -117,8 +117,8 @@ set DATABASE_URL=sqlite:///./alinia.db
 - `alembic upgrade head` na base que vai ser demonstrada.
 - `backend\.venv\Scripts\python -m pytest backend\tests -q` sem falha.
 - Duas equipes na mesma empresa, com snapshots que não se misturam, e uma segunda empresa que recebe 404.
-- Jira real continua pendente; sem credencial o sync responde `INTEGRATION_UNAVAILABLE` e não escreve.
-- O solver não é OR-Tools. As fixtures legais continuam marcadas como sintéticas.
+- Jira real continua pendente; o sync responde `INTEGRATION_UNAVAILABLE` mesmo com variáveis configuradas, pois não há persistência, e não escreve no Jira.
+- O solver do fluxo principal não é OR-Tools; o CP-SAT v4.2 está isolado. As fixtures legais continuam marcadas como sintéticas.
 - Decisão e rascunho permanecem com efeito administrativo desligado.
 - Aceite de RH, operação, jurídico e privacidade continua pendente para qualquer dado real.
 
