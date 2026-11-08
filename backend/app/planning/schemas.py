@@ -38,6 +38,7 @@ class ScenarioCandidate(Contract):
     lead_time_and_ramp_up: dict | None = None
     legal_flags: list[str] = Field(default_factory=list)
     costs_estimated: bool = False
+    quantitative: dict | None = None  # Explicit exploratory what-if; never approval evidence.
 
     _ids = field_validator("scenario_id", "tenant_id", "team_id", "data_snapshot_id", "content_hash")(nonempty)
 
@@ -54,6 +55,7 @@ class SimulationResult(Contract):
     residual_hours: dict[str, int]
     limitations: list[str]
     assumptions: list[str]
+    quantitative: dict | None = None
 
     _ids = field_validator("simulation_id", "scenario_id", "tenant_id", "team_id", "data_snapshot_id")(nonempty)
 
