@@ -4,7 +4,7 @@
 
 A **Alinia** é uma proposta de plataforma **AI-native de Workforce Intelligence** para operações de serviços: em vez de exigir que gestores cruzem planilhas, investiguem desvios e montem cenários manualmente, **um agente investigador-planejador coordena a jornada de ponta a ponta** — recebe sinais operacionais, consulta fontes autorizadas, formula hipóteses, solicita informações, aciona modelos e ferramentas de cálculo, compara intervenções e apresenta recomendações verificáveis para decisão humana.
 
-> **Visão do produto (PRD v4.2):** um **único agente de IA com ferramentas delimitadas**, apoiado por cálculos e verificações determinísticas independentes. **Estado desta entrega:** a base determinística e o frontend integrado já permitem uma demonstração sintética; a orquestração completa pelo agente com LLM **ainda está em desenvolvimento**. O produto não contrata pessoas nem altera escalas automaticamente.
+> **Nossa proposta:** um agente de IA que conduz a investigação de ponta a ponta, com acesso controlado a ferramentas de coleta, previsão, otimização e análise. Os cálculos e as verificações continuam independentes do modelo; a decisão permanece humana. **A versão disponível já permite demonstrar o frontend e a base de análise com dados sintéticos; a autonomia completa do agente é a próxima etapa.**
 
 ## O problema que queremos resolver
 
@@ -21,7 +21,7 @@ A análise tradicional costuma depender de indicadores fragmentados, planilhas e
 
 ### Público inicial
 
-O piloto descrito no PRD v4.2 prioriza **operações de serviços com chamados ou solicitações padronizados e histórico disponível**, como suporte técnico, serviços compartilhados, backoffice e BPO. A proposta comercial e o ganho incremental do agente ainda precisam ser validados em pilotos.
+A Alinia foi concebida inicialmente para **operações de serviços que trabalham com solicitações recorrentes, indicadores de atendimento e histórico disponível** — como suporte técnico, serviços compartilhados, backoffice e BPO. Nesse contexto, é possível comparar volume recebido, trabalho concluído, backlog, cobertura de turnos e qualidade. A aderência e o retorno financeiro ainda precisam ser comprovados com empresas parceiras.
 
 ## A solução: um agente investigador-planejador
 
@@ -54,9 +54,9 @@ O fluxo é **iterativo**, não uma sequência rígida: se uma ferramenta identif
 
 O agente **propõe e interpreta**. Os motores determinísticos calculam disponibilidade, capacidade, custo e viabilidade. Nenhuma alternativa é considerada aprovada apenas porque o modelo de linguagem a sugeriu.
 
-## Arquitetura AI-native proposta
+## Arquitetura: IA para investigar, ferramentas para validar
 
-A decisão técnica do **PRD v4.2, seção 6**, é utilizar **um único agente** no MVP — e não cinco agentes separados. Esse agente é o **orquestrador inteligente** das ferramentas existentes; ele não substitui motores de cálculo, autorização ou validação.
+**Um único agente investigador-planejador** coordena a jornada. Ele decide quais informações buscar, quando aprofundar uma hipótese e quais análises solicitar, mas **não substitui os motores de cálculo, as regras de autorização ou os validadores independentes**. Essa separação permite aproveitar a flexibilidade do modelo de linguagem sem depender dele para resultados matemáticos ou decisões sensíveis.
 
 ```mermaid
 flowchart TD
@@ -96,7 +96,7 @@ flowchart TD
 | Explica incertezas, trade-offs e motivos para a recomendação | Aplicam regras jurídicas versionadas, restrições rígidas e testes independentes |
 | Volta ao planejamento quando surgem bloqueios ou contradições | Persistem hashes, fontes, versões, decisões e eventos de auditoria |
 
-**Por que ainda estamos construindo a parte determinística?** Porque ela é a fundação confiável do agente. O modelo **não pode inventar** horas disponíveis, custo, vagas, regras ou resultados do solver. Antes de incorporar autonomia de investigação, precisamos de contratos de dados, ferramentas tipadas, resultados reproduzíveis, validação e um baseline para medir se a IA realmente agrega valor.
+**Por que combinar IA e métodos determinísticos?** O agente é útil para explorar causas, buscar contexto e organizar possibilidades. Já os cálculos de horas, custos, requisitos, elegibilidade e cobertura devem ser reprodutíveis. Por isso, a Alinia utiliza contratos de dados, ferramentas tipadas, regras versionadas e validação independente para impedir que uma resposta convincente seja confundida com uma recomendação comprovada.
 
 ### Memória e limites de autonomia
 
@@ -106,11 +106,11 @@ O agente poderá **ler dados autorizados, investigar, calcular por ferramentas, 
 
 Se a previsão se abstiver, faltar uma regra ou a cobertura obrigatória falhar, o sistema deve **pedir revisão ou dados**, não oferecer uma contratação exata como fato. A revisão crítica por outro modelo pode complementar a análise, mas **não substitui os validadores determinísticos**.
 
-## O que estamos entregando agora
+## O que já pode ser demonstrado
 
-O trabalho foi dividido em duas camadas: **a base de decisão verificável, que já está em desenvolvimento funcional**, e **a experiência agentic completa, que é o objetivo do produto**.
+Construímos primeiro a **base de dados, cálculo, auditoria e interface** que sustenta a experiência. A próxima evolução é permitir que o agente escolha e coordene essas ferramentas conforme cada investigação — sem transformar estimativas em fatos nem ultrapassar os limites de autonomia.
 
-| Componente | Estado nesta branch |
+| Componente | Situação atual |
 | --- | --- |
 | Novo frontend com Visão geral, Investigação, Previsão, Cenários e Revisão do RH | **Implementado e conectado à API** |
 | Autenticação, escopo por empresa/equipe, snapshots, métricas e auditoria | **Implementado para demonstração** |
@@ -118,22 +118,30 @@ O trabalho foi dividido em duas camadas: **a base de decisão verificável, que 
 | Investigação com checkpoints, perguntas e retomada | **Implementada de forma determinística**; não é ainda a orquestração autônoma do LLM |
 | Previsão com mediana móvel, backtesting e abstenção | **Baseline implementado**; faltam previsões aplicadas por skill e turno |
 | Cenários A–E | **Estruturados na API**; B/C/D ainda não são simulações quantitativas completas |
-| CP-SAT v4.2 e validador independente | **Módulos existentes e testados**, ainda não conectados ao workflow principal |
-| **Agente único de IA orquestrando coleta → investigação → planejamento → simulação** | **Visão final, ainda não integrada neste fluxo** |
+| Otimizador CP-SAT e validador independente | **Módulos existentes e testados**, ainda não conectados ao workflow principal |
+| **Agente único conduzindo coleta → investigação → planejamento → simulação** | **Próxima etapa: integração ao fluxo principal** |
 | Sincronização operacional com Jira real | **Pendente** |
 | Aprovação definitiva e requisição operacional | **Bloqueadas** até validação independente e revisão autorizada |
 
-Há também uma **experimentação separada do agente** na branch [`agent/alinia-investigator`](https://github.com/Arturvpf/MangueByte-Converge-challenge/tree/agent/alinia-investigator), com ferramentas de leitura, recuperação de regras e filtros de privacidade. **Não está integrada a esta branch** e não comprova ainda o fluxo AI-native de ponta a ponta.
+Um **protótipo separado do investigador de IA** está disponível na branch [`agent/alinia-investigator`](https://github.com/Arturvpf/MangueByte-Converge-challenge/tree/agent/alinia-investigator), explorando consultas a dados, recuperação de regras e filtros de privacidade. Ele ainda não coordena o fluxo principal de ponta a ponta; por isso, seus resultados não são apresentados como uma integração concluída.
 
-### Como comprovaremos o valor da IA
+### Como vamos medir o valor da IA
 
-O PRD v4.2 propõe um experimento com **três abordagens sobre os mesmos dados e decisões**:
+Para avaliar o ganho real do agente, planejamos comparar **três formas de tomar a mesma decisão, usando os mesmos dados**:
 
 1. **Processo atual:** a forma como a empresa dimensiona suas equipes hoje.
 2. **Baseline determinístico:** métricas, forecast e cenários com fluxo convencional, **sem LLM**.
 3. **Alinia AI-native:** o baseline **mais o agente investigador-planejador** que coordena a coleta, formula hipóteses, chama ferramentas, revisa alternativas e explica a decisão.
 
-O objetivo não é medir quantas chamadas ao LLM foram feitas, mas se o agente **reduz tempo e retrabalho, melhora a fundamentação e evita erros**, sem aumentar riscos. Os indicadores incluem tempo até decisão validada, SLA, backlog, custo total, qualidade da previsão, cobertura por turno, contestações e intervenções humanas. **Se o agente não demonstrar ganho incremental, a decisão prevista no PRD é manter a solução sem LLM.**
+O objetivo não é medir o número de chamadas ao modelo, mas se a investigação assistida por IA **reduz o tempo até uma decisão fundamentada, diminui retrabalho e evita erros**, sem aumentar riscos. Avaliaremos tempo de análise, SLA, backlog, custos, qualidade das previsões, cobertura por turno, contestações e intervenções humanas. **O componente de IA precisa demonstrar benefício adicional em relação à análise determinística, não apenas produzir respostas mais elaboradas.**
+
+### Exemplo de investigação conduzida pelo agente
+
+Imagine que uma equipe de suporte apresente aumento de backlog por três semanas. Em vez de recomendar imediatamente novas contratações, **o agente deverá** consultar o histórico de entradas e conclusões, verificar a distribuição por competência e turno e investigar explicações alternativas, como sazonalidade, indisponibilidade temporária ou mudança de processo. Se faltarem dados essenciais, ele solicita a informação ao gestor ou sinaliza a limitação.
+
+Com evidências suficientes, o agente aciona ferramentas para projetar demanda e comparar contratação permanente, temporários, realocação, redesenho operacional e nenhuma intervenção. Cada alternativa precisa mostrar **prazo de efeito, cobertura, custo estimado, riscos, premissas e pontos que exigem revisão**. Um cenário inviável volta para investigação; o resultado só segue ao RH depois de passar pelas validações aplicáveis.
+
+*Esse exemplo ilustra a experiência pretendida com IA. A versão atual permite demonstrar as etapas de dados, investigação determinística e comparação exploratória, mas não toda a autonomia descrita acima.*
 
 ## Tecnologias
 
@@ -142,7 +150,7 @@ O objetivo não é medir quantas chamadas ao LLM foram feitas, mas se o agente *
 | Frontend | HTML, CSS, JavaScript ES Modules e gráficos SVG |
 | API e contratos | Python 3.12, FastAPI, Pydantic |
 | Dados e auditoria | SQLAlchemy, Alembic, SQLite local e PostgreSQL |
-| Ferramentas de planejamento | Metrics Engine, Demand Forecaster, OR-Tools CP-SAT v4.2 isolado |
+| Ferramentas de planejamento | Motor de métricas, baseline de previsão e otimizador OR-Tools CP-SAT (módulo separado) |
 | Orquestração de IA | **LangGraph como direção técnica do projeto**; fluxo produtivo do agente ainda não integrado |
 | Qualidade | Pytest, regressões de frontend/API, GitHub Actions |
 
@@ -154,15 +162,14 @@ O objetivo não é medir quantas chamadas ao LLM foram feitas, mas se o agente *
 
 **Git** e **Python 3.12** são suficientes para iniciar a plataforma completa com SQLite. **Node.js 22** é necessário somente para executar ou gerar o build do site estático. Todos os comandos a seguir partem da **raiz do repositório**.
 
-### 1. Obter a versão da entrega
+### 1. Clonar o projeto
 
 ```bash
 git clone https://github.com/Arturvpf/MangueByte-Converge-challenge.git
 cd MangueByte-Converge-challenge
-git switch fix/auditoria-v42-p1-p2-2026-11-08
 ```
 
-Esta versão está no [PR de integração e correções #2](https://github.com/Arturvpf/MangueByte-Converge-challenge/pull/2), ainda separado da `main`.
+A branch padrão é a **`main`**, que contém a aplicação integrada e as instruções desta entrega.
 
 ### 2. Instalar o backend
 
@@ -274,9 +281,9 @@ npm run dev
 
 O CI executa testes de backend, regressões da integração HTTP/DOM, verificação de JavaScript, build e migração PostgreSQL a partir de um esquema legado. Veja o [workflow de integração](.github/workflows/p1-p2-integration.yml).
 
-## Próximos passos para a experiência AI-native
+## Evolução da plataforma
 
-A evolução do produto deve integrar o **agente único** ao workflow já persistido: consultar fontes autorizadas; gerar e revisar hipóteses; solicitar dados ausentes; chamar previsão e CP-SAT por ferramentas tipadas; comparar alternativas A–E; submeter os resultados a validadores independentes e só então encaminhar uma proposta verificável à revisão humana.
+O próximo marco é ligar o **agente investigador-planejador** ao fluxo já persistido. Ele poderá partir de um alerta de demanda, buscar dados autorizados, levantar hipóteses, pedir esclarecimentos, acionar previsão e otimização, reconstruir alternativas inviáveis e encaminhar ao RH uma análise com evidências, custos, limites e incertezas. Os validadores independentes continuarão determinando quais propostas podem avançar.
 
 Antes de um piloto empresarial, ainda são necessários: sincronização Jira real somente leitura, simulações quantitativas A–D, previsão por skill/turno, validação de política por categoria/contrato, proteção de dados e testes de segurança do agente (inclusive prompt injection e saídas de ferramentas), avaliações de viés e experimento de ganho incremental do LLM.
 
@@ -291,20 +298,19 @@ backend/app/              API e módulos de domínio
 backend/migrations/       Evolução de esquema com Alembic
 backend/fixtures/         Entradas sintéticas para demonstração
 backend/tests/            Testes unitários e de integração
-docs/                     PRD, auditoria e decisões técnicas
+docs/                     Arquitetura, integração, requisitos e decisões técnicas
 .github/workflows/        Validações automatizadas
 ```
 
 ### Documentação técnica
 
 - [Integração entre frontend e backend](docs/INTEGRACAO_FRONTEND_BACKEND.md)
-- [Correções e pendências da auditoria v4.2](docs/CORRECOES_AUDITORIA_V42.md)
-- [Matriz de aceite do PRD v4.2](docs/REBASELINE_PRD_V42.md)
-- [Backend: autenticação, políticas, contratos e limitações](backend/README.md)
-- [Metodologia da landing](docs/ABORDAGEM.md)
+- [Backend: arquitetura, autenticação, políticas e contratos](backend/README.md)
+- [Contratos de dados e endpoints](backend/CONTRATOS.md)
+- [Conceito e identidade visual](docs/ABORDAGEM.md)
 
 ---
 
 **Alinia — um agente para investigar, reunir evidências e construir alternativas; pessoas continuam responsáveis pelas decisões.**
 
-*A versão atual demonstra a fundação determinística com dados sintéticos. A visão AI-native descrita acima corresponde à arquitetura pretendida no PRD v4.2, não a funcionalidades já finalizadas nesta branch.*
+*A versão disponível reúne o frontend e a fundação de análise com dados sintéticos. A condução autônoma pelo agente de IA permanece como evolução arquitetural; decisões administrativas exigem validação independente e aprovação humana.*
