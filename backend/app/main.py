@@ -1,9 +1,11 @@
 """FastAPI application factory."""
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.app.core.config import Settings
 from backend.app.audit.tracing import TraceIdMiddleware
@@ -43,4 +45,7 @@ def create_app(settings: Settings | None = None, modules: tuple[DomainModule, ..
     for module in modules:
         for router in module.routers:
             app.include_router(router)
+    prototype = Path(__file__).resolve().parents[2] / "src"
+    if prototype.is_dir():
+        app.mount("/prototype", StaticFiles(directory=prototype), name="prototype")
     return app

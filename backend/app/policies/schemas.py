@@ -33,7 +33,7 @@ CATEGORY_MAX = 32
 
 SourceKind = Literal["lei", "emenda", "cct", "act", "politica_interna", "sintetico"]
 PolicyStatus = Literal["draft", "in_review", "approved", "revoked"]
-ReviewReason = Literal["missing", "conflict", "pinned_revoked", "pinned_not_found"]
+ReviewReason = Literal["missing", "conflict", "pinned_revoked", "pinned_not_found", "hash_mismatch"]
 ResolutionStatus = Literal["resolved", "review_required"]
 
 
@@ -296,7 +296,7 @@ class ResolvedRule(Contract):
         if self.reason is None:
             raise ValueError("review_required needs a reason")
         self._without_content()
-        if self.reason in ("missing", "conflict"):
+        if self.reason in ("missing", "conflict", "hash_mismatch"):
             self._known_key()
             if self.version_id is not None or self.version is not None:
                 raise ValueError("missing or conflict does not select a version")

@@ -20,10 +20,16 @@ class DomainModule:
 from backend.app.audit.api import router as audit_router
 from backend.app.auth.api import admin_router, router as auth_router
 from backend.app.data.api import router as data_router
+from backend.app.ingestion.api import router as imports_router
+from backend.app.metrics.api import router as metrics_router
+from backend.app.policies.api import router as policies_router
+from backend.app.workflow.api import router as workflow_router
 
 DOMAIN_MODULES: tuple[DomainModule, ...] = (
     DomainModule(routers=(auth_router, admin_router, audit_router)),  # P2-01
-    DomainModule(routers=(data_router,)),
+    DomainModule(routers=(data_router, metrics_router, imports_router)),
+    DomainModule(routers=(policies_router,)),  # P2-02
+    DomainModule(routers=(workflow_router,)),
 )
 
 

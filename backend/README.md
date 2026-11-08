@@ -60,3 +60,64 @@ backend/.venv/Scripts/python -m backend.app.auth.cli create-user --tenant-id emp
 - Os IDs de equipe nos vínculos não são validados contra um cadastro de equipes.
 - Dois admins que se rebaixam ao mesmo tempo podem deixar a empresa sem admin. A proteção atual vale por requisição.
 - As negativas por equipe lançadas dentro dos handlers de dados (`ForbiddenScope`) ainda não são auditadas. Cabe à P1 instrumentar.
+
+## Policy Store (P2-02)
+
+Regras trabalhistas ficam no banco, nunca como limite padrão no código. O catálogo em `app/policies/catalog.py` só define a forma dos parâmetros. Uma regra nasce `draft`, vai a `in_review`, só fica `approved` com `POLICY_APPROVE`, referência de revisão e aprovador diferente do autor e de quem submeteu. Com um único RH, ninguém aprova: isso é proposital. Versão aprovada não é editada; a mudança é uma versão nova. Revogada continua consultável pelo id.
+
+`GET /api/policies/resolve` e a ferramenta `get_applicable_policies` devolvem a versão aprovada vigente mais específica (equipe+categoria, equipe, categoria, empresa). Ausência, conflito, pin revogado ou hash adulterado não trazem parâmetros. A ferramenta, nesse caso, responde `POLICY_REVIEW_REQUIRED` sem resultado parcial. Empresa e equipe vêm do principal; outra empresa recebe 404 na API ou `FORBIDDEN_SCOPE` na ferramenta.
+
+As fixtures em `backend/fixtures/policies/synthetic.json` são sintéticas (`source_kind=sintetico`, referência `SINTÉTICO — não é regra jurídica validada`). Não validam a EC 141/2026 nem qualquer teto legal. O carregamento passa pelo serviço (`app/policies/fixtures.py`), com dois usuários de RH.
+
+## Fluxo do piloto (P1-02 a P1-07 e P2-03 a P2-06)
+
+Sem dependências novas. O solver em `app/optimization` é um fluxo máximo determinístico em horas inteiras; não é OR-Tools. O forecast é mediana móvel: menos de oito períodos abstém, e nenhuma faixa é chamada de P10, P50 ou P90. O investigador em `app/investigation` só marca hipótese como sustentada quando há evidência; texto dentro dos dados não muda permissão.
+
+Importação CSV em `POST /api/imports` e confirmação em `POST /api/imports/{id}/confirm`. Repetir o arquivo não cria outro snapshot. Colunas de salário, CPF, e-mail, nome ou motivo de afastamento rejeitam o arquivo, e a resposta não devolve o valor da célula. Unidade ausente ou incompatível fica no erro da linha; importação inválida não fica `complete`. `POST /api/imports/jira` lê só a fixture sintética. `POST /api/imports/jira/sync` não escreve no Jira e, sem `JIRA_BASE_URL` e `JIRA_API_TOKEN`, responde `INTEGRATION_UNAVAILABLE`. A validação contra um Jira real continua pendente.
+
+`GET /api/teams/{team_id}/metrics?snapshot_id=` soma cada pool uma vez. O bloco homogêneo só aparece quando o arquivo trouxe headcount, jornada, disponibilidade, produtividade e demanda; o exemplo 954,3534 / 14 / 3 sai desses agregados, não de constante escondida.
+
+`POST /api/investigations` responde 202. `POST /api/investigations/{id}/advance` retoma o checkpoint na mesma base: pergunta pendente pausa, resposta continua, reenvio não duplica cenário. Há sempre três cenários (`hire`, `reallocate`, `do_nothing`). Headcount só entra quando o solver e a jornada aprovada existem e a previsão está calibrada; senão o cenário fica inconclusivo. O crítico bloqueia restrição dura e não transforma lacuna em fato. Timeout do solver não é inviabilidade.
+
+`POST /api/scenarios/{id}/decisions` exige `decision:write`. Aprovar cenário inconclusivo, inviável, com crítica bloqueada, com hash diferente ou com regra que deixou de estar `approved` responde 409 e não grava a decisão. Rejeitar ou adiar continua possível. `POST /api/scenarios/{id}/requisition-drafts` só depois de uma aprovação explícita, é idempotente e grava `executed=0`. Não há efeito em sistema externo. `GET /api/investigations/{id}/audit` exige `audit:read` na equipe da investigação. Outra empresa recebe 404. A lista traz os eventos da investigação, dos cenários, das decisões e dos rascunhos; não traz o texto da resposta nem o motivo livre.
+
+O motor em `app/jobs` continua sendo o mock isolado, com tabelas próprias. O fluxo acima usa as tabelas da migração `0006`. Não há processo worker separado: a retomada é o `advance` lendo o banco. Não há LangGraph.
+
+## Limitações do piloto
+
+Aceite técnico não substitui revisão de RH, operação, jurídico ou privacidade. Valores de fixture não são regra vigente. Sem credencial, o Jira real não foi validado. O solver inteiro não cobre hora fracionária nem prova otimalidade de custo; cobre o máximo de horas sob os tetos e declara o status. O residual de horas é o backlog operacional usado na comparação; não é simulação de fila. Histórico curto abstém em vez de inventar intervalo. A interface em `/prototype/app/index.html` continua capaz de mostrar o protótipo ilustrativo; os números da API só substituem a tela depois de uma resposta persistida. Não há suíte de eval separada do pytest.
+
+## Configuração de exemplo
+
+`backend/.env.example` lista as variáveis e não contém segredo. O processo não lê esse arquivo: exporte as variáveis no ambiente. Sem `ALINIA_AUTH_SECRET` de pelo menos 32 caracteres, o login responde 503. `JIRA_BASE_URL` e `JIRA_API_TOKEN` ficam vazios até existir credencial local; o sync continua indisponível.
+
+No CMD:
+
+```cmd
+set ALINIA_AUTH_SECRET=<segredo local com 32 caracteres ou mais>
+set DATABASE_URL=sqlite:///./alinia.db
+```
+
+## Roteiro de demonstração
+
+1. Rode `upgrade head` e o servidor, como no início deste arquivo.
+2. Crie duas empresas e, na primeira, dois usuários de RH. Um único RH não aprova regra. Crie também um RH na segunda empresa e um gestor da equipe `team-aurora`.
+3. Importe um CSV para `team-aurora` e outro para `team-mar`. As colunas obrigatórias são `skill_id`, `shift_id`, `pool_id`, `eligible_hours`, `available_hours`, `period_start`, `period_end_exclusive`, `timezone`, `demand_cases`, `hours_unit`, `demand_unit`. Confirme cada importação.
+4. A métrica de uma equipe com o snapshot da outra responde 404. A segunda empresa também recebe 404 ao ler a investigação da primeira.
+5. Abra a investigação, avance, responda e compare os três cenários. Com uma semana só, a previsão abstém e a aprovação fica inconclusiva. Nove semanas com horas inteiras e o catálogo sintético aprovado podem tornar a contratação conclusiva. O catálogo está em `backend/fixtures/policies/synthetic.json` e entra pelo serviço, não por insert direto.
+6. Aprove só com o hash atual. Se a jornada usada no cenário for revogada antes, a aprovação responde 409. O rascunho só existe depois de uma aprovação e permanece com `executed` falso.
+
+## Recuperação
+
+`POST /api/investigations/{id}/advance` roda numa transação. Se o processo cai no meio, o banco fica no último advance confirmado. Suba de novo com o mesmo `DATABASE_URL` e chame o advance outra vez. Não há worker separado para reiniciar, e o mock em `app/jobs` não executa este fluxo.
+
+## Checklist de liberação
+
+- Segredo e URL do banco só no ambiente local, nunca no repositório.
+- `alembic upgrade head` na base que vai ser demonstrada.
+- `backend\.venv\Scripts\python -m pytest backend\tests -q` sem falha.
+- Duas equipes na mesma empresa, com snapshots que não se misturam, e uma segunda empresa que recebe 404.
+- Jira real continua pendente; sem credencial o sync responde `INTEGRATION_UNAVAILABLE` e não escreve.
+- O solver não é OR-Tools. As fixtures legais continuam marcadas como sintéticas.
+- Decisão e rascunho permanecem com efeito administrativo desligado.
+- Aceite de RH, operação, jurídico e privacidade continua pendente para qualquer dado real.

@@ -39,3 +39,11 @@ Estes campos são requisitos de conversa, não schemas implementados nem uma dec
 | `DecisionRecord` | Escopo, cenário/snapshot/regras versionados, aprovador autenticado, decisão, motivo e timestamp; sem ação administrativa automática. |
 
 Validação por Pessoa 2, semântica definitiva dos resultados, contratos de políticas e integração real continuam pendentes. Testes de contrato futuros devem cobrir versões e propagação de evidências entre ambos os domínios.
+
+## PolicyResolution (P2-02)
+
+Implementado em `backend/app/policies/schemas.py`, não em `contracts/v1.py`. `PolicyResolution` estende `Scope` com `data_snapshot_id`, `on_date`, `items` e `complete`. Cada `ResolvedRule` está `resolved` ou `review_required`. No segundo caso o motivo é `missing`, `conflict`, `pinned_revoked`, `pinned_not_found` ou `hash_mismatch`, e parâmetros, fonte e vigência ficam nulos. `complete` é verdadeiro só quando todos os itens resolveram. A ferramenta devolve esse objeto dentro de `ToolResponse` apenas se `complete` for verdadeiro; caso contrário o envelope é `error` com `POLICY_REVIEW_REQUIRED` e `result` nulo.
+
+## Cenários e decisão (P2-03 a P2-06)
+
+Os contratos de cenário, simulação, crítica, decisão e rascunho estão em `backend/app/planning/schemas.py`. `ScenarioCandidate.kind` é `hire`, `reallocate` ou `do_nothing`. `conclusive` só é verdadeiro quando a previsão está calibrada, as regras pedidas resolveram e o solver terminou em `optimal` ou `feasible`; no cenário de contratação também é preciso ter o headcount calculado pela jornada aprovada. `SimulationResult.status` distingue `optimal`, `feasible`, `infeasible` e `unknown`. `CriticResult.verdict` é `noted`, `blocked` ou `needs_data`; `hard_constraint_failed` só acompanha inviabilidade comprovada. `DecisionRecord.executed` é sempre falso. `RequisitionDraft.executed` também. Nenhum dos dois dispara operação externa. Aprovar quando alguma `rule_version` do cenário não está mais `approved` não grava a decisão. `GET /api/investigations/{id}/audit` lista os eventos da investigação, dos cenários e das decisões; o texto da resposta e o motivo livre não entram nessa lista.

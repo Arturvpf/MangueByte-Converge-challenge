@@ -9,6 +9,7 @@ from backend.app.data import models as data_models  # register P1-01 metadata
 from backend.app.auth import models as auth_models  # register P2-01 metadata
 from backend.app.audit import models as audit_models  # register P2-01 metadata
 from backend.app.policies import models as policy_models  # register P2-02 metadata
+from backend.app.flow import models as flow_models  # register pilot flow metadata
 
 # Import each domain model module here before autogeneration, so its tables are
 # registered on Base.metadata. Each domain owns and reviews its own revisions.

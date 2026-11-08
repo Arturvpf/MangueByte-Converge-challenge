@@ -1,0 +1,120 @@
+{
+  "notice": "Valores sintéticos para teste. Não são regra jurídica validada e não reproduzem a EC 141/2026 como norma vigente.",
+  "source_reference": "SINTÉTICO — não é regra jurídica validada",
+  "tenants": {
+    "tenant-demo-a": [
+      {
+        "rule_key": "workweek.max_hours",
+        "team_id": null,
+        "employee_category": null,
+        "title": "Ilustração sintética de jornada semanal",
+        "parameters": {"max_hours": "44"},
+        "source_kind": "sintetico",
+        "source_reference": "SINTÉTICO — não é regra jurídica validada",
+        "valid_from": "2026-01-01",
+        "valid_until": null
+      },
+      {
+        "rule_key": "workday.max_hours",
+        "team_id": null,
+        "employee_category": null,
+        "title": "Ilustração sintética de jornada diária",
+        "parameters": {"max_hours": "8", "requires_collective_agreement": true},
+        "source_kind": "sintetico",
+        "source_reference": "SINTÉTICO — não é regra jurídica validada",
+        "valid_from": "2026-01-01",
+        "valid_until": null
+      },
+      {
+        "rule_key": "rest.weekly_min_days",
+        "team_id": null,
+        "employee_category": null,
+        "title": "Ilustração sintética de repouso",
+        "parameters": {"min_days": 1},
+        "source_kind": "sintetico",
+        "source_reference": "SINTÉTICO — não é regra jurídica validada",
+        "valid_from": "2026-01-01",
+        "valid_until": null
+      },
+      {
+        "rule_key": "contract.modality",
+        "team_id": null,
+        "employee_category": null,
+        "title": "Ilustração sintética de modalidade",
+        "parameters": {"modality": "indeterminado", "allowed": true, "max_duration_days": null, "requires_legal_review": true},
+        "source_kind": "sintetico",
+        "source_reference": "SINTÉTICO — não é regra jurídica validada",
+        "valid_from": "2026-01-01",
+        "valid_until": null
+      },
+      {
+        "rule_key": "internship.counts_as_capacity",
+        "team_id": null,
+        "employee_category": null,
+        "title": "Ilustração sintética de estágio",
+        "parameters": {"allowed": false},
+        "source_kind": "sintetico",
+        "source_reference": "SINTÉTICO — não é regra jurídica validada",
+        "valid_from": "2026-01-01",
+        "valid_until": null
+      }
+    ],
+    "tenant-demo-b": [
+      {
+        "rule_key": "workweek.max_hours",
+        "team_id": null,
+        "employee_category": null,
+        "title": "Ilustração sintética de jornada semanal",
+        "parameters": {"max_hours": "36"},
+        "source_kind": "sintetico",
+        "source_reference": "SINTÉTICO — não é regra jurídica validada",
+        "valid_from": "2026-01-01",
+        "valid_until": null
+      },
+      {
+        "rule_key": "workday.max_hours",
+        "team_id": null,
+        "employee_category": null,
+        "title": "Ilustração sintética de jornada diária",
+        "parameters": {"max_hours": "6", "requires_collective_agreement": true},
+        "source_kind": "sintetico",
+        "source_reference": "SINTÉTICO — não é regra jurídica validada",
+        "valid_from": "2026-01-01",
+        "valid_until": null
+      },
+      {
+        "rule_key": "rest.weekly_min_days",
+        "team_id": null,
+        "employee_category": null,
+        "title": "Ilustração sintética de repouso",
+        "parameters": {"min_days": 1},
+        "source_kind": "sintetico",
+        "source_reference": "SINTÉTICO — não é regra jurídica validada",
+        "valid_from": "2026-01-01",
+        "valid_until": null
+      },
+      {
+        "rule_key": "contract.modality",
+        "team_id": null,
+        "employee_category": null,
+        "title": "Ilustração sintética de modalidade",
+        "parameters": {"modality": "temporario", "allowed": true, "max_duration_days": 90, "requires_legal_review": true},
+        "source_kind": "sintetico",
+        "source_reference": "SINTÉTICO — não é regra jurídica validada",
+        "valid_from": "2026-01-01",
+        "valid_until": null
+      },
+      {
+        "rule_key": "internship.counts_as_capacity",
+        "team_id": null,
+        "employee_category": null,
+        "title": "Ilustração sintética de estágio",
+        "parameters": {"allowed": false},
+        "source_kind": "sintetico",
+        "source_reference": "SINTÉTICO — não é regra jurídica validada",
+        "valid_from": "2026-01-01",
+        "valid_until": null
+      }
+    ]
+  }
+}
