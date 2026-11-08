@@ -106,15 +106,15 @@ def test_audit_correlates_trace_and_stays_in_tenant(env):
     # Denial raised by the common component (permission missing). Team-level denials
     # inside the data handlers (ForbiddenScope) are instrumented by P1 in its module.
     admin = login(ta, 'admin@a.test')
-    r = client.get('/api/teams', headers={**admin, 'X-Trace-Id': 'trace-p2-denied'})
-    assert r.status_code == 403 and r.headers['x-trace-id'] == 'trace-p2-denied'
+    r = client.get('/api/teams', headers={**admin, 'X-Trace-Id': 'a100000000000000000000000000000d'})
+    assert r.status_code == 403 and r.headers['x-trace-id'] == 'a100000000000000000000000000000d'
 
-    events = client.get('/api/audit', params={'trace_id': 'trace-p2-denied'}, headers=admin).json()['items']
+    events = client.get('/api/audit', params={'trace_id': 'a100000000000000000000000000000d'}, headers=admin).json()['items']
     assert [(e['action'], e['outcome'], e['actor_user_id']) for e in events] == [('authz.denied', 'denied', users['admin_a'])]
     assert 'admin@a.test' not in json.dumps(events)
 
     rh_b = login(tb, 'rh@b.test')
-    assert client.get('/api/audit', params={'trace_id': 'trace-p2-denied'}, headers=rh_b).json()['items'] == []
+    assert client.get('/api/audit', params={'trace_id': 'a100000000000000000000000000000d'}, headers=rh_b).json()['items'] == []
     gestor = login(ta, 'gestor@a.test')
     assert client.get('/api/audit', headers=gestor).status_code == 403
 
@@ -145,6 +145,61 @@ def test_database_rejects_invalid_memberships(env):
         with engine.connect() as conn:
             with pytest.raises(DatabaseError):
                 conn.execute(insert, {'t': a.capacity.tenant_id, 'u': users['gestor_a'], 'r': role, 'team': team})
+    engine.dispose()
+
+
+def test_validation_errors_never_echo_submitted_values(env):
+    # P1 review: the default 422 returned the password in "input".
+    client, app, db, a, b, login, users = env
+    secret = 'valor-secreto-que-nao-pode-voltar'
+    admin = login(a.capacity.tenant_id, 'admin@a.test')
+    responses = [
+        client.post('/api/auth/login', json={'tenant_id': a.capacity.tenant_id, 'password': secret}),
+        client.post('/api/admin/users', json={'password': secret, 'memberships': []}, headers=admin),
+        client.post('/api/admin/users', json={'email': secret, 'password': secret, 'memberships': [], 'x': secret}, headers=admin),
+        client.get('/api/audit', params={'team_id': f'{secret}@mail.test'}, headers=admin),
+    ]
+    for r in responses:
+        assert r.status_code == 422 and secret not in r.text
+        assert all(set(e) == {'type', 'loc', 'msg'} for e in r.json()['detail'])
+    assert ['body', 'email'] in [e['loc'] for e in responses[0].json()['detail']]
+
+
+def test_audit_columns_never_store_unverified_free_text(env):
+    # P1 review: team_id and X-Trace-Id values reached audit columns; empty team_id gave 500.
+    client, app, db, a, b, login, users = env
+    admin = login(a.capacity.tenant_id, 'admin@a.test')
+    assert client.get('/api/audit', params={'team_id': ''}, headers=admin).status_code == 422
+    assert client.get('/api/audit', params={'trace_id': 'joao.silva'}, headers=admin).status_code == 422
+    for value in ('123.456.789-09', 'joao.silva', 'Maria Souza', 'a' * 32 + 'z'):
+        r = client.get('/api/audit', params={'team_id': 'joao.silva'}, headers={**admin, 'X-Trace-Id': value})
+        assert r.status_code == 200 and r.headers['x-trace-id'] != value
+    dashed = 'A1B2C3D4-0000-4000-8000-00000000000F'
+    assert client.get('/health', headers={'X-Trace-Id': dashed}).headers['x-trace-id'] == dashed.replace('-', '').lower()
+    with Session(app.state.engine) as session:
+        stored = session.scalars(select(AuditEvent)).all()
+        assert not any(e.team_id == 'joao.silva' for e in stored)
+        assert all(len(e.trace_id) == 32 and set(e.trace_id) <= set('0123456789abcdef') for e in stored)
+    # Admin cannot grant a team id that is free text either.
+    r = client.post('/api/admin/users', json={'email': 'novo@a.test', 'password': PASSWORD,
+                                              'memberships': [{'role': 'gestor', 'team_id': 'joao.silva@empresa.com'}]}, headers=admin)
+    assert r.status_code == 422 and 'joao.silva@empresa.com' not in r.text
+
+
+def test_audit_rows_cannot_be_replaced_or_upserted(env):
+    # P1 review: INSERT OR REPLACE overwrote an existing event in SQLite.
+    client, app, db, a, b, login, users = env
+    engine = create_engine(f'sqlite:///{db.as_posix()}')
+    with engine.connect() as conn:
+        row = conn.execute(text('select id, occurred_at, action from audit_events limit 1')).mappings().one()
+        forged = {'id': row['id'], 'o': row['occurred_at']}
+        cols = "(id, occurred_at, trace_id, tenant_id, actor_type, action, outcome, details) values (:id, :o, 'x', 't', 'user', 'forged.event', 'success', '{}')"
+        for statement in (f'insert or replace into audit_events {cols}', f'replace into audit_events {cols}',
+                          f"insert into audit_events {cols} on conflict(id) do update set action = 'forged.event'"):
+            with pytest.raises(DatabaseError):
+                conn.execute(text(statement), forged)
+            conn.rollback()
+        assert conn.execute(text('select action from audit_events where id = :id'), forged).scalar_one() == row['action']
     engine.dispose()
 
 

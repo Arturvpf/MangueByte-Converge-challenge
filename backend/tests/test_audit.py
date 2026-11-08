@@ -90,13 +90,13 @@ def events(app, **filters):
 
 def test_valid_trace_header_echoed_and_recorded(app):
     c = client(app)
-    r = c.get("/probe", headers={"X-Trace-Id": "Req-1._~"})
-    assert r.headers["x-trace-id"] == "Req-1._~"
-    assert r.json() == {"ctx": "Req-1._~", "state": "Req-1._~", "dep": "Req-1._~"}
-    assert c.get("/probe-async", headers={"X-Trace-Id": "async-1"}).json() == {"ctx": "async-1"}
-    r = c.post("/probe-write", headers={"X-Trace-Id": "write-1"})
-    assert r.headers["x-trace-id"] == "write-1"
-    assert [e.trace_id for e in events(app, action="probe.write")] == ["write-1"]
+    r = c.get("/probe", headers={"X-Trace-Id": "a1000000000000000000000000000001"})
+    assert r.headers["x-trace-id"] == "a1000000000000000000000000000001"
+    assert r.json() == {"ctx": "a1000000000000000000000000000001", "state": "a1000000000000000000000000000001", "dep": "a1000000000000000000000000000001"}
+    assert c.get("/probe-async", headers={"X-Trace-Id": "a1000000000000000000000000000002"}).json() == {"ctx": "a1000000000000000000000000000002"}
+    r = c.post("/probe-write", headers={"X-Trace-Id": "a1000000000000000000000000000003"})
+    assert r.headers["x-trace-id"] == "a1000000000000000000000000000003"
+    assert [e.trace_id for e in events(app, action="probe.write")] == ["a1000000000000000000000000000003"]
 
 
 @pytest.mark.parametrize("bad", ["has space", "a" * 129, "", "x;drop", "é"])
@@ -111,18 +111,18 @@ def test_trace_generated_when_absent_and_on_errors(app):
     a, b = c.get("/probe"), c.get("/probe")
     assert HEX.match(a.headers["x-trace-id"]) and a.headers["x-trace-id"] != b.headers["x-trace-id"]
     assert a.json()["ctx"] == a.headers["x-trace-id"]
-    assert c.get("/missing", headers={"X-Trace-Id": "nf-1"}).headers["x-trace-id"] == "nf-1"
-    r = c.get("/boom", headers={"X-Trace-Id": "err-1"})
-    assert r.status_code == 500 and r.headers["x-trace-id"] == "err-1"
+    assert c.get("/missing", headers={"X-Trace-Id": "a1000000000000000000000000000004"}).headers["x-trace-id"] == "a1000000000000000000000000000004"
+    r = c.get("/boom", headers={"X-Trace-Id": "a1000000000000000000000000000005"})
+    assert r.status_code == 500 and r.headers["x-trace-id"] == "a1000000000000000000000000000005"
 
 
 def test_trace_outside_request():
     assert current_trace_id() != current_trace_id()
-    with use_trace_id("job-7") as tid:
-        assert tid == current_trace_id() == "job-7"
+    with use_trace_id("a1000000000000000000000000000007") as tid:
+        assert tid == current_trace_id() == "a1000000000000000000000000000007"
     with use_trace_id("bad id") as tid:
         assert HEX.match(tid)
-    assert current_trace_id() != "job-7"
+    assert current_trace_id() != "a1000000000000000000000000000007"
 
 
 def test_sanitizer_drops_and_redacts():
@@ -163,9 +163,9 @@ def test_record_event_validation(app):
                 record_event(s, **{**base, **bad})
         with pytest.raises(TypeError):
             record_event(s, **base, details="free text")
-        with use_trace_id("ctx-1"):
+        with use_trace_id("a1000000000000000000000000000008"):
             e = record_event(s, **base, actor_type="agent", details={"email": "a@b.co", "n": 2})
-        assert e.trace_id == "ctx-1" and e.details == {"n": 2, "_redacted": ["email"]}
+        assert e.trace_id == "a1000000000000000000000000000008" and e.details == {"n": 2, "_redacted": ["email"]}
         assert e.occurred_at.tzinfo is not None
         s.commit()
 
@@ -207,13 +207,13 @@ def test_query_isolation_by_tenant_and_team(app):
 def test_query_pagination_filters_and_cursor(app):
     with Session(app.state.engine) as s:
         for i in range(7):
-            record_event(s, action="x.do", outcome="success", tenant_id="t-a", resource_id=f"r{i}", trace_id="tr-1")
-        record_event(s, action="y.do", outcome="success", tenant_id="t-a", trace_id="tr-2")
+            record_event(s, action="x.do", outcome="success", tenant_id="t-a", resource_id=f"r{i}", trace_id="a1000000000000000000000000000009")
+        record_event(s, action="y.do", outcome="success", tenant_id="t-a", trace_id="a100000000000000000000000000000a")
         s.commit()
         everything, _ = query_events(s, tenant_id="t-a", team_ids=None, action="x.do", limit=500)
         seen, cursor = [], None
         while True:
-            page, cursor = query_events(s, tenant_id="t-a", team_ids=None, trace_id="tr-1", limit=3, cursor=cursor)
+            page, cursor = query_events(s, tenant_id="t-a", team_ids=None, trace_id="a1000000000000000000000000000009", limit=3, cursor=cursor)
             seen += page
             if cursor is None:
                 break
@@ -233,10 +233,10 @@ def test_query_pagination_filters_and_cursor(app):
 
 
 def test_api_requires_audit_read_and_records_denial(app):
-    r = client(app, NO_AUDIT).get("/api/audit", headers={"X-Trace-Id": "deny-1"})
+    r = client(app, NO_AUDIT).get("/api/audit", headers={"X-Trace-Id": "a100000000000000000000000000000b"})
     assert r.status_code == 403 and r.json()["detail"]["code"] == "FORBIDDEN_SCOPE"
     [e] = events(app, action="audit.read")
-    assert (e.outcome, e.trace_id, e.actor_user_id) == ("denied", "deny-1", "u-1")
+    assert (e.outcome, e.trace_id, e.actor_user_id) == ("denied", "a100000000000000000000000000000b", "u-1")
 
 
 def test_api_scope_and_recorded_read(app):
@@ -253,13 +253,13 @@ def test_api_scope_and_recorded_read(app):
     assert c.get("/api/audit", params={"team_id": "team-1"}).status_code == 200
 
     c = client(app, TENANT_WIDE)
-    r = c.get("/api/audit", params={"action": "x.do", "limit": 500}, headers={"X-Trace-Id": "read-1"})
+    r = c.get("/api/audit", params={"action": "x.do", "limit": 500}, headers={"X-Trace-Id": "a100000000000000000000000000000c"})
     assert r.status_code == 200 and len(r.json()["items"]) == 3 and r.json()["next_cursor"] is None
     assert [i["team_id"] for i in c.get("/api/audit", params={"team_id": "team-2", "action": "x.do"}).json()["items"]] == ["team-2"]
-    [read] = events(app, action="audit.read", trace_id="read-1")
+    [read] = events(app, action="audit.read", trace_id="a100000000000000000000000000000c")
     assert read.outcome == "success" and read.tenant_id == "t-a"
     assert read.details == {"filters": ["action"], "result_count": 3}
-    r = c.get("/api/audit", params={"trace_id": "read-1"})
+    r = c.get("/api/audit", params={"trace_id": "a100000000000000000000000000000c"})
     assert [i["action"] for i in r.json()["items"]] == ["audit.read"]
     assert c.get("/api/audit", params={"cursor": "junk"}).json()["detail"]["code"] == "INVALID_CURSOR"
     assert c.get("/api/audit", params={"limit": 501}).status_code == 422

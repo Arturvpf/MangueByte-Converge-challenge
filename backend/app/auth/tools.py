@@ -1,6 +1,6 @@
 """Authorization for agent tools and the worker. Envelope scope is checked, never trusted."""
 from backend.app.audit.log import record_event
-from backend.app.audit.tracing import valid_trace_id
+from backend.app.audit.tracing import normalize_trace_id
 from backend.app.auth.dependencies import load_principal
 from backend.app.auth.permissions import Permission, Principal
 
@@ -30,7 +30,7 @@ def authorize_tool(principal: Principal, permission: Permission, *, tenant_id: s
 
 def _trace(scope) -> str | None:
     trace = getattr(scope, "trace_id", None)
-    return trace if valid_trace_id(trace) else None  # None: record_event uses the current trace
+    return normalize_trace_id(trace)  # None: record_event uses the current trace
 
 
 class PrincipalBoundary:

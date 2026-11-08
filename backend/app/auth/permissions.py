@@ -6,6 +6,8 @@ bodies, tool arguments and LLM text never contribute to it.
 from dataclasses import dataclass
 from enum import Enum
 
+from backend.app.core.ids import valid_id
+
 
 class Role(str, Enum):
     GESTOR = "gestor"
@@ -80,7 +82,7 @@ def check_memberships(memberships) -> None:
     for m in memberships:
         if m.team_id is None and m.role not in TENANT_WIDE_ROLES:
             raise ValueError(f"role {m.role.value} requires team_id")
-        if m.team_id is not None and (not m.team_id or m.team_id != m.team_id.strip() or len(m.team_id) > 128):
+        if m.team_id is not None and not valid_id(m.team_id):
             raise ValueError("invalid team_id")
         if (m.role, m.team_id) in seen:
             raise ValueError("duplicate membership")

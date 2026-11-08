@@ -466,12 +466,12 @@ def test_principal_boundary_with_worker(tmp_path):
     engine, sessions = worker_db(tmp_path, (("u1", "gestor", "t1"), ("u2", "admin", None)))
     bound = lambda user_id: PrincipalBoundary(sessions, user_id=user_id, tenant_id="a", token_version=0)
     deadline = datetime.now(timezone.utc) + timedelta(hours=1)
-    own = Scope("a", "t1", "snap", "trace-1")
+    own = Scope("a", "t1", "snap", "a100000000000000000000000000000e")
     boundary = bound("u1")
     worker = MockExecutor(sessions, boundary)
     run_id = worker.create(own, "key", max_steps=5, max_cost=0, deadline=deadline)
     assert worker.claim(run_id, own)
-    for scope in (Scope("b", "t1", "snap", "trace-2"), Scope("a", "t2", "snap", "trace-3")):
+    for scope in (Scope("b", "t1", "snap", "a100000000000000000000000000000f"), Scope("a", "t2", "snap", "a1000000000000000000000000000010")):
         with pytest.raises(PermissionError):
             worker.create(scope, "key2", max_steps=5, max_cost=0, deadline=deadline)
         with pytest.raises(PermissionError):
@@ -483,7 +483,7 @@ def test_principal_boundary_with_worker(tmp_path):
             boundary.authorize(operation, own)
     boundary.audit("create", own, run_id, 0)
     boundary.audit("claim", Scope("a", "t1", "snap", "not a valid trace"), run_id, 1)  # invalid trace replaced
-    for scope in (Scope("b", "t1", "snap", "trace-1"), Scope("a", "t2", "snap", "trace-1")):
+    for scope in (Scope("b", "t1", "snap", "a100000000000000000000000000000e"), Scope("a", "t2", "snap", "a100000000000000000000000000000e")):
         with pytest.raises(ToolForbidden):
             boundary.audit("create", scope, run_id, 0)
     with pytest.raises(ToolForbidden):
@@ -491,19 +491,19 @@ def test_principal_boundary_with_worker(tmp_path):
     with sessions() as s:
         rows = list(s.scalars(select(AuditEvent)))
     job, = [e for e in rows if e.action == "job.create"]
-    assert (job.tenant_id, job.team_id, job.trace_id, job.resource_id, job.actor_user_id) == ("a", "t1", "trace-1", run_id, "u1")
+    assert (job.tenant_id, job.team_id, job.trace_id, job.resource_id, job.actor_user_id) == ("a", "t1", "a100000000000000000000000000000e", run_id, "u1")
     claim, = [e for e in rows if e.action == "job.claim"]
     assert claim.trace_id != "not a valid trace"
     denied = [e for e in rows if e.action == "authz.denied"]
     assert len(denied) == 9 and {e.tenant_id for e in denied} == {"a"}  # never the envelope's tenant
-    assert {e.trace_id for e in denied} >= {"trace-2", "trace-3"}
+    assert {e.trace_id for e in denied} >= {"a100000000000000000000000000000f", "a1000000000000000000000000000010"}
     engine.dispose()
 
 
 @pytest.mark.parametrize("revoke", ["disable", "logout", "memberships", "tenant"])
 def test_principal_boundary_revocation_mid_run(tmp_path, revoke):
     engine, sessions = worker_db(tmp_path, (("u1", "gestor", "t1"),))
-    own = Scope("a", "t1", "snap", "trace-1")
+    own = Scope("a", "t1", "snap", "a100000000000000000000000000000e")
     worker = MockExecutor(sessions, PrincipalBoundary(sessions, user_id="u1", tenant_id="a", token_version=0))
     run_id = worker.create(own, "key", max_steps=5, max_cost=0, deadline=datetime.now(timezone.utc) + timedelta(hours=1))
     token = worker.claim(run_id, own)

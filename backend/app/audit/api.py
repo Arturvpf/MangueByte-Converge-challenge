@@ -4,8 +4,10 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from backend.app.audit.log import InvalidCursor, MAX_LIMIT, as_utc, query_events, record_event
+from backend.app.audit.tracing import TRACE_ID_PATTERN, normalize_trace_id
 from backend.app.auth.dependencies import get_principal
 from backend.app.auth.permissions import Permission, Principal
+from backend.app.core.ids import ID_PATTERN
 
 router = APIRouter(prefix="/api", tags=["audit"])
 FILTERS = ("trace_id", "action", "resource_type", "resource_id", "team_id", "since", "until", "cursor")
@@ -23,12 +25,18 @@ def _item(e):
 
 
 @router.get("/audit")
-def list_audit(trace_id: str | None = Query(None, max_length=128), action: str | None = Query(None, max_length=64),
+def list_audit(trace_id: str | None = Query(None, pattern=TRACE_ID_PATTERN.pattern),
+               action: str | None = Query(None, max_length=64),
                resource_type: str | None = Query(None, max_length=64),
-               resource_id: str | None = Query(None, max_length=128), team_id: str | None = Query(None, max_length=128),
+               resource_id: str | None = Query(None, pattern=ID_PATTERN),
+               team_id: str | None = Query(None, pattern=ID_PATTERN),
                since: datetime | None = None, until: datetime | None = None,
                limit: int = Query(100, ge=1, le=MAX_LIMIT), cursor: str | None = Query(None, max_length=512),
                principal: Principal = Depends(get_principal), db=Depends(session)):
+    if trace_id is not None:
+        trace_id = normalize_trace_id(trace_id)  # accepts dashed or upper case; all-zero id is rejected
+        if trace_id is None:
+            raise HTTPException(status_code=422, detail={"code": "INVALID_TRACE_ID", "message": "Invalid trace_id"})
     values = dict(trace_id=trace_id, action=action, resource_type=resource_type, resource_id=resource_id,
                   team_id=team_id, since=since, until=until, cursor=cursor)
     used = [k for k in FILTERS if values[k] is not None]  # filter names only, never values
@@ -60,5 +68,7 @@ def list_audit(trace_id: str | None = Query(None, max_length=128), action: str |
     except InvalidCursor:
         raise HTTPException(status_code=422, detail={"code": "INVALID_CURSOR", "message": "Invalid cursor"})
     items = [_item(e) for e in events]
-    audit("success", team_id, len(items))
+    # A filter value is caller input: store it as the event team only when a
+    # membership grants that exact team, never an unverified string.
+    audit("success", team_id if team_id in principal.team_ids(perm) else None, len(items))
     return {"items": items, "next_cursor": next_cursor}

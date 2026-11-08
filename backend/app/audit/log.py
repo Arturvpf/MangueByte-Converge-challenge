@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 
 from backend.app.audit.models import ACTOR_TYPES, OUTCOMES, AuditEvent
 from backend.app.audit.sanitize import sanitize_details
-from backend.app.audit.tracing import current_trace_id, valid_trace_id
+from backend.app.audit.tracing import current_trace_id, normalize_trace_id
+from backend.app.core.ids import valid_id
 
 ACTION_PATTERN = re.compile(r"^[a-z][a-z0-9_.]{0,63}$")
 MAX_LIMIT = 500
@@ -47,9 +48,15 @@ def record_event(session: Session, *, action: str, outcome: str, tenant_id: str,
         raise ValueError("invalid audit outcome")
     if actor_type not in ACTOR_TYPES:
         raise ValueError("invalid audit actor_type")
-    trace_id = current_trace_id() if trace_id is None else trace_id
-    if not valid_trace_id(trace_id):
+    trace_id = current_trace_id() if trace_id is None else normalize_trace_id(trace_id)
+    if trace_id is None:
         raise ValueError("invalid trace_id")
+    # Columns bypass sanitize_details: accept opaque identifiers only, never free text.
+    for name, value in (("team_id", team_id), ("resource_id", resource_id)):
+        if value is not None and not valid_id(value):
+            raise ValueError(f"{name} must be an opaque identifier")
+    if resource_type is not None and (not isinstance(resource_type, str) or not ACTION_PATTERN.fullmatch(resource_type)):
+        raise ValueError("invalid resource_type")
     item = AuditEvent(
         occurred_at=datetime.now(timezone.utc), trace_id=trace_id,
         tenant_id=_text("tenant_id", tenant_id, 128, required=True), team_id=_text("team_id", team_id, 128),

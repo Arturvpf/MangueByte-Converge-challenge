@@ -1,7 +1,9 @@
 """FastAPI application factory."""
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from backend.app.core.config import Settings
 from backend.app.audit.tracing import TraceIdMiddleware
@@ -26,6 +28,13 @@ def create_app(settings: Settings | None = None, modules: tuple[DomainModule, ..
     app.state.session_factory = sessions
     app.state.jobs = jobs
     app.add_middleware(TraceIdMiddleware)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, exc: RequestValidationError):
+        # FastAPI's default 422 echoes the submitted value ("input", "ctx"), which
+        # would return passwords and personal data. Report only where and why.
+        errors = [{"type": e.get("type"), "loc": list(e.get("loc", ())), "msg": e.get("msg")} for e in exc.errors()]
+        return JSONResponse(status_code=422, content={"detail": errors})
 
     @app.get("/health", tags=["health"])
     def health():

@@ -3,6 +3,10 @@
 The id lives in a contextvar so audit events, logs and tool responses in the
 same request share it. Starlette copies the context into threadpool calls, so
 sync endpoints and dependencies see it too.
+
+Only opaque ids are accepted (32 hex chars, as uuid4().hex or a W3C trace-id,
+or a dashed UUID), stored as 32 lowercase hex. Free text could carry names or
+CPFs into the audit trace_id column, which the details sanitizer never sees.
 """
 import re
 from contextlib import contextmanager
@@ -12,7 +16,8 @@ from uuid import uuid4
 from starlette.responses import PlainTextResponse
 
 TRACE_HEADER = "X-Trace-Id"
-TRACE_ID_PATTERN = re.compile(r"^[A-Za-z0-9._~-]{1,128}$")
+TRACE_ID_PATTERN = re.compile(r"^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$",
+                              re.IGNORECASE)
 _trace_id: ContextVar[str | None] = ContextVar("trace_id", default=None)
 
 
@@ -20,8 +25,17 @@ def new_trace_id() -> str:
     return uuid4().hex
 
 
+def normalize_trace_id(value) -> str | None:
+    """Canonical 32 lowercase hex, or None if the value is not an opaque id."""
+    if not isinstance(value, str) or TRACE_ID_PATTERN.fullmatch(value) is None:
+        return None
+    value = value.replace("-", "").lower()
+    return None if value == "0" * 32 else value
+
+
 def valid_trace_id(value) -> bool:
-    return isinstance(value, str) and TRACE_ID_PATTERN.fullmatch(value) is not None
+    """True only for an id already in canonical form."""
+    return normalize_trace_id(value) == value
 
 
 def current_trace_id() -> str:
@@ -32,7 +46,7 @@ def current_trace_id() -> str:
 @contextmanager
 def use_trace_id(trace_id: str | None = None):
     """Bind a trace id outside HTTP (jobs, workers, scripts); yields the id."""
-    trace_id = trace_id if valid_trace_id(trace_id) else new_trace_id()
+    trace_id = normalize_trace_id(trace_id) or new_trace_id()
     token = _trace_id.set(trace_id)
     try:
         yield trace_id
@@ -50,7 +64,7 @@ class TraceIdMiddleware:
         if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
         incoming = next((v.decode("latin-1") for k, v in scope.get("headers", ()) if k.lower() == b"x-trace-id"), None)
-        trace_id = incoming if valid_trace_id(incoming) else new_trace_id()
+        trace_id = normalize_trace_id(incoming) or new_trace_id()
         scope.setdefault("state", {})["trace_id"] = trace_id
         header = (b"x-trace-id", trace_id.encode())
         started = False
