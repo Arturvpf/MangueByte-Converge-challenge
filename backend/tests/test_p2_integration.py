@@ -162,7 +162,7 @@ def test_validation_errors_never_echo_submitted_values(env):
     for r in responses:
         assert r.status_code == 422 and secret not in r.text
         assert all(set(e) == {'type', 'loc', 'msg'} for e in r.json()['detail'])
-    assert ['body', 'email'] in [e['loc'] for e in responses[0].json()['detail']]
+    assert ['body'] in [e['loc'] for e in responses[0].json()['detail']]
 
 
 def test_audit_columns_never_store_unverified_free_text(env):
@@ -211,3 +211,59 @@ def test_migration_downgrade_removes_p2_tables(tmp_path):
     names = set(inspect(engine).get_table_names())
     assert 'data_snapshots' in names and not names & {'tenants', 'users', 'memberships', 'audit_events'}
     engine.dispose()
+
+
+def test_upgrade_0004_preserves_rows_and_blocks_rowid_replace(tmp_path):
+    db = tmp_path / 'upgrade.db'
+    alembic(db, 'upgrade', '0004')
+    engine = create_engine(f'sqlite:///{db.as_posix()}')
+    with engine.begin() as conn:
+        conn.execute(text("insert into audit_events (id, occurred_at, trace_id, tenant_id, actor_type, action, outcome, details) values ('original', '2020-01-01', 'x', 't', 'user', 'original.event', 'success', '{}')"))
+        original = conn.execute(text('select rowid, id, action from audit_events')).one()
+    alembic(db, 'upgrade', 'head')
+    with engine.connect() as conn:
+        assert conn.execute(text('pragma recursive_triggers')).scalar_one() == 0
+        assert conn.execute(text('select rowid, id, action from audit_events')).one() == original
+        with pytest.raises(DatabaseError):
+            conn.execute(text("insert or replace into audit_events (rowid, id, occurred_at, trace_id, tenant_id, actor_type, action, outcome, details) values (:rowid, 'new', '2020-01-01', 'x', 't', 'user', 'forged.event', 'success', '{}')"), {'rowid': original.rowid})
+        conn.rollback()
+        assert conn.execute(text('select rowid, id, action from audit_events')).one() == original
+    engine.dispose()
+
+
+def test_cpf_grants_and_audit_columns_are_rejected(env):
+    from backend.app.audit.log import record_event
+    client, app, db, a, b, login, users = env
+    admin = login(a.capacity.tenant_id, 'admin@a.test')
+    for cpf in ('123.456.789-09', '12345678909', 'team-12345678909'):
+        r = client.post('/api/admin/users', json={'email': 'new@a.test', 'password': PASSWORD,
+                        'memberships': [{'role': 'gestor', 'team_id': cpf}]}, headers=admin)
+        assert r.status_code == 422 and cpf not in r.text
+        with Session(app.state.engine) as session:
+            for field in ('team_id', 'resource_id'):
+                with pytest.raises(ValueError):
+                    record_event(session, action='test.event', outcome='success', tenant_id='t', **{field: cpf})
+    with Session(app.state.engine) as session:
+        session.execute(text("insert into memberships (tenant_id, user_id, role, team_id) values (:tenant, :user, 'gestor', '12345678909')"), {'tenant': a.capacity.tenant_id, 'user': users['gestor_a']})
+        session.commit()
+    gestor = login(a.capacity.tenant_id, 'gestor@a.test')
+    assert client.get('/api/auth/me', headers=gestor).json()['memberships'] == [{'role': 'gestor', 'team_id': a.team.id}]
+
+
+def test_validation_error_does_not_echo_extra_field_name(env):
+    client, app, db, a, b, login, users = env
+    admin = login(a.capacity.tenant_id, 'admin@a.test')
+    secret = 'secret-field-name-123'
+    r = client.post('/api/admin/users', json={'email': 'new@a.test', 'password': PASSWORD,
+                    'memberships': [{'role': 'gestor', 'team_id': a.team.id, secret: 'x'}]}, headers=admin)
+    assert r.status_code == 422 and secret not in r.text
+
+
+def test_uppercase_trace_filter_matches_header(env):
+    client, app, db, a, b, login, users = env
+    admin = login(a.capacity.tenant_id, 'admin@a.test')
+    trace = 'ABCDEF12000040008000000000000001'
+    client.get('/api/audit', headers={**admin, 'X-Trace-Id': trace})
+    for value in (trace, 'ABCDEF12-0000-4000-8000-000000000001'):
+        r = client.get('/api/audit', params={'trace_id': value}, headers=admin)
+        assert r.status_code == 200 and any(e['trace_id'] == trace.lower() for e in r.json()['items'])
