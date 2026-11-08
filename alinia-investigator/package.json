@@ -6,7 +6,7 @@
   "scripts": {
     "check": "tsc --noEmit",
     "index": "tsx bot/lib/build-index.ts",
-    "test": "tsx --test bot/lib/containment.test.ts",
+    "test": "tsx --test bot/lib/containment.test.ts bot/lib/app-guard.test.ts bot/lib/centro-history.test.ts bot/lib/featherless.test.ts",
     "impact": "tsx scripts/impact-test.ts",
     "dev": "agent-sdk dev"
   },

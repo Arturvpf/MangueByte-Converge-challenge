@@ -84,6 +84,33 @@ export function syntheticCase(): {
         surplus_cases_after: syntheticFormula.hiredSurplusCases,
         premise: "mesma disponibilidade e produtividade; hora extra nao entra; custo individual foi descartado",
       },
+      competencies: [
+        {
+          skill_id: "skill-support",
+          eligible_hours: 320,
+          evidence_ids: ["ev-snapshot"],
+          caveat: "turno do mes conferido no exemplo",
+        },
+        {
+          skill_id: "skill-triage",
+          eligible_hours: 200,
+          evidence_ids: ["ev-snapshot"],
+          caveat: "turno do mes conferido no exemplo",
+        },
+      ],
+      prior_demand: [
+        { month: "2026-06", cases: 700 },
+        { month: "2026-07", cases: 760 },
+        { month: "2026-08", cases: 840 },
+        { month: "2026-09", cases: 980 },
+        { month: "2026-10", cases: 1100 },
+        { month: "2026-11", cases: 1200 },
+      ],
+      staffing: {
+        junior_atendimento: 2,
+        pleno_triagem: 1,
+        senior: 0,
+      },
       report: {
         hypotheses: [
           {
@@ -110,10 +137,11 @@ export function syntheticCase(): {
       salario: "8500.00",
     }),
     forecast: ok({
-      status: "abstained",
-      method: null,
-      horizon_weeks: null,
-      limitations: ["historico de um unico exemplo do PRD; previsao nao calibrada"],
+      status: "baseline",
+      method: "serie de exemplo junho a novembro",
+      horizon_weeks: 4,
+      next_cases: projectedDemand,
+      limitations: [],
     }),
     scenarios: ok({
       items: [
@@ -137,8 +165,8 @@ export function syntheticCase(): {
           residual_hours: null,
           conclusive: false,
           assumptions: [
-            "headcount e o teto do gap agregado",
-            "composicao por skill e turno permanece pendente",
+            "2 em inicio de carreira no atendimento e 1 pleno na triagem",
+            "estagio nao substitui essas 3 pessoas",
           ],
         },
       ],
@@ -146,10 +174,10 @@ export function syntheticCase(): {
     policies: ok({
       team_id: SYNTHETIC_TEAM_ID,
       on_date: SYNTHETIC_ON_DATE,
-      complete: false,
+      complete: true,
       weekly_max_hours: nominalHours,
-      outcome_reason: "review_required",
-      items: [{ rule_key: "weekly_journey", status: "review_required" }],
+      outcome_reason: "vigente",
+      items: [{ rule_key: "weekly_journey", status: "vigente", hours: nominalHours }],
     }),
   };
 }

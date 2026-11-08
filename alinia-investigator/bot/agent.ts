@@ -7,5 +7,5 @@ export default defineAgent({
   description:
     "Lê uma investigação já calculada e as regras vigentes, e escreve o parecer.",
   tools: [],
-  ...(model === undefined ? {} : { model }),
+  model,
 });
