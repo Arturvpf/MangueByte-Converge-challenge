@@ -227,7 +227,9 @@ def _investigate(session, principal, run: InvestigationRun):
 
 
 def _plan(session, principal, run: InvestigationRun):
-    if session.scalar(select(ScenarioRow.scenario_id).where(ScenarioRow.run_id == run.run_id)) is not None:
+    if session.scalar(select(ScenarioRow.scenario_id).where(
+        ScenarioRow.run_id == run.run_id, ScenarioRow.version == run.cycle_count + 1,
+    )) is not None:
         return
     snapshot = _snapshot(session, principal, run.team_id, run.snapshot_id)
     _observations, aggregates = _history(session, run)
@@ -253,6 +255,7 @@ def _plan(session, principal, run: InvestigationRun):
         pools=pools or {}, rows=rows, demand_hours=demand, weekly_max=weekly, policy_complete=complete,
         forecast_calibrated=forecast.status == "calibrated", dependencies=dependencies, rule_versions=versions,
         forecast_applied=False,  # Explicit fail-closed until skill/shift forecast drives the solver.
+        scenario_version=run.cycle_count + 1,
     )
     for scenario, simulation in pairs:
         session.add(ScenarioRow(
@@ -272,7 +275,9 @@ def _review(session, principal, run: InvestigationRun):
     complete, _weekly, _versions, _dependencies = _policy(session, run, snapshot.capacity.period.start)
     forecast_status = run.forecast["status"]
     requested = False
-    scenarios = list(session.scalars(select(ScenarioRow).where(ScenarioRow.run_id == run.run_id)))
+    scenarios = list(session.scalars(select(ScenarioRow).where(
+        ScenarioRow.run_id == run.run_id, ScenarioRow.version == run.cycle_count + 1,
+    )))
     for scenario_row in scenarios:
         scenario = ScenarioCandidate.model_validate_json(json.dumps(scenario_row.payload))
         simulation_row = session.scalar(select(SimulationRow).where(SimulationRow.scenario_id == scenario_row.scenario_id))
