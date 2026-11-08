@@ -46,7 +46,7 @@ class DataRepository:
 
     def add_snapshot(self, data: SnapshotData) -> None:
         # Models are mutable: serialize and validate afresh before trusting any field.
-        data = SnapshotData.model_validate_json(data.model_dump_json())
+        data = SnapshotData.model_validate_json(json.dumps(data.model_dump(mode='json'), allow_nan=False))
         c = data.capacity
         require_team(self.scope, c.team_id)
         if c.tenant_id != self.scope.tenant_id:

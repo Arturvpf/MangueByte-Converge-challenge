@@ -130,7 +130,7 @@ def test_mutation_and_corruption_fail_closed(tmp_path):
             assert b.capacity.tenant_id not in response.text
 
 @pytest.mark.parametrize('field', ['tenant_id', 'team_id', 'data_snapshot_id'])
-@pytest.mark.parametrize('value', ['x' * 129, 'bad/id'])
+@pytest.mark.parametrize('value', ['x' * 129, 'bad/id', '.', '..'])
 def test_reject_identifiers_incompatible_with_storage_and_routes(field, value):
     raw = fixture('aurora').model_dump(mode='json')
     raw['capacity'][field] = raw['demand'][field] = value
@@ -138,3 +138,17 @@ def test_reject_identifiers_incompatible_with_storage_and_routes(field, value):
         raw['team']['id'] = value
     with pytest.raises(ValidationError):
         SnapshotData.model_validate_json(json.dumps(raw))
+
+
+@pytest.mark.parametrize('value', [float('nan'), float('inf'), float('-inf')])
+def test_mutated_nonfinite_value_is_not_normalized_to_null(tmp_path, value):
+    db = tmp_path / 'nonfinite.db'
+    migrate(db, 'head')
+    app = create_app(Settings(f'sqlite:///{db.as_posix()}'))
+    data = fixture('aurora')
+    data.demand.records[0].quantity = value
+    with Session(app.state.engine) as session:
+        repo = DataRepository(session, DataScope(data.capacity.tenant_id, frozenset([data.team.id])))
+        with pytest.raises(ValueError):
+            repo.add_snapshot(data)
+        assert repo.list_snapshots(data.team.id) == ()
