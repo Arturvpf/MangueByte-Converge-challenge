@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from backend.app.core.config import Settings
+from backend.app.audit.tracing import TraceIdMiddleware
 from backend.app.core.database import make_database
 from backend.app.core.modules import DOMAIN_MODULES, DomainModule, collect_jobs
 
@@ -24,6 +25,7 @@ def create_app(settings: Settings | None = None, modules: tuple[DomainModule, ..
     app.state.engine = engine
     app.state.session_factory = sessions
     app.state.jobs = jobs
+    app.add_middleware(TraceIdMiddleware)
 
     @app.get("/health", tags=["health"])
     def health():

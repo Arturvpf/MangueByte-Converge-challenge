@@ -17,9 +17,14 @@ class DomainModule:
     jobs: tuple[JobDefinition, ...] = ()
 
 
+from backend.app.audit.api import router as audit_router
+from backend.app.auth.api import admin_router, router as auth_router
 from backend.app.data.api import router as data_router
 
-DOMAIN_MODULES: tuple[DomainModule, ...] = (DomainModule(routers=(data_router,)),)
+DOMAIN_MODULES: tuple[DomainModule, ...] = (
+    DomainModule(routers=(auth_router, admin_router, audit_router)),  # P2-01
+    DomainModule(routers=(data_router,)),
+)
 
 
 def collect_jobs(modules: tuple[DomainModule, ...]) -> dict[str, JobDefinition]:
