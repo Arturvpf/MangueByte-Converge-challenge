@@ -17,8 +17,9 @@ class DomainModule:
     jobs: tuple[JobDefinition, ...] = ()
 
 
-# Add domain modules here as they are implemented. The future worker owns execution.
-DOMAIN_MODULES: tuple[DomainModule, ...] = ()
+from backend.app.data.api import router as data_router
+
+DOMAIN_MODULES: tuple[DomainModule, ...] = (DomainModule(routers=(data_router,)),)
 
 
 def collect_jobs(modules: tuple[DomainModule, ...]) -> dict[str, JobDefinition]:

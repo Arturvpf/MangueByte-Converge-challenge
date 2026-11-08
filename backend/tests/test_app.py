@@ -6,6 +6,8 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from backend.app.core.config import Settings
 from backend.app.core.modules import DomainModule, JobDefinition
@@ -22,7 +24,7 @@ def test_empty_database_migrates(tmp_path):
                    cwd=ROOT, env=env, check=True)
     engine = create_engine(url)
     with engine.connect() as conn:
-        assert conn.execute(text("select version_num from alembic_version")).scalar_one() == "0001"
+        assert conn.execute(text("select version_num from alembic_version")).scalar_one() == ScriptDirectory.from_config(Config(str(ROOT / "backend/alembic.ini"))).get_current_head()
     engine.dispose()
 
 
