@@ -27,6 +27,9 @@ class AttributeCollector(HTMLParser):
 def test_redesigned_frontend_same_origin_and_dom_contract():
     app = create_app(Settings("sqlite://", auth_secret="s" * 40))
     with TestClient(app) as client:
+        landing = client.get("/prototype/")
+        assert landing.status_code == 200, "directory URL must serve src/index.html"
+        assert client.get("/prototype/app/index.html").status_code == 200
         page = client.get("/prototype/app/")
         script = client.get("/prototype/app/app.js")
         styles = client.get("/prototype/app/app.css")
