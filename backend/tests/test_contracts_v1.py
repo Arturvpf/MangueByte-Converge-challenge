@@ -81,6 +81,7 @@ class ContractTests(unittest.TestCase):
         with self.assertRaises(ValidationError): validate(ForecastResult, obj)
         obj = copy.deepcopy(self.examples[1]['forecast'])
         obj['points'][0]['lower'], obj['points'][0]['upper'] = 200.0, 500.0
+        obj['interval_description'] = None
         with self.assertRaises(ValidationError): validate(ForecastResult, obj)
 
     def test_errors_and_envelopes(self):
@@ -95,6 +96,36 @@ class ContractTests(unittest.TestCase):
         validate(ToolResponse[InvestigationReport], obj)
         obj['surprise'] = 1
         with self.assertRaises(ValidationError): validate(ToolResponse[InvestigationReport], obj)
+
+    def test_demand_overlap_and_timezone(self):
+        obj = copy.deepcopy(self.examples[1]['demand'])
+        other = copy.deepcopy(obj['records'][0])
+        other['quantity'] = 250.0
+        obj['records'].append(other)
+        with self.assertRaises(ValidationError): validate(DemandSnapshot, obj)
+        other['period']['start'] = '2026-11-08'
+        other['period']['end_exclusive'] = '2026-11-15'
+        with self.assertRaises(ValidationError): validate(DemandSnapshot, obj)
+        other['period']['start'] = '2026-11-09'
+        validate(DemandSnapshot, obj)
+        other['period']['timezone'] = 'UTC'
+        with self.assertRaises(ValidationError): validate(DemandSnapshot, obj)
+
+    def test_complete_and_incomplete_fixtures(self):
+        by_team = {x['request']['team_id']: x for x in self.examples}
+        complete = by_team['team-mar']
+        row = validate(SkillCapacitySnapshot, complete['capacity']).rows[0]
+        self.assertIsNotNone(row.availability_fraction)
+        self.assertEqual(row.currency, 'BRL')
+        self.assertIsNotNone(row.cost_min)
+        self.assertIsNotNone(validate(DemandSnapshot, complete['demand']).records[0].quantity)
+        forecast = validate(ForecastResult, complete['forecast'])
+        self.assertEqual(forecast.status, 'uncalibrated')
+        self.assertIsNotNone(forecast.points[0].lower)
+        incomplete = by_team['team-aurora']
+        self.assertIsNone(validate(DemandSnapshot, incomplete['demand']).records[0].quantity)
+        self.assertIsNone(validate(SkillCapacitySnapshot, incomplete['capacity']).rows[0].cost_min)
+        self.assertEqual(validate(ForecastResult, incomplete['forecast']).status, 'abstained')
 
     def test_response_type_versions_and_rule_ids(self):
         obj = copy.deepcopy(self.example['investigation_response'])

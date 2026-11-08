@@ -224,6 +224,18 @@ class DemandSnapshot(Scope):
     _id = field_validator('data_snapshot_id')(nonempty)
 
 
+    @model_validator(mode='after')
+    def nonoverlapping_records(self) -> Self:
+        zones = {r.period.timezone for r in self.records}
+        if len(zones) != 1:
+            raise ValueError('demand periods must use one timezone')
+        for skill_id in {r.skill_id for r in self.records}:
+            records = sorted((r for r in self.records if r.skill_id == skill_id), key=lambda r: r.period.start)
+            if any(a.period.end_exclusive > b.period.start for a, b in zip(records, records[1:])):
+                raise ValueError('demand periods for a skill must not overlap')
+        return self
+
+
 class Hypothesis(Contract):
     hypothesis_id: Id = Field(min_length=1)
     statement: str = Field(min_length=1)

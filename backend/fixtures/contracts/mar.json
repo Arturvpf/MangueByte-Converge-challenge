@@ -25,11 +25,11 @@
       {
         "skill_id": "skill-support",
         "shift_id": "shift-day",
-        "eligible_hours": 280.0,
-        "availability_fraction": null,
-        "cost_min": null,
-        "cost_max": null,
-        "currency": null,
+        "eligible_hours": 245.0,
+        "availability_fraction": 0.875,
+        "cost_min": 35.0,
+        "cost_max": 50.0,
+        "currency": "BRL",
         "pool_ids": [
           "pool-day"
         ]
@@ -41,7 +41,7 @@
     "pools": [
       {
         "pool_id": "pool-day",
-        "available_hours": 280.0
+        "available_hours": 245.0
       }
     ]
   },
@@ -125,11 +125,11 @@
           "timezone": "America/Fortaleza"
         },
         "point_estimate": 400.0,
-        "lower": null,
-        "upper": null
+        "lower": 320.0,
+        "upper": 480.0
       }
     ],
-    "interval_description": null,
+    "interval_description": "Faixa ilustrativa sintética, não calibrada; não representa quantis.",
     "backtest": null,
     "limitations": [
       "Exemplo sintético; não calibrado para operação."
