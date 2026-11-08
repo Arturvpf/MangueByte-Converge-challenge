@@ -1,5 +1,6 @@
 """Validated aggregate snapshot; no person-level attributes are accepted."""
 from typing import Literal
+import re
 from pydantic import Field, field_validator, model_validator
 from backend.app.contracts.v1 import Contract, SkillCapacitySnapshot, DemandSnapshot, nonempty
 
@@ -26,6 +27,9 @@ class SnapshotData(Contract):
     @model_validator(mode='after')
     def consistent(self):
         c, d = self.capacity, self.demand
+        for identifier in (c.tenant_id, c.team_id, c.data_snapshot_id):
+            if len(identifier) > 128 or not re.fullmatch(r'[A-Za-z0-9._~-]+', identifier):
+                raise ValueError('scope and snapshot IDs must be URL-safe and at most 128 characters')
         if (c.tenant_id, c.team_id, c.data_snapshot_id) != (d.tenant_id, d.team_id, d.data_snapshot_id) or self.team.id != c.team_id:
             raise ValueError('snapshot scope must match')
         for items in (self.skills, self.roles, self.shifts):

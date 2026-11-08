@@ -8,12 +8,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import Settings
 from backend.app.data.api import get_data_scope
+from backend.app.data.models import DataSnapshot
 from backend.app.data.repository import DataRepository, DataScope, ForbiddenScope
 from backend.app.data.schemas import SnapshotData
 from backend.app.main import create_app
@@ -94,3 +95,46 @@ def test_reject_personal_extra_and_mismatched_snapshot():
     bad['demand']['data_snapshot_id'] = 'other'
     with pytest.raises(ValidationError):
         SnapshotData.model_validate_json(json.dumps(bad))
+
+
+def test_mutation_and_corruption_fail_closed(tmp_path):
+    db = tmp_path / 'corruption.db'
+    migrate(db, 'head')
+    app = create_app(Settings(f'sqlite:///{db.as_posix()}'))
+    a, b = fixture('aurora'), fixture('mar')
+    scope = DataScope(a.capacity.tenant_id, frozenset([a.team.id]))
+    with Session(app.state.engine) as session:
+        repo = DataRepository(session, scope)
+        broken = a.model_copy(deep=True)
+        broken.demand.tenant_id = b.capacity.tenant_id
+        with pytest.raises(ValidationError):
+            repo.add_snapshot(broken)
+        assert repo.add_snapshot(a) is None
+        session.commit()
+        summary = repo.list_snapshots(a.team.id)[0]
+        assert not isinstance(summary, DataSnapshot)
+        with pytest.raises(Exception):
+            summary.snapshot_id = 'changed'
+        detached = repo.get_snapshot(a.team.id, a.capacity.data_snapshot_id)
+        detached.capacity.tenant_id = 'tampered'
+        session.commit()
+        assert repo.get_snapshot(a.team.id, a.capacity.data_snapshot_id).capacity.tenant_id == scope.tenant_id
+        # Simulate corruption through a privileged SQL client, not the repository.
+        session.execute(update(DataSnapshot).values(payload=b.model_dump(mode='json')))
+        session.commit()
+    app.dependency_overrides[get_data_scope] = lambda: scope
+    with TestClient(app) as client:
+        for path in ['/api/teams', f'/api/teams/{a.team.id}/snapshots', f'/api/teams/{a.team.id}/snapshots/{a.capacity.data_snapshot_id}']:
+            response = client.get(path)
+            assert response.status_code == 500
+            assert b.capacity.tenant_id not in response.text
+
+@pytest.mark.parametrize('field', ['tenant_id', 'team_id', 'data_snapshot_id'])
+@pytest.mark.parametrize('value', ['x' * 129, 'bad/id'])
+def test_reject_identifiers_incompatible_with_storage_and_routes(field, value):
+    raw = fixture('aurora').model_dump(mode='json')
+    raw['capacity'][field] = raw['demand'][field] = value
+    if field == 'team_id':
+        raw['team']['id'] = value
+    with pytest.raises(ValidationError):
+        SnapshotData.model_validate_json(json.dumps(raw))
