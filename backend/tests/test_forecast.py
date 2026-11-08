@@ -44,5 +44,24 @@ def test_multiple_rolling_origins_required_before_calibration():
         tenant_id="tenant-demo-a", team_id="team-aurora", data_snapshot_id="snap-1",
         timezone="America/Fortaleza", observations=weeks([10] * 12),
     )
-    assert result.status == "calibrated"
+    assert result.status == "uncalibrated"
     assert result.backtest is not None
+
+def test_long_stable_weekly_history_has_tested_empirical_interval():
+    result = forecast_series(
+        tenant_id="tenant-demo-a", team_id="team-aurora", data_snapshot_id="snap-long",
+        timezone="America/Fortaleza", observations=weeks([10] * 28),
+    )
+    assert result.status == "calibrated"
+    assert result.interval_description is not None
+    assert all(p.lower == 10 and p.upper == 10 for p in result.points)
+
+
+def test_gap_in_weekly_history_abstains_even_with_long_series():
+    rows = weeks([10] * 28)
+    shifted = [(start + timedelta(days=7), end + timedelta(days=7), value) for start, end, value in rows[12:]]
+    result = forecast_series(
+        tenant_id="tenant-demo-a", team_id="team-aurora", data_snapshot_id="snap-bad",
+        timezone="America/Fortaleza", observations=rows[:12] + shifted,
+    )
+    assert result.status == "abstained"

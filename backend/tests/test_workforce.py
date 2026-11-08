@@ -229,7 +229,7 @@ def test_flow_resume_decisions_and_isolation(tmp_path):
             "team_id": "team-aurora", "snapshot_id": long_snapshot, "idempotency_key": "run-long", "cycle_limit": 3,
         }, headers=rh)
         state = client.post(f"/api/investigations/{opened_long.json()['run_id']}/advance", headers=rh).json()
-        assert state["forecast"]["status"] == "calibrated"
+        assert state["forecast"]["status"] == "uncalibrated"
         assert "q-history" not in {item["question_id"] for item in state["report"]["questions"]}
         while state["state"] == "WAITING_INPUT":
             for question in state["report"]["questions"]:
