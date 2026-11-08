@@ -99,6 +99,25 @@ def test_jira_fixture_dedup_and_live_unavailable():
 
     assert [item["id"] for item in fetch_issues(SettingsLike(), transport)] == ["DEMO-1", "DEMO-2"]
     assert calls == ["GET", "GET"]
+    def inspect_transport(method, url, params, headers):
+        assert params["jql"].startswith('project = "DEMO"')
+        assert "summary" not in params["fields"]
+        assert "created" in params["fields"]
+        assert method == "GET"
+        return {"total": 0, "issues": []}
+
+    assert fetch_issues(SettingsLike(), inspect_transport) == []
+
+    class UnscopedSettings:
+        jira_base_url = "https://example.invalid"
+        jira_api_token = "synthetic-token"
+        jira_project_key = None
+
+    try:
+        fetch_issues(UnscopedSettings(), inspect_transport)
+        raise AssertionError("unscoped Jira query should be blocked")
+    except IntegrationUnavailable as exc:
+        assert "JIRA_PROJECT_KEY" in str(exc)
     try:
         fetch_issues(Settings(database_url="sqlite://"))
         raise AssertionError("expected unavailable")
