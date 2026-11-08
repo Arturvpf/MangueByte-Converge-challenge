@@ -21,7 +21,7 @@ O novo visual altera a organização da visão geral, investigação, previsão,
 | Snapshots por equipe | `GET /api/teams/{team_id}/snapshots` | Conectado |
 | Cartões agregados de demanda, capacidade, IPD, gap | `GET /api/teams/{team_id}/metrics?snapshot_id=...` | Conectado |
 | Gráfico Demanda × capacidade e painel Fluxo da demanda | `GET /api/teams/{team_id}/demand-flow?snapshot_id=...` | Conectado; demanda dos últimos 6 períodos do CSV; a capacidade é a do último período, repetida como referência (não há histórico de capacidade); fluxo legado aparece como não classificado |
-| Conversa com a Alinia (`src/app/agent.js`) | As rotas desta tabela, mais `GET /api/policies/resolve` | Conectado; cada pergunta é encaminhada a uma ferramenta fixa; o modelo de linguagem ainda não está ligado |
+| Conversa com a Alinia (`src/app/agent.js`) | As rotas desta tabela, mais `GET /api/policies/resolve` | Conectado; cada pergunta é encaminhada a uma ferramenta fixa. Na simulação, situação, previsão e perguntas livres vão ao agente `alinia-investigator` por `/agent/chat` |
 | Retomada de investigação após novo login | `GET /api/investigations`, `GET /api/investigations/{id}` | Conectado; o login restaura a última investigação só com leitura; o diálogo **Conectar dados** lista as investigações da equipe e o botão **Retomar** pode avançar o fluxo; o usuário precisa autenticar novamente ao atualizar a página |
 | Abertura e retomada do fluxo | `POST /api/investigations`, `POST /api/investigations/{id}/advance` | Conectado; workflow síncrono e determinístico |
 | Respostas às perguntas | `POST /api/investigations/{id}/answers` | Conectado; relatos não se tornam evidências verificadas |
@@ -40,7 +40,7 @@ O novo visual altera a organização da visão geral, investigação, previsão,
 
 ## Conversa com a Alinia
 
-A tela inicial (`#agente`) é a interface de conversa com o agente. Enquanto o modelo de raciocínio da branch `agent/alinia-investigator` não está ligado, a conversa funciona assim:
+A tela inicial (`#agente`) é a interface de conversa com o agente. A conversa funciona assim:
 
 - **Encaminhamento fixo:** a pergunta é classificada por padrões de texto (situação, investigação, previsão, cenários, contratação, regras, decisão, fontes) e vai para uma ferramenta que lê a API. Pedidos para revelar credenciais, avaliar pessoas ou usar dado individual são recusados antes de qualquer chamada.
 - **Transparência:** cada resposta mostra os passos executados (endpoint e tempo) e o selo de origem de cada número, que abre o detalhe da fonte.
@@ -49,7 +49,15 @@ A tela inicial (`#agente`) é a interface de conversa com o agente. Enquanto o m
 - **Sem conexão:** a conversa é uma simulação com os dados de exemplo da Unidade Centro, e a interface avisa isso.
 - **Estado:** a conversa fica só em memória e é apagada a cada novo login.
 
-Quando o modelo for ligado, ele passa a escolher a ferramenta e a redigir o texto; a interface (passos, fontes, perguntas e passagem para a decisão) não precisa mudar.
+### Ligação com o agente (`alinia-investigator`)
+
+- **Caminho:** a tela chama `POST /agent/chat` e `GET /agent/health` na mesma origem. O `scripts/serve.mjs` repassa ao agente em `ALINIA_AGENT_URL` (padrão `http://127.0.0.1:3141`, a rota `POST /v1/channels/workflow/chat`). O servidor do agente recusa chamadas de navegador vindas de outra origem (`forbidden_origin`), por isso o repasse existe.
+- **Chave do modelo:** `FEATHERLESS_API_KEY` em `alinia-investigator/.env.local` (ignorado pelo git) ou na variável de ambiente do processo do agente. A chave nunca vai ao navegador. Sem a chave, o agente devolve a ficha de fatos sem redação.
+- **Quando é usado:** só na simulação, nas intenções situação, previsão e pergunta livre, com até 500 caracteres. As guardas, a decisão, a pergunta ao gestor, os cenários e as regras continuam locais. O agente só conhece o caso sintético `run-centro-sintetico`, então não responde no modo conectado.
+- **Falha:** se o agente não estiver de pé ou não responder, o passo aparece como falho e a ferramenta local responde.
+- **Fonte:** a resposta leva o selo `agente`, que explica rota, modelo, dados e limites.
+- **Como subir:** `npm run agent` (porta 3141) e `npm run dev` (porta 5173), e abrir `http://localhost:5173/app/`.
+- **Pendente:** no FastAPI (`/prototype/app/`) ainda não há o repasse `/agent/*`; ali a tela usa as ferramentas locais. Para o agente ler o recorte real, o `deepseek-turn.ts` precisa receber `run_id`/equipe em vez do caso sintético fixo.
 
 ## Falha de execução identificada e corrigida
 
