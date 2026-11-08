@@ -129,6 +129,12 @@ class ToolResponse(Scope, Generic[T]):
 
     @model_validator(mode='after')
     def consistent(self) -> Self:
+        if self.status == 'ok' and (not self.__class__.__pydantic_generic_metadata__['args'] or not isinstance(self.result, Scope)):
+            raise ValueError('successful responses require a typed, scoped result')
+        for version in self.rule_versions:
+            nonempty(version)
+        if len(self.rule_versions) != len(set(self.rule_versions)):
+            raise ValueError('rule versions must be unique')
         if (self.status == 'ok' and (self.result is None or self.error is not None)) or (self.status == 'error' and (self.error is None or self.result is not None)):
             raise ValueError('ok requires result only; error requires error only')
         for ref in self.evidence_refs:
@@ -138,13 +144,23 @@ class ToolResponse(Scope, Generic[T]):
             raise ValueError('result must match response scope')
         if self.result is not None and hasattr(self.result, 'data_snapshot_id') and self.result.data_snapshot_id != self.data_version:
             raise ValueError('result must match data version')
+        if self.result is not None and hasattr(self.result, 'model_version') and self.result.model_version != self.model_version:
+            raise ValueError('result model version must match response')
         return self
+
+
+class CapacityPool(Contract):
+    pool_id: Id = Field(min_length=1)
+    available_hours: float | None = Field(ge=0)
+
+    _id = field_validator('pool_id')(nonempty)
 
 
 class CapacityRow(Contract):
     skill_id: Id = Field(min_length=1)
     shift_id: Id = Field(min_length=1)
     eligible_hours: float | None = Field(ge=0)
+    pool_ids: list[Id] = Field(min_length=1)
     availability_fraction: float | None = Field(ge=0, le=1)
     # Cost bands are aggregate hourly estimates, not individual salaries.
     cost_min: float | None = Field(ge=0)
@@ -168,6 +184,7 @@ class SkillCapacitySnapshot(Scope):
     data_snapshot_id: Id = Field(min_length=1)
     period: Period
     hours_unit: Literal['hours_per_period']
+    pools: list[CapacityPool] = Field(min_length=1)
     rows: list[CapacityRow] = Field(min_length=1)
     limitations: list[str]
 
@@ -175,10 +192,36 @@ class SkillCapacitySnapshot(Scope):
 
     @model_validator(mode='after')
     def unique_rows(self) -> Self:
+        pool_ids = [p.pool_id for p in self.pools]
+        if len(pool_ids) != len(set(pool_ids)):
+            raise ValueError('duplicate capacity pool')
+        for row in self.rows:
+            if len(row.pool_ids) != len(set(row.pool_ids)) or not set(row.pool_ids).issubset(pool_ids):
+                raise ValueError('row pool IDs must be unique and exist')
+            pools = [p for p in self.pools if p.pool_id in row.pool_ids]
+            if row.eligible_hours is not None and all(p.available_hours is not None for p in pools) and row.eligible_hours > sum(p.available_hours for p in pools):
+                raise ValueError('eligible hours exceed referenced pool budgets')
         keys = [(r.skill_id, r.shift_id) for r in self.rows]
         if len(keys) != len(set(keys)):
             raise ValueError('duplicate skill/shift row')
         return self
+
+
+class DemandRecord(Contract):
+    skill_id: Id = Field(min_length=1)
+    period: Period
+    quantity: float | None = Field(ge=0)
+    unit: Literal['cases_per_period']
+
+    _id = field_validator('skill_id')(nonempty)
+
+
+class DemandSnapshot(Scope):
+    data_snapshot_id: Id = Field(min_length=1)
+    records: list[DemandRecord] = Field(min_length=1)
+    limitations: list[str]
+
+    _id = field_validator('data_snapshot_id')(nonempty)
 
 
 class Hypothesis(Contract):
@@ -221,16 +264,23 @@ class Question(Contract):
 
 class InvestigationReport(Scope):
     data_snapshot_id: Id = Field(min_length=1)
+    trigger: str = Field(min_length=1)
     hypotheses: list[Hypothesis]
+    missing_data: list[str]
+    confidence_label: Literal['low', 'medium', 'high', 'unknown']
     evidence_refs: list[EvidenceRef]
     questions: list[Question]
     limitations: list[str]
     confidence: float | None = Field(ge=0, le=1)
 
-    _id = field_validator('data_snapshot_id')(nonempty)
+    _id = field_validator('data_snapshot_id', 'trigger')(nonempty)
 
     @model_validator(mode='after')
     def evidence_matches(self) -> Self:
+        hypothesis_ids = [h.hypothesis_id for h in self.hypotheses]
+        question_ids = [q.question_id for q in self.questions]
+        if len(hypothesis_ids) != len(set(hypothesis_ids)) or len(question_ids) != len(set(question_ids)):
+            raise ValueError('duplicate hypothesis or question ID')
         ids = [r.evidence_id for r in self.evidence_refs]
         if len(ids) != len(set(ids)):
             raise ValueError('duplicate evidence ID')
@@ -285,14 +335,16 @@ class ForecastResult(Scope):
     def valid_forecast(self) -> Self:
         if self.history_end_exclusive > self.horizon.start:
             raise ValueError('history must end before the forecast horizon')
-        if self.backtest and self.backtest.evaluated_through >= self.horizon.start:
+        if self.backtest and self.backtest.evaluated_through >= self.history_end_exclusive:
             raise ValueError('backtest must precede forecast horizon')
         if self.status == 'abstained' and self.points:
             raise ValueError('abstained forecast cannot contain points')
         if self.status != 'abstained' and not self.points:
             raise ValueError('forecast requires points')
-        if self.status == 'calibrated' and self.backtest is None:
-            raise ValueError('calibrated forecast requires backtest')
+        if self.status == 'calibrated' and (self.backtest is None or self.backtest.mae is None or any(p.point_estimate is None for p in self.points)):
+            raise ValueError('calibrated forecast requires measured MAE and estimates')
+        if self.backtest and self.backtest.wape is None and not self.backtest.limitations:
+            raise ValueError('missing WAPE requires a limitation')
         for p in self.points:
             if p.period.timezone != self.horizon.timezone or p.period.start < self.horizon.start or p.period.end_exclusive > self.horizon.end_exclusive:
                 raise ValueError('point outside horizon or timezone mismatch')

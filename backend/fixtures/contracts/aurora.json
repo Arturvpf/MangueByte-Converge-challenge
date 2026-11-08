@@ -7,7 +7,7 @@
     "run_id": "run-aurora",
     "data_snapshot_id": "snap-aurora-1",
     "policy_version_ids": [],
-    "requested_at": "2026-11-07T12:00:00-03:00",
+    "requested_at": "2026-11-10T12:00:00-03:00",
     "idempotency_key": "key-aurora"
   },
   "capacity": {
@@ -29,11 +29,32 @@
         "availability_fraction": 0.9,
         "cost_min": null,
         "cost_max": null,
-        "currency": null
+        "currency": null,
+        "pool_ids": [
+          "pool-day"
+        ]
+      },
+      {
+        "skill_id": "skill-triage",
+        "shift_id": "shift-day",
+        "eligible_hours": 200.0,
+        "availability_fraction": 0.9,
+        "cost_min": null,
+        "cost_max": null,
+        "currency": null,
+        "pool_ids": [
+          "pool-day"
+        ]
       }
     ],
     "limitations": [
-      "Horas por skill podem se sobrepor; não somar sem deduplicação."
+      "A soma das alocações de cada pool não pode ultrapassar seu orçamento."
+    ],
+    "pools": [
+      {
+        "pool_id": "pool-day",
+        "available_hours": 320.0
+      }
     ]
   },
   "investigation_response": {
@@ -76,7 +97,12 @@
       "limitations": [
         "Exemplo sintético; não representa pessoas reais."
       ],
-      "confidence": null
+      "confidence": null,
+      "trigger": "Análise periódica sintética",
+      "missing_data": [
+        "Disponibilidade efetiva"
+      ],
+      "confidence_label": "unknown"
     },
     "error": null,
     "evidence_refs": [
@@ -91,7 +117,7 @@
     "data_version": "snap-aurora-1",
     "model_version": null,
     "rule_versions": [],
-    "generated_at": "2026-11-07T12:05:00-03:00",
+    "generated_at": "2026-11-10T12:05:00-03:00",
     "limitations": [],
     "trace_id": "trace-aurora"
   },
@@ -115,6 +141,27 @@
     "backtest": null,
     "limitations": [
       "Exemplo sintético; não calibrado para operação."
+    ]
+  },
+  "demand": {
+    "schema_version": "1.0",
+    "tenant_id": "tenant-demo-a",
+    "team_id": "team-aurora",
+    "data_snapshot_id": "snap-aurora-1",
+    "records": [
+      {
+        "skill_id": "skill-support",
+        "period": {
+          "start": "2026-11-02",
+          "end_exclusive": "2026-11-09",
+          "timezone": "America/Fortaleza"
+        },
+        "quantity": null,
+        "unit": "cases_per_period"
+      }
+    ],
+    "limitations": [
+      "Dados sintéticos agregados."
     ]
   }
 }

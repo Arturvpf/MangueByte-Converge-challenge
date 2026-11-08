@@ -7,7 +7,7 @@
     "run_id": "run-mar",
     "data_snapshot_id": "snap-mar-1",
     "policy_version_ids": [],
-    "requested_at": "2026-11-07T12:00:00-03:00",
+    "requested_at": "2026-11-10T12:00:00-03:00",
     "idempotency_key": "key-mar"
   },
   "capacity": {
@@ -29,11 +29,20 @@
         "availability_fraction": null,
         "cost_min": null,
         "cost_max": null,
-        "currency": null
+        "currency": null,
+        "pool_ids": [
+          "pool-day"
+        ]
       }
     ],
     "limitations": [
-      "Horas por skill podem se sobrepor; não somar sem deduplicação."
+      "A soma das alocações de cada pool não pode ultrapassar seu orçamento."
+    ],
+    "pools": [
+      {
+        "pool_id": "pool-day",
+        "available_hours": 280.0
+      }
     ]
   },
   "investigation_response": {
@@ -71,7 +80,10 @@
       "limitations": [
         "Exemplo sintético; não representa pessoas reais."
       ],
-      "confidence": 0.7
+      "confidence": 0.7,
+      "trigger": "Análise periódica sintética",
+      "missing_data": [],
+      "confidence_label": "medium"
     },
     "error": null,
     "evidence_refs": [
@@ -86,7 +98,7 @@
     "data_version": "snap-mar-1",
     "model_version": null,
     "rule_versions": [],
-    "generated_at": "2026-11-07T12:05:00-03:00",
+    "generated_at": "2026-11-10T12:05:00-03:00",
     "limitations": [],
     "trace_id": "trace-mar"
   },
@@ -121,6 +133,27 @@
     "backtest": null,
     "limitations": [
       "Exemplo sintético; não calibrado para operação."
+    ]
+  },
+  "demand": {
+    "schema_version": "1.0",
+    "tenant_id": "tenant-demo-b",
+    "team_id": "team-mar",
+    "data_snapshot_id": "snap-mar-1",
+    "records": [
+      {
+        "skill_id": "skill-support",
+        "period": {
+          "start": "2026-11-02",
+          "end_exclusive": "2026-11-09",
+          "timezone": "America/Fortaleza"
+        },
+        "quantity": 375.0,
+        "unit": "cases_per_period"
+      }
+    ],
+    "limitations": [
+      "Dados sintéticos agregados."
     ]
   }
 }
