@@ -260,6 +260,10 @@ def test_flow_resume_decisions_and_isolation(tmp_path):
         assert stale.status_code == 409
         scenarios = client.get(f"/api/investigations/{opened.json()['run_id']}/scenarios", headers=gestor).json()["items"]
         assert {item["kind"] for item in scenarios} == {"hire", "temporary", "reallocate", "redesign", "do_nothing"}
+        assert all(
+            any(dep.startswith("MANAGER_REPORT_UNVERIFIED:") for dep in item["dependencies"])
+            for item in scenarios
+        )
         hire = next(item for item in scenarios if item["kind"] == "hire")
         assert hire["conclusive"] is False and hire["headcount_delta"] is None
         assert any("LEGAL_CONTEXT_REQUIRED" in dep for dep in hire["dependencies"])
