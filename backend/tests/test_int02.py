@@ -113,7 +113,7 @@ def test_revoked_rule_and_infeasible_block_approval(tmp_path):
         rh = login(client, "tenant-demo-a", "approver@a.test")
         gestor = login(client, "tenant-demo-a", "gestor@a.test")
         other = login(client, "tenant-demo-b", "rh@b.test")
-        created = client.post("/api/imports", json={"team_id": "team-aurora", "filename": "long.csv", "content": weeks(9)}, headers=author_headers)
+        created = client.post("/api/imports", json={"team_id": "team-aurora", "filename": "long.csv", "content": weeks(12)}, headers=author_headers)
         snapshot_id = client.post(f"/api/imports/{created.json()['import_id']}/confirm", headers=author_headers).json()["snapshot_id"]
         opened = client.post("/api/investigations", json={
             "team_id": "team-aurora", "snapshot_id": snapshot_id, "idempotency_key": "run-revoke", "cycle_limit": 3,

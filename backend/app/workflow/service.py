@@ -1,5 +1,5 @@
 """Checkpointed investigation. Advance resumes from the stored state."""
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_CEILING
 from hashlib import sha256
 import json
@@ -235,6 +235,19 @@ def _plan(session, principal, run: InvestigationRun):
     pools, rows, demand = (None, [], None) if parsed is None else parsed
     complete, weekly, versions, dependencies = _policy(session, run, snapshot.capacity.period.start)
     forecast = ForecastResult.model_validate_json(json.dumps(run.forecast))
+    # Re-check every operational date in the forecast window. An approved rule
+    # valid at snapshot time is not automatically valid for future schedules.
+    initial_versions = set(versions)
+    if forecast.points:
+        day = forecast.horizon.start
+        while day < forecast.horizon.end_exclusive:
+            effective, effective_weekly, future_versions, future_dependencies = _policy(session, run, day)
+            if not effective or effective_weekly != weekly or set(future_versions) != initial_versions:
+                complete = False
+                dependencies.append(f"revisão jurídica temporal requerida em {day.isoformat()}")
+                dependencies.extend(future_dependencies)
+                break
+            day += timedelta(days=1)
     pairs = build_scenarios(
         tenant_id=run.tenant_id, team_id=run.team_id, snapshot_id=run.snapshot_id,
         pools=pools or {}, rows=rows, demand_hours=demand, weekly_max=weekly, policy_complete=complete,

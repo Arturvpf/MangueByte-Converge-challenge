@@ -223,7 +223,7 @@ def test_flow_resume_decisions_and_isolation(tmp_path):
         reloaded = client.get(f"/api/scenarios/{hire['scenario_id']}", headers=rh).json()
         assert reloaded["decision"]["decision"] == "reject"
 
-        long = client.post("/api/imports", json={"team_id": "team-aurora", "filename": "long.csv", "content": weeks(9)}, headers=rh)
+        long = client.post("/api/imports", json={"team_id": "team-aurora", "filename": "long.csv", "content": weeks(12)}, headers=rh)
         long_snapshot = client.post(f"/api/imports/{long.json()['import_id']}/confirm", headers=rh).json()["snapshot_id"]
         opened_long = client.post("/api/investigations", json={
             "team_id": "team-aurora", "snapshot_id": long_snapshot, "idempotency_key": "run-long", "cycle_limit": 3,

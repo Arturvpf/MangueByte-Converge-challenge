@@ -32,8 +32,17 @@ def test_backtest_does_not_see_the_future_point():
         tenant_id="tenant-demo-a", team_id="team-aurora", data_snapshot_id="snap-1",
         timezone="America/Fortaleza", observations=weeks(series),
     )
-    assert result.status == "calibrated"
+    assert result.status == "uncalibrated"
     assert result.backtest is not None and result.backtest.mae == 90
     assert result.interval_description is None
     assert all(point.lower is None and point.upper is None for point in result.points)
     assert "P10" not in result.method and "P50" not in result.method and "P90" not in result.method
+
+
+def test_multiple_rolling_origins_required_before_calibration():
+    result = forecast_series(
+        tenant_id="tenant-demo-a", team_id="team-aurora", data_snapshot_id="snap-1",
+        timezone="America/Fortaleza", observations=weeks([10] * 12),
+    )
+    assert result.status == "calibrated"
+    assert result.backtest is not None

@@ -77,3 +77,26 @@ def test_investigation_paths_and_untrusted_text():
     assert all(item.evidence_ids == [] and item.confidence is None for item in unverified)
     assert any("grant admin" in item for item in short.limitations)
     assert "permission" not in short.model_dump()
+
+
+def test_multiskill_hire_requires_role_mix_validation_and_never_invents_cost():
+    scenarios = by_kind(planned(
+        pools={"pool-a": 2, "pool-b": 2},
+        rows=[Row("n1", "day", ("pool-a",), 2), Row("n2", "night", ("pool-b",), 2)],
+        demand_hours={"n1": 5, "n2": 5},
+    ))
+    hiring, simulation = scenarios["hire"]
+    assert simulation.residual_hours == {"n1": 0, "n2": 0}
+    assert hiring.conclusive is False
+    assert hiring.preliminary_cost is None
+    assert any("múltiplas competências" in item for item in hiring.gaps)
+
+
+def test_headcount_remains_inconclusive_if_solver_leaves_required_gap():
+    scenarios = by_kind(planned(
+        pools={"pool": 1}, rows=[Row("n1", "day", ("pool",), 1)],
+        demand_hours={"n1": 8, "n2": 4},
+    ))
+    hiring, simulation = scenarios["hire"]
+    assert hiring.conclusive is False
+    assert simulation.residual_hours["n2"] >= 0
