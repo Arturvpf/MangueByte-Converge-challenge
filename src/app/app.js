@@ -266,6 +266,16 @@ document.querySelector('[data-connect-form]').addEventListener('submit', async (
     const teams = await api('/api/teams');
     fillSelect(document.querySelector('[data-team]'), teams.map((team) => ({ value: team.id, label: team.name || team.id })), 'Nenhuma equipe com snapshot');
     await loadSnapshots();
+    // Restore the last server-side investigation after an explicit new login.
+    // Never store bearer credentials in localStorage, sessionStorage or cookies.
+    const latest = await api('/api/investigations');
+    const teamId = document.querySelector('[data-team]').value;
+    const snapshotId = document.querySelector('[data-snapshot]').value;
+    const previous = latest.items.find((item) => item.team_id === teamId &&
+      item.snapshot_id === snapshotId);
+    if (previous) {
+      await paintRun(await api(`/api/investigations/${previous.run_id}`));
+    }
     document.querySelector('[data-live-controls]').hidden = false;
     document.querySelector('[data-review-action]').hidden = true;
     document.querySelector('[data-decision-form]').hidden = false;
