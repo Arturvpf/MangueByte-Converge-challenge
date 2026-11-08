@@ -100,6 +100,41 @@ def test_data_scope_follows_verified_identity(env):
     assert r.status_code == 401
 
 
+
+@pytest.mark.parametrize('detail', [False, True])
+def test_snapshot_scope_denial_is_audited_once(env, detail):
+    client, app, db, a, b, login, users = env
+    ta, tb = a.capacity.tenant_id, b.capacity.tenant_id
+    other = login(ta, 'outro@a.test')
+    admin = login(ta, 'admin@a.test')
+    rh_b = login(tb, 'rh@b.test')
+    trace = 'a2000000000000000000000000000001' if detail else 'a2000000000000000000000000000002'
+    path = f'/api/teams/{a.team.id}/snapshots'
+    if detail:
+        path += f'/{a.capacity.data_snapshot_id}'
+    response = client.get(path, headers={**other, 'X-Trace-Id': trace})
+    assert response.status_code == 403 and response.headers['x-trace-id'] == trace
+    events = client.get('/api/audit', params={'trace_id': trace}, headers=admin).json()['items']
+    assert len(events) == 1
+    assert (events[0]['action'], events[0]['outcome'], events[0]['actor_user_id']) == (
+        'authz.denied', 'denied', users['gestor_other'])
+    assert events[0]['details'] == {'permission': 'data:read'}
+    assert client.get('/api/audit', params={'trace_id': trace}, headers=rh_b).json()['items'] == []
+
+    # Untrusted route values are never copied into the audit event.
+    secret = '123.456.789-09'
+    trace2 = 'a2000000000000000000000000000003' if detail else 'a2000000000000000000000000000004'
+    path = f'/api/teams/{secret}/snapshots' + ('/missing' if detail else '')
+    assert client.get(path, headers={**other, 'X-Trace-Id': trace2}).status_code == 403
+    events = client.get('/api/audit', params={'trace_id': trace2}, headers=admin).json()['items']
+    assert len(events) == 1 and secret not in json.dumps(events)
+
+    gestor = login(ta, 'gestor@a.test')
+    assert client.get(f'/api/teams/{a.team.id}/snapshots/missing', headers=gestor).status_code == 404
+    # A tenant-wide grant remains scoped to data in its own tenant.
+    assert client.get(f'/api/teams/{a.team.id}/snapshots', headers=rh_b).status_code == 403
+
+
 def test_audit_correlates_trace_and_stays_in_tenant(env):
     client, app, db, a, b, login, users = env
     ta, tb = a.capacity.tenant_id, b.capacity.tenant_id
