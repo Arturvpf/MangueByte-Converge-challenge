@@ -7,13 +7,15 @@
  *   node scripts/serve.mjs dist 8080  -> serve dist/ na porta 8080
  *
  * /agent/health e /agent/chat são repassados ao agente em ALINIA_AGENT_URL
- * (padrão http://127.0.0.1:3141, o `npm run agent`).
+ * (padrão http://127.0.0.1:3141, o `npm run agent`). Cada /agent/chat leva a
+ * ficha do site (scripts/agent-site-context.mjs).
  */
 
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { SITE_CONTEXT } from './agent-site-context.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir = path.join(root, process.argv[2] ?? 'src');
@@ -89,7 +91,8 @@ async function proxyAgent(req, res, url) {
     upstream = await fetch(`${AGENT}/v1/channels/workflow/chat`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'text/plain' },
-      body: JSON.stringify({ message }),
+      // A ficha do site vai junto: o agente responde a partir do que a tela mostra.
+      body: JSON.stringify({ message, context: SITE_CONTEXT }),
       signal: AbortSignal.timeout(60_000),
     });
   } catch {
