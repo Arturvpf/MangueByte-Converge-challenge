@@ -269,12 +269,18 @@ document.querySelector('[data-connect-form]').addEventListener('submit', async (
     // Restore the last server-side investigation after an explicit new login.
     // Never store bearer credentials in localStorage, sessionStorage or cookies.
     const latest = await api('/api/investigations');
-    const teamId = document.querySelector('[data-team]').value;
-    const snapshotId = document.querySelector('[data-snapshot]').value;
-    const previous = latest.items.find((item) => item.team_id === teamId &&
-      item.snapshot_id === snapshotId);
-    if (previous) {
-      await paintRun(await api(`/api/investigations/${previous.run_id}`));
+    const mostRecent = latest.items[0];
+    if (mostRecent) {
+      const teamSelect = document.querySelector('[data-team]');
+      const snapshotSelect = document.querySelector('[data-snapshot]');
+      if ([...teamSelect.options].some((option) => option.value === mostRecent.team_id)) {
+        teamSelect.value = mostRecent.team_id;
+        await loadSnapshots();
+        if ([...snapshotSelect.options].some((option) => option.value === mostRecent.snapshot_id)) {
+          snapshotSelect.value = mostRecent.snapshot_id;
+          await paintRun(await api(`/api/investigations/${mostRecent.run_id}`));
+        }
+      }
     }
     document.querySelector('[data-live-controls]').hidden = false;
     document.querySelector('[data-review-action]').hidden = true;
