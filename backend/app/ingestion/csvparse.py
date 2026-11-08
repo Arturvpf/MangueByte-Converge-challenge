@@ -15,12 +15,16 @@ REQUIRED = (
 OPTIONAL = (
     "availability_fraction", "cost_min", "cost_max", "currency", "cases_per_hour", "headcount",
     "nominal_hours", "projected_demand", "skill_name", "shift_name",
+    "incoming_cases", "completed_cases", "cancelled_cases", "reopened_cases",
+    "unmet_cases", "backlog_start", "backlog_end",
 )
 FORBIDDEN = {
     "salary", "salario", "salário", "cpf", "email", "e-mail", "nome", "name", "person_id",
     "employee_id", "employee", "pessoa", "motivo_afastamento", "absence_reason", "afastamento",
 }
 AGGREGATE_FIELDS = ("cases_per_hour", "headcount", "nominal_hours", "availability_fraction", "projected_demand")
+FLOW_FIELDS = ("incoming_cases", "completed_cases", "cancelled_cases", "reopened_cases",
+               "unmet_cases", "backlog_start", "backlog_end")
 
 
 def _cell(value: str | None) -> str:
@@ -96,6 +100,17 @@ def _row_errors(line: int, item: dict) -> list[dict]:
     for column in ("eligible_hours", "available_hours", "demand_cases"):
         if _decimal(item[column]) is None:
             found.append(_error(line, column, "invalid_number"))
+    if any(item.get(field, "") != "" for field in FLOW_FIELDS):
+        if any(not item.get(field, "").isdigit() for field in FLOW_FIELDS):
+            found.append(_error(line, "demand_flow", "missing_or_invalid_flow"))
+        else:
+            flow = {field: int(item[field]) for field in FLOW_FIELDS}
+            expected = (flow["backlog_start"] + flow["incoming_cases"] + flow["reopened_cases"]
+                        - flow["completed_cases"] - flow["cancelled_cases"])
+            if expected != flow["backlog_end"]:
+                found.append(_error(line, "backlog_end", "backlog_mismatch"))
+            if _decimal(item["demand_cases"]) != flow["incoming_cases"] + flow["unmet_cases"]:
+                found.append(_error(line, "demand_cases", "must_equal_incoming_plus_unmet"))
     for column in ("availability_fraction", "cost_min", "cost_max", "cases_per_hour", "nominal_hours", "projected_demand"):
         if item.get(column) not in (None, "") and _decimal(item[column]) is None:
             found.append(_error(line, column, "invalid_number"))
@@ -132,6 +147,18 @@ def _assemble(rows, errors, *, tenant_id, team_id, snapshot_id, reference):
         values = {item[column] for _, item in rows if item.get(column) not in (None, "")}
         if len(values) > 1:
             errors.append(_error(1, column, "conflicting_aggregate"))
+    if errors:
+        return _empty(errors)
+    # A skill may be listed across several shifts and pools. Count its demand
+    # once per period; inconsistent duplicates invalidate the entire import.
+    unique_demand = {}
+    for line, item in rows:
+        key = (item["period_start"], item["period_end_exclusive"], item["skill_id"])
+        signature = (item["demand_cases"], *(item.get(field, "") for field in FLOW_FIELDS))
+        if key in unique_demand and unique_demand[key][1] != signature:
+            errors.append(_error(line, "demand_cases", "conflicting_demand_flow"))
+        else:
+            unique_demand.setdefault(key, (item, signature))
     if errors:
         return _empty(errors)
     last_end = max(item["period_end_exclusive"] for _, item in rows)
@@ -200,11 +227,19 @@ def _assemble(rows, errors, *, tenant_id, team_id, snapshot_id, reference):
     SnapshotData.model_validate_json(json.dumps(snapshot))
     history = []
     for end in sorted({item["period_end_exclusive"] for _, item in rows}):
-        chunk = [item for _, item in rows if item["period_end_exclusive"] == end]
-        history.append({
+        chunk = [item for (start, period_end, skill), (item, _) in unique_demand.items() if period_end == end]
+        flow_present = all(all(item.get(field, "") != "" for field in FLOW_FIELDS) for item in chunk)
+        if any(any(item.get(field, "") != "" for field in FLOW_FIELDS) for item in chunk) and not flow_present:
+            return _empty([_error(1, "demand_flow", "mixed_flow_schema")])
+        entry = {
             "start": chunk[0]["period_start"], "end": end,
             "quantity": str(sum(_decimal(item["demand_cases"]) for item in chunk)),
-        })
+            "demand_semantics": "incoming_plus_unmet" if flow_present else "legacy_unclassified",
+        }
+        if flow_present:
+            for field in FLOW_FIELDS:
+                entry[field] = str(sum(int(item[field]) for item in chunk))
+        history.append(entry)
     first = selected[0]
     aggregates = {
         "cases_per_hour": first.get("cases_per_hour") or None,
