@@ -1,4 +1,7 @@
+import { mountAgent } from './agent.js';
+
 const routes = {
+  agente: 'Conversa com a Alinia',
   'visao-geral': 'Visão geral',
   investigacao: 'Investigação',
   previsao: 'Previsão',
@@ -17,9 +20,14 @@ function closeMenu() {
   menuToggle.setAttribute('aria-label', 'Abrir navegação');
 }
 
-function showRoute() {
+const activeRoute = () => {
   const route = decodeURIComponent(location.hash.slice(1));
-  const active = Object.hasOwn(routes, route) ? route : 'visao-geral';
+  return Object.hasOwn(routes, route) ? route : 'agente';
+};
+const onAgentScreen = () => activeRoute() === 'agente';
+
+function showRoute() {
+  const active = activeRoute();
   document.querySelectorAll('[data-screen]').forEach((section) => {
     const selected = section.dataset.screen === active;
     section.hidden = !selected;
@@ -33,6 +41,7 @@ function showRoute() {
   document.title = `${routes[active]} — Alinia`;
   closeMenu();
   window.scrollTo({ top: 0, behavior: 'instant' });
+  document.dispatchEvent(new CustomEvent('alinia:route', { detail: active }));
 }
 
 menuToggle.addEventListener('click', () => {
@@ -203,27 +212,29 @@ function closeDrawer() {
   previousFocus?.focus();
 }
 
+// Abre o detalhe de uma fonte. Também usado pela conversa com a Alinia.
+function openEvidence(item, trigger) {
+  previousFocus = trigger;
+  document.querySelector('[data-drawer-title]').textContent = item.title;
+  document.querySelector('[data-drawer-intro]').textContent = item.intro;
+  const body = document.querySelector('[data-drawer-body]');
+  body.replaceChildren(...item.items.map(([label, value]) => {
+    const box = document.createElement('div');
+    const heading = document.createElement('span');
+    const text = document.createElement('strong');
+    heading.textContent = label;
+    text.textContent = value;
+    box.append(heading, text);
+    return box;
+  }));
+  drawer.hidden = false;
+  drawerBackdrop.hidden = false;
+  document.body.style.overflow = 'hidden';
+  drawer.querySelector('[data-drawer-close]').focus();
+}
+
 document.querySelectorAll('[data-evidence]').forEach((button) => {
-  button.addEventListener('click', () => {
-    previousFocus = button;
-    const item = evidence[button.dataset.evidence];
-    document.querySelector('[data-drawer-title]').textContent = item.title;
-    document.querySelector('[data-drawer-intro]').textContent = item.intro;
-    const body = document.querySelector('[data-drawer-body]');
-    body.replaceChildren(...item.items.map(([label, value]) => {
-      const box = document.createElement('div');
-      const heading = document.createElement('span');
-      const text = document.createElement('strong');
-      heading.textContent = label;
-      text.textContent = value;
-      box.append(heading, text);
-      return box;
-    }));
-    drawer.hidden = false;
-    drawerBackdrop.hidden = false;
-    document.body.style.overflow = 'hidden';
-    drawer.querySelector('[data-drawer-close]').focus();
-  });
+  button.addEventListener('click', () => openEvidence(evidence[button.dataset.evidence], button));
 });
 document.querySelectorAll('[data-drawer-close]').forEach((button) => button.addEventListener('click', closeDrawer));
 drawerBackdrop.addEventListener('click', closeDrawer);
@@ -387,6 +398,7 @@ document.querySelector('[data-connect-form]').addEventListener('submit', async (
     session.token = login.access_token;
     session.runs = [];
     resetLoadedInvestigation();
+    document.dispatchEvent(new CustomEvent('alinia:login'));
     const me = await api('/api/auth/me');
     const role = me.memberships[0] ? me.memberships[0].role : 'sem papel';
     const teams = await api('/api/teams');
@@ -422,6 +434,7 @@ document.querySelector('[data-connect-form]').addEventListener('submit', async (
     if (!restored) document.querySelector('[data-banner-copy]').textContent = `Conectado como ${role}. Os números de exemplo ficam até você carregar um recorte`;
     document.querySelector('[data-sidebar-status]').textContent = 'Conectado à API';
     document.querySelector('[data-connect-form]').hidden = true;
+    document.dispatchEvent(new CustomEvent('alinia:context'));
     if (restored) setStatus('Investigação anterior recuperada da API. Confira as evidências antes de decidir.');
     else if (restoreError) setStatus(`Sessão aberta; não foi possível restaurar a investigação: ${restoreError}`);
     else if (teams.length) setStatus('Sessão aberta. Escolha a equipe e o recorte.');
@@ -442,6 +455,7 @@ function resetLoadedInvestigation() {
   fillSelect(document.querySelector('[data-decision-scenario]'), [], 'Nenhum cenário carregado');
   document.querySelector('[data-review="validation"]').textContent = 'Não executada neste recorte';
   syncApproval();
+  document.dispatchEvent(new CustomEvent('alinia:reset'));
 }
 
 document.querySelector('[data-team]').addEventListener('change', () => {
@@ -525,7 +539,7 @@ function renderOverviewChart(flow, block) {
     : 'Demanda do CSV do recorte. A capacidade é a do último período, repetida como referência; não há histórico de capacidade';
 }
 
-async function loadMetrics(teamId, snapshotId, { closeDialog = true } = {}) {
+async function loadMetrics(teamId, snapshotId, { closeDialog = true, navigate = true } = {}) {
   if (!teamId || !snapshotId) {
     setStatus('Não há snapshot para carregar.');
     return;
@@ -567,7 +581,7 @@ async function loadMetrics(teamId, snapshotId, { closeDialog = true } = {}) {
     setStatus('Métricas carregadas da API.');
     renderOverviewChart(flow, block);
     if (closeDialog) connectDialog.close();
-    location.hash = '#visao-geral';
+    if (navigate) location.hash = '#visao-geral';
     return true;
   } catch (error) {
     setStatus(`Métricas não carregadas: ${errorText(error)}`);
@@ -753,7 +767,7 @@ function syncApproval() {
 }
 document.querySelector('[data-decision-scenario]').addEventListener('change', syncApproval);
 
-async function paintRun(run) {
+async function paintRun(run, { navigate = true } = {}) {
   if (session.runId !== run.run_id) {
     session.scenarios = [];
     session.decisions = new Map();
@@ -776,11 +790,12 @@ async function paintRun(run) {
     renderScenarios(scenarios.items);
     setStatus(`Investigação em ${run.state}, ciclo ${run.cycle_count}. Cenários da versão atual carregados da API.`);
     document.querySelector('[data-banner-copy]').textContent = `Investigação ${run.run_id} · recorte ${run.snapshot_id} · ciclo ${run.cycle_count}. Os cenários mostrados são os da versão atual do ciclo.`;
-    if (location.hash !== '#cenarios' && location.hash !== '#revisao') location.hash = '#cenarios';
+    if (navigate && location.hash !== '#cenarios' && location.hash !== '#revisao') location.hash = '#cenarios';
   } else {
     setStatus(run.failure ? `Investigação ${run.state}: ${run.failure}.` : `Investigação em ${run.state}. Responda as perguntas pendentes para continuar.`);
-    if (location.hash !== '#investigacao') location.hash = '#investigacao';
+    if (navigate && location.hash !== '#investigacao') location.hash = '#investigacao';
   }
+  document.dispatchEvent(new CustomEvent('alinia:context'));
 }
 
 document.querySelector('[data-open-investigation]').addEventListener('click', async () => {
@@ -813,13 +828,15 @@ document.querySelector('[data-run-select]').addEventListener('change', (event) =
 async function resumeRun(selected, { advance = true } = {}) {
   document.querySelector('[data-snapshot]').value = selected.snapshot_id;
   document.querySelector('[data-run-select]').value = selected.run_id;
-  if (!await loadMetrics(selected.team_id, selected.snapshot_id, { closeDialog: false })) return false;
+  // Quem está conversando com a Alinia continua na conversa.
+  const navigate = !onAgentScreen();
+  if (!await loadMetrics(selected.team_id, selected.snapshot_id, { closeDialog: false, navigate })) return false;
   const path = `/api/investigations/${encodeURIComponent(selected.run_id)}`;
   let run = await api(path);
   if (advance && !['WAITING_INPUT', 'AWAITING_HUMAN', 'COMPLETED', 'FAILED', 'BLOCKED'].includes(run.state)) {
     run = await api(`${path}/advance`, { method: 'POST' });
   }
-  await paintRun(run);
+  await paintRun(run, { navigate });
   return true;
 }
 
@@ -892,4 +909,23 @@ document.querySelector('[data-draft]').addEventListener('click', async (event) =
     event.currentTarget.disabled = false;
     feedback.textContent = `Rascunho não criado: ${errorText(error)}.`;
   }
+});
+
+// Alinia: a conversa usa as mesmas funções de API, fontes e estado da sessão.
+mountAgent({
+  session, api, errorText, formatApi, readableGap, validation, scenarioStatus, kindTitle, evidence, openEvidence,
+  openConnect: () => { closeMenu(); connectDialog.showModal(); },
+  scope: () => {
+    const team = document.querySelector('[data-team]');
+    return {
+      teamId: team.value,
+      teamName: team.selectedOptions[0] ? team.selectedOptions[0].textContent : '',
+      snapshotId: document.querySelector('[data-snapshot]').value,
+    };
+  },
+  // Mantém as outras telas em dia sem tirar a pessoa da conversa.
+  syncRun: async (run) => {
+    await paintRun(run, { navigate: false });
+    await loadRuns().catch(() => {});
+  },
 });

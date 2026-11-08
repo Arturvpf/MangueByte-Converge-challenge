@@ -28,6 +28,8 @@
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
     <symbol id="i-sigma" viewBox="0 0 24 24"><path d="M18 7V4H6l6 8-6 8h12v-3"/></symbol>
     <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.2L3 16M3 21v-5h5"/></symbol>
   </svg>
 
   <a class="skip-link" href="#main">Pular para o conteúdo</a>
@@ -45,9 +47,13 @@
         <span><strong data-unit-name>Unidade Centro</strong><small data-unit-meta>Atendimento · 11 pessoas</small></span>
       </div>
 
+      <nav class="agent-nav" aria-label="Agente">
+        <a href="#agente" data-nav="agente"><svg class="icon" aria-hidden="true"><use href="#i-message"/></svg><span>Conversar com a Alinia</span><span class="step-meta" data-agent-nav-meta></span></a>
+      </nav>
+
       <nav class="steps" aria-label="Etapas da decisão">
         <p class="nav-label">Da pergunta à decisão</p>
-        <a href="#visao-geral" data-nav="visao-geral" aria-current="page"><span class="step-n">1</span><span class="step-label">Visão geral</span></a>
+        <a href="#visao-geral" data-nav="visao-geral"><span class="step-n">1</span><span class="step-label">Visão geral</span></a>
         <a href="#investigacao" data-nav="investigacao"><span class="step-n">2</span><span class="step-label">Investigação</span><span class="step-meta" data-step-meta="investigacao">1 pergunta</span></a>
         <a href="#previsao" data-nav="previsao"><span class="step-n">3</span><span class="step-label">Previsão</span></a>
         <a href="#cenarios" data-nav="cenarios"><span class="step-n">4</span><span class="step-label">Cenários</span><span class="step-meta" data-step-meta="cenarios">5</span></a>
@@ -76,8 +82,83 @@
       </div>
 
       <main id="main" class="main">
+        <!-- Alinia: conversa com o agente -------------------------------- -->
+        <section class="screen" data-screen="agente" aria-labelledby="agent-title" hidden>
+          <div class="screen-head">
+            <div>
+              <p class="step-of">Agente · leitura e explicação</p>
+              <h1 id="agent-title">Pergunte à Alinia</h1>
+              <p class="lede">Ela lê os dados já calculados, mostra a fonte de cada número e para antes da decisão</p>
+            </div>
+            <button class="button" type="button" data-agent-reset><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>Nova conversa</button>
+          </div>
+
+          <div class="agent-layout">
+            <div class="agent-conversation">
+              <div class="agent-thread" data-agent-thread role="log" aria-live="polite" aria-label="Conversa com a Alinia"></div>
+
+              <div class="composer-wrap">
+                <form class="composer" data-agent-form>
+                  <div class="composer__answering" data-agent-answering hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-message"/></svg>
+                    <span>Respondendo ao gestor: <strong data-agent-answering-text></strong></span>
+                    <button class="icon-button" type="button" data-agent-answering-cancel aria-label="Não responder agora"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+                  </div>
+                  <div class="composer__row">
+                    <label class="visually-hidden" for="agent-input">Mensagem para a Alinia</label>
+                    <textarea id="agent-input" data-agent-input rows="1" maxlength="2000" placeholder="Pergunte sobre demanda, capacidade, previsão ou cenários"></textarea>
+                    <button class="composer__send" type="submit" data-agent-send aria-label="Enviar mensagem"><svg class="icon" aria-hidden="true"><use href="#i-send"/></svg></button>
+                  </div>
+                </form>
+                <p class="composer__note" data-agent-note>Simulação com os dados de exemplo da Unidade Centro. Nada é enviado ou salvo.</p>
+              </div>
+            </div>
+
+            <aside class="agent-context" aria-label="Contexto da conversa">
+              <div class="agent-context__block">
+                <p class="agent-context__label">Conversando sobre</p>
+                <strong data-agent-unit>Unidade Centro</strong>
+                <span class="agent-context__line"><i class="dot" data-agent-mode-dot aria-hidden="true"></i><span data-agent-mode>Simulação com dados de exemplo</span></span>
+                <span class="agent-context__meta" data-agent-scope>demanda_centro.csv · janela de 4 semanas</span>
+              </div>
+              <div class="agent-context__block">
+                <p class="agent-context__label">Investigação</p>
+                <strong data-agent-run>Aguardando resposta do gestor</strong>
+              </div>
+              <details class="agent-context__more" data-agent-more>
+                <summary>Ferramentas, limites e fontes</summary>
+                <div class="agent-context__block">
+                  <p class="agent-context__label">O que ela consulta</p>
+                  <ul class="agent-tools">
+                    <li><span>Métricas do recorte</span><code>leitura</code></li>
+                    <li><span>Fluxo de demanda</span><code>leitura</code></li>
+                    <li><span>Investigação e hipóteses</span><code>leitura</code></li>
+                    <li><span>Resposta do gestor</span><code>registro</code></li>
+                    <li><span>Previsão de demanda</span><code>leitura</code></li>
+                    <li><span>Cenários A–E</span><code>leitura</code></li>
+                    <li><span>Regras vigentes</span><code>leitura</code></li>
+                  </ul>
+                </div>
+                <div class="agent-context__block">
+                  <p class="agent-context__label">O que ela não faz</p>
+                  <ul class="agent-limits">
+                    <li>Aprovar, rejeitar ou adiar cenários</li>
+                    <li>Avaliar ou comparar pessoas</li>
+                    <li>Mudar escala, salário ou contrato</li>
+                    <li>Afirmar número sem fonte</li>
+                  </ul>
+                </div>
+                <div class="agent-context__block">
+                  <p class="agent-context__label">Fontes citadas</p>
+                  <ul class="agent-sources" data-agent-sources></ul>
+                </div>
+              </details>
+            </aside>
+          </div>
+        </section>
+
         <!-- 1. Visão geral ------------------------------------------------ -->
-        <section class="screen is-active" data-screen="visao-geral" aria-labelledby="overview-title">
+        <section class="screen" data-screen="visao-geral" aria-labelledby="overview-title">
           <div class="screen-head">
             <div>
               <p class="step-of">Etapa 1 de 5 · Sinal</p>
@@ -125,7 +206,7 @@
             </article>
 
             <article class="panel">
-              <div class="panel-head"><div><h2>O que o investigador encontrou</h2><p class="panel-sub">Andamento da investigação deste sinal</p></div></div>
+              <div class="panel-head"><div><h2>O que a Alinia encontrou</h2><p class="panel-sub">Andamento da investigação deste sinal</p></div></div>
               <ol class="trail">
                 <li class="is-done"><span class="trail__mark"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><div><strong>Sinal detectado</strong><p>A demanda supera a capacidade agregada no cenário de 42h</p></div></li>
                 <li class="is-done"><span class="trail__mark"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg></span><div><strong>Hipóteses abertas</strong><p>Sazonalidade, cobertura N1 e disponibilidade efetiva</p></div></li>
@@ -411,7 +492,7 @@
                 <span class="count">A-001</span>
               </div>
               <div class="summary">
-                <span>Resumo do investigador</span>
+                <span>Resumo da Alinia</span>
                 <p data-review-lead>O cálculo em 42h sugere três posições adicionais na aproximação agregada para 1.200 atendimentos por semana. Ainda não é possível especificar cargos ou modalidades sem cobertura por competência e turno, mentoria, custo e revisão das regras aplicáveis.</p>
               </div>
               <div class="kv">
