@@ -62,24 +62,29 @@ def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, time
     values = [item[2] for item in ordered]
     estimate = predict_next(values)
     mae, wape, errors = _backtest(values)
-    # A split calibration/test protocol avoids using the test period to
-    # select its own error envelope. These are absolute-error bands, not
-    # probabilistic percentiles and never burnout risk.
+    # Rolling-origin multi-step errors: score the *worst* absolute error
+    # over the four forecast weeks per origin. A one-step residual cannot
+    # justify a four-week prediction interval. Holdout remains untouched
+    # when selecting the envelope (conservative empirical, NOT P10/P90).
     interval_width = None
     holdout_coverage = None
-    if len(errors) >= 16:
-        calibration, holdout = errors[:-4], errors[-4:]
+    horizon_errors = [
+        max(abs(predict_next(values[:index]) - actual) for actual in values[index:index + 4])
+        for index in range(8, len(values) - 3)
+    ]
+    if len(horizon_errors) >= 24:
+        calibration, holdout = horizon_errors[:-8], horizon_errors[-8:]
         rank = (9 * (len(calibration) + 1) + 9) // 10
         if rank <= len(calibration):
             envelope = sorted(calibration)[rank - 1]
             holdout_coverage = sum(error <= envelope for error in holdout) / len(holdout)
-            if holdout_coverage >= 0.75:
+            if holdout_coverage >= 0.875:
                 interval_width = envelope
     if wape is None:
         limitations.append("WAPE indefinido porque a soma dos realizados do backtest é zero.")
     status = "calibrated" if interval_width is not None and wape is not None else "uncalibrated"
     if status == "uncalibrated":
-        limitations.append("Sem quatro testes de cobertura e amostra suficiente para validar faixa empírica por equipe.")
+        limitations.append("Sem oito origens de holdout e amostra suficiente para validar a faixa conjunta de quatro semanas por equipe.")
     points = []
     for week in range(4):
         start = end + timedelta(days=7 * week)
@@ -103,7 +108,7 @@ def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, time
         "status": status, "unit": "cases_per_period", "history_end_exclusive": end, "horizon": horizon,
         "points": points,
         "interval_description": None if interval_width is None else (
-            "Faixa empírica de erros absolutos com janela de calibração separada do teste; "
+            "Faixa empírica simultânea de quatro semanas por origem, com calibração temporal separada do teste; "
             f"cobertura de holdout {holdout_coverage:.0%}; não é P10/P50/P90 nem garantia."
         ),
         "backtest": backtest, "limitations": limitations,
