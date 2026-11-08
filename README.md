@@ -1,65 +1,152 @@
 # Alinia — Workforce Intelligence
 
-**Da pressão operacional a decisões de capacidade com evidências.**
+**Um agente de IA para investigar a demanda, entender a capacidade das equipes e construir alternativas de planejamento com evidências.**
 
-A **Alinia** é uma plataforma de apoio ao planejamento de força de trabalho. Ela reúne dados agregados de demanda e capacidade, investiga possíveis causas de desequilíbrio, apresenta previsões e organiza alternativas de ação para avaliação de gestores e RH.
+A **Alinia** é uma proposta de plataforma **AI-native de Workforce Intelligence** para operações de serviços: em vez de exigir que gestores cruzem planilhas, investiguem desvios e montem cenários manualmente, **um agente investigador-planejador coordena a jornada de ponta a ponta** — recebe sinais operacionais, consulta fontes autorizadas, formula hipóteses, solicita informações, aciona modelos e ferramentas de cálculo, compara intervenções e apresenta recomendações verificáveis para decisão humana.
 
-> **Entrega:** protótipo funcional integrado a uma API persistente, demonstrável com dados sintéticos. O produto **não realiza decisões de contratação automaticamente** e ainda possui funcionalidades previstas no PRD v4.2 que não estão completas.
+> **Visão do produto (PRD v4.2):** um **único agente de IA com ferramentas delimitadas**, apoiado por cálculos e verificações determinísticas independentes. **Estado desta entrega:** a base determinística e o frontend integrado já permitem uma demonstração sintética; a orquestração completa pelo agente com LLM **ainda está em desenvolvimento**. O produto não contrata pessoas nem altera escalas automaticamente.
 
-## O problema
+## O problema que queremos resolver
 
-Decisões sobre dimensionamento de equipes costumam depender de planilhas, indicadores isolados e percepções sobre o volume de trabalho. Isso cria quatro dificuldades:
+Uma equipe pode receber mais trabalho do que consegue absorver, mas isso nem sempre significa que a solução seja contratar. A causa pode envolver um pico sazonal, backlog acumulado, competências indisponíveis em horários críticos, mudanças de processo ou capacidade distribuída incorretamente.
 
-- **Demanda ≠ trabalho concluído:** entradas, backlog, reaberturas e demanda não atendida precisam ser diferenciados.
-- **Médias escondem gargalos:** capacidade agregada não comprova cobertura da competência correta no turno necessário.
-- **Intervenções têm consequências diferentes:** contratar, usar temporários, capacitar, realocar ou reorganizar turnos envolvem prazo, custo, qualificação e restrições distintas.
-- **Uma recomendação exige justificativa:** premissas, fontes, incertezas e regras devem ser rastreáveis antes de qualquer decisão administrativa.
+A análise tradicional costuma depender de indicadores fragmentados, planilhas e perguntas feitas manualmente. Isso dificulta:
 
-A pergunta que orienta a Alinia é: **como identificar a necessidade real de capacidade e comparar respostas possíveis sem transformar dados incompletos em recomendações definitivas?**
+- **Enxergar a demanda real:** entradas, entregas concluídas, reaberturas, cancelamentos, backlog e solicitações não atendidas são informações diferentes.
+- **Encontrar a causa:** uma média semanal esconde gargalos de competência, turno e disponibilidade.
+- **Comparar respostas:** contratar, trazer temporários, capacitar, realocar ou reorganizar a operação têm custo, prazo, dependências e efeitos distintos.
+- **Justificar decisões:** recomendações precisam citar dados e premissas, sinalizar incertezas e respeitar regras trabalhistas e de privacidade.
 
-## Nossa solução
+**Nossa pergunta central:** *e se um agente de IA pudesse conduzir essa investigação, buscar as evidências necessárias e preparar a melhor comparação possível antes de o RH decidir?*
 
-A plataforma organiza a jornada em cinco etapas:
+### Público inicial
 
-| Etapa | Valor para o usuário |
+O piloto descrito no PRD v4.2 prioriza **operações de serviços com chamados ou solicitações padronizados e histórico disponível**, como suporte técnico, serviços compartilhados, backoffice e BPO. A proposta comercial e o ganho incremental do agente ainda precisam ser validados em pilotos.
+
+## A solução: um agente investigador-planejador
+
+Na arquitetura final, o usuário não precisa executar manualmente cada cálculo ou escolher, por conta própria, a sequência das análises. **O agente conduz o processo** dentro de permissões, ferramentas e regras verificáveis.
+
+| Etapa | Atuação planejada do agente de IA | Ferramentas e controles envolvidos |
+| --- | --- | --- |
+| **1. Receber** | Identificar uma nova demanda, aumento de backlog, alteração de capacidade ou solicitação do gestor | Eventos, CSV e Jira somente leitura; WFM e ponto em fases futuras |
+| **2. Coletar e validar** | Consultar fontes autorizadas, identificar inconsistências e pedir dados que faltam | Conectores tipados, validação de esquemas, unidades, origem, versão e deduplicação |
+| **3. Investigar** | Elaborar hipóteses sobre sazonalidade, competências, turnos, processos e disponibilidade; confrontá-las com evidências | Métricas, histórico, memória de execução e perguntas ao gestor |
+| **4. Prever** | Escolher quando a previsão é necessária, solicitar o cálculo e interpretar a incerteza | Demand Forecaster com baseline, backtesting, intervalos e abstenção |
+| **5. Planejar** | Propor intervenções adequadas ao diagnóstico e suas combinações | Cenários A–E, dados de custo, cobertura, lead time e treinamento |
+| **6. Simular** | Acionar ferramentas para testar viabilidade, picos e ausência de recursos; comparar resultados | OR-Tools CP-SAT; SimPy **se houver filas** e dados adequados; Policy Engine |
+| **7. Revisar e explicar** | Rever hipóteses, reconstruir cenários inválidos e apresentar trade-offs, riscos e fontes | Validadores **determinísticos independentes**, trilha de auditoria e guardrails |
+| **8. Encaminhar e acompanhar** | Preparar o resultado estruturado para RH, Operações e Finanças e, após decisões autorizadas, monitorar os indicadores | Aprovação humana efetiva, rascunho de requisição, métricas pós-decisão |
+
+O fluxo é **iterativo**, não uma sequência rígida: se uma ferramenta identificar dados insuficientes, regra conflitante ou cenário inviável, o agente volta a investigar e planejar antes de apresentar uma recomendação.
+
+**Relato não é fato.** Respostas de gestores são registradas como relatos, com origem e data, e precisam ser confrontadas com fontes. Uma hipótese sem evidência permanece explicitamente não verificada.
+
+### Alternativas comparadas
+
+| Cenário | Questão investigada |
 | --- | --- |
-| **1. Receber** | Importar dados operacionais agregados, validar unidades e manter snapshots por equipe |
-| **2. Investigar** | Cruzar demanda e capacidade, registrar hipóteses, evidências, lacunas e perguntas ao gestor |
-| **3. Prever** | Projetar demanda com baseline temporal, backtesting e abstenção quando faltarem dados |
-| **4. Simular e comparar** | Apresentar alternativas de intervenção e suas dependências e limitações |
-| **5. Revisar e decidir** | Submeter os cenários à avaliação do RH, com trilha de auditoria e bloqueios de segurança |
+| **A · Contratar permanentemente** | Existe déficit estrutural persistente que justifique ampliar o quadro, considerando custo, recrutamento, admissão e ramp-up? |
+| **B · Contratação temporária** | O problema é transitório, a modalidade é permitida e a capacidade chega a tempo? |
+| **C · Realocar ou capacitar** | É possível redistribuir ou desenvolver competências sem criar um déficit na equipe de origem? |
+| **D · Redesenhar turnos ou processos** | Uma reorganização melhora a cobertura e o SLA respeitando jornadas, repousos e requisitos operacionais? |
+| **E · Não intervir** | O que acontece com backlog, cobertura, risco e custo se nada mudar? |
 
-Os **cinco caminhos de decisão** seguem o PRD v4.2: **A** — contratação permanente; **B** — contratação temporária; **C** — realocação ou capacitação; **D** — redesenho de turnos ou processos; **E** — não intervir (*baseline*).
+O agente **propõe e interpreta**. Os motores determinísticos calculam disponibilidade, capacidade, custo e viabilidade. Nenhuma alternativa é considerada aprovada apenas porque o modelo de linguagem a sugeriu.
 
-### Experiência entregue
+## Arquitetura AI-native proposta
 
-O frontend possui cinco áreas navegáveis: **Visão geral**, **Investigação**, **Previsão**, **Cenários** e **Revisão do RH**. A landing page apresenta o conceito do produto; a plataforma permite autenticação, consulta de recortes persistidos e interação com as APIs de investigação e decisão.
-
-A interface distingue dados ilustrativos de dados recebidos da API. Na revisão, cenários sem validação independente **não podem ser aprovados**. Rejeitar e adiar são decisões registráveis pelo perfil autorizado.
-
-## Visão técnica
+A decisão técnica do **PRD v4.2, seção 6**, é utilizar **um único agente** no MVP — e não cinco agentes separados. Esse agente é o **orquestrador inteligente** das ferramentas existentes; ele não substitui motores de cálculo, autorização ou validação.
 
 ```mermaid
-flowchart LR
-    A["CSV ou fixture sintética"] --> B["Validação e snapshots"]
-    B --> C["Métricas e investigação"]
-    C --> D["Forecast baseline"]
-    D --> E["Cenários A–E"]
-    E --> F{"Revisão do RH"}
-    F --> G["Rejeitar ou adiar"]
-    F --> H["Aprovação condicionada a evidências v4.2"]
+flowchart TD
+    E["Eventos operacionais ou solicitação humana"]
+    C["Conectores autorizados<br/>CSV / Jira somente leitura<br/>WFM e ponto: futuro"]
+    O["Orquestração<br/>estado, memória, permissões e checkpoints"]
+    A["AGENTE ÚNICO DE IA<br/>investigador-planejador"]
+    M["Metrics Engine<br/>demanda e capacidade"]
+    F["Demand Forecaster<br/>baseline e incerteza"]
+    S["Solver / Simulação<br/>CP-SAT e SimPy se aplicável"]
+    P["Policy Engine<br/>regras aprovadas e versionadas"]
+    V{"Validadores independentes<br/>restrições, consistência e privacidade"}
+    H["RH + Operações + Finanças<br/>revisão efetiva e aprovação"]
+    R["Decisão auditada<br/>monitoramento posterior"]
+
+    E --> O
+    O --> A
+    A <--> C
+    A <--> M
+    A <--> F
+    A <--> S
+    A <--> P
+    A -->|"cenários, fontes e premissas"| V
+    V -->|"erro, bloqueio ou evidência ausente"| A
+    V -->|"opções verificadas"| H
+    H -->|"ajustar ou solicitar revisão"| A
+    H -->|"decisão autorizada"| R
 ```
 
-| Camada | Stack |
-| --- | --- |
-| Interface | HTML, CSS, JavaScript ES Modules; gráficos SVG; Lenis na landing |
-| API | Python 3.12, FastAPI, Pydantic |
-| Persistência | SQLAlchemy, Alembic, SQLite para desenvolvimento; PostgreSQL suportado |
-| Planejamento | Solver determinístico de fluxo máximo no workflow atual; OR-Tools CP-SAT v4.2 como módulo separado |
-| Investigação | Workflow persistido com checkpoints e retomada; LangGraph experimental separado |
-| Qualidade | Pytest, testes de integração, CI para backend/frontend e migrações PostgreSQL |
+### Separação de responsabilidades
 
-**Arquitetura atual:** `CSV → snapshot → métricas e investigação → previsão → cenários → revisão humana`. O solver CP-SAT v4.2 e o validador independente já possuem módulos e testes, mas ainda não estão conectados ao fluxo operacional de aprovação.
+| Agente de IA (LLM) | Ferramentas e serviços determinísticos |
+| --- | --- |
+| Planeja a investigação, formula hipóteses e escolhe quais ferramentas chamar | Calculam demanda, FTE, capacidade, custos e previsão |
+| Busca contexto autorizado e solicita informações faltantes | Impõem isolamento por empresa/equipe, validação de unidades e rastreabilidade |
+| Normaliza competências **com evidências** e gera alternativas A–E | Resolvem otimização de cobertura por competência e intervalo; verificam viabilidade |
+| Explica incertezas, trade-offs e motivos para a recomendação | Aplicam regras jurídicas versionadas, restrições rígidas e testes independentes |
+| Volta ao planejamento quando surgem bloqueios ou contradições | Persistem hashes, fontes, versões, decisões e eventos de auditoria |
+
+**Por que ainda estamos construindo a parte determinística?** Porque ela é a fundação confiável do agente. O modelo **não pode inventar** horas disponíveis, custo, vagas, regras ou resultados do solver. Antes de incorporar autonomia de investigação, precisamos de contratos de dados, ferramentas tipadas, resultados reproduzíveis, validação e um baseline para medir se a IA realmente agrega valor.
+
+### Memória e limites de autonomia
+
+A arquitetura prevê memória de execução para **hipóteses, evidências, perguntas, versões e decisões**, além de memória organizacional isolada por empresa para regras e premissas aprovadas. **Dados pessoais desnecessários não devem entrar no contexto ou na memória do agente.**
+
+O agente poderá **ler dados autorizados, investigar, calcular por ferramentas, simular, explicar e preparar rascunhos**. Ele **não** poderá selecionar ou desligar candidatos, alterar ponto, salário ou escala no MVP. A criação de requisições e qualquer ação administrativa exigem **aprovação humana explícita**, com acesso às premissas, possibilidade de alteração e justificativa registrada.
+
+Se a previsão se abstiver, faltar uma regra ou a cobertura obrigatória falhar, o sistema deve **pedir revisão ou dados**, não oferecer uma contratação exata como fato. A revisão crítica por outro modelo pode complementar a análise, mas **não substitui os validadores determinísticos**.
+
+## O que estamos entregando agora
+
+O trabalho foi dividido em duas camadas: **a base de decisão verificável, que já está em desenvolvimento funcional**, e **a experiência agentic completa, que é o objetivo do produto**.
+
+| Componente | Estado nesta branch |
+| --- | --- |
+| Novo frontend com Visão geral, Investigação, Previsão, Cenários e Revisão do RH | **Implementado e conectado à API** |
+| Autenticação, escopo por empresa/equipe, snapshots, métricas e auditoria | **Implementado para demonstração** |
+| CSV e fixture de Jira com dados sintéticos | **Implementado**; coleta ativa pelo agente e Jira real ainda pendentes |
+| Investigação com checkpoints, perguntas e retomada | **Implementada de forma determinística**; não é ainda a orquestração autônoma do LLM |
+| Previsão com mediana móvel, backtesting e abstenção | **Baseline implementado**; faltam previsões aplicadas por skill e turno |
+| Cenários A–E | **Estruturados na API**; B/C/D ainda não são simulações quantitativas completas |
+| CP-SAT v4.2 e validador independente | **Módulos existentes e testados**, ainda não conectados ao workflow principal |
+| **Agente único de IA orquestrando coleta → investigação → planejamento → simulação** | **Visão final, ainda não integrada neste fluxo** |
+| Sincronização operacional com Jira real | **Pendente** |
+| Aprovação definitiva e requisição operacional | **Bloqueadas** até validação independente e revisão autorizada |
+
+Há também uma **experimentação separada do agente** na branch [`agent/alinia-investigator`](https://github.com/Arturvpf/MangueByte-Converge-challenge/tree/agent/alinia-investigator), com ferramentas de leitura, recuperação de regras e filtros de privacidade. **Não está integrada a esta branch** e não comprova ainda o fluxo AI-native de ponta a ponta.
+
+### Como comprovaremos o valor da IA
+
+O PRD v4.2 propõe um experimento com **três abordagens sobre os mesmos dados e decisões**:
+
+1. **Processo atual:** a forma como a empresa dimensiona suas equipes hoje.
+2. **Baseline determinístico:** métricas, forecast e cenários com fluxo convencional, **sem LLM**.
+3. **Alinia AI-native:** o baseline **mais o agente investigador-planejador** que coordena a coleta, formula hipóteses, chama ferramentas, revisa alternativas e explica a decisão.
+
+O objetivo não é medir quantas chamadas ao LLM foram feitas, mas se o agente **reduz tempo e retrabalho, melhora a fundamentação e evita erros**, sem aumentar riscos. Os indicadores incluem tempo até decisão validada, SLA, backlog, custo total, qualidade da previsão, cobertura por turno, contestações e intervenções humanas. **Se o agente não demonstrar ganho incremental, a decisão prevista no PRD é manter a solução sem LLM.**
+
+## Tecnologias
+
+| Camada | Tecnologias |
+| --- | --- |
+| Frontend | HTML, CSS, JavaScript ES Modules e gráficos SVG |
+| API e contratos | Python 3.12, FastAPI, Pydantic |
+| Dados e auditoria | SQLAlchemy, Alembic, SQLite local e PostgreSQL |
+| Ferramentas de planejamento | Metrics Engine, Demand Forecaster, OR-Tools CP-SAT v4.2 isolado |
+| Orquestração de IA | **LangGraph como direção técnica do projeto**; fluxo produtivo do agente ainda não integrado |
+| Qualidade | Pytest, regressões de frontend/API, GitHub Actions |
+
+---
 
 ## Como executar
 
@@ -164,7 +251,7 @@ A plataforma lista snapshots existentes, mas **a importação de CSV ainda não 
 
 Com o snapshot carregado, a demonstração sugerida é: **Visão geral → Abrir investigação → Responder às perguntas → Previsão → Comparar A–E → Revisão do RH**.
 
-A investigação pode exigir mais de uma rodada de respostas. Relatos do gestor são preservados como **não verificados**; não alteram automaticamente a capacidade calculada. Para dados históricos insuficientes, a previsão se abstém e os cenários permanecem inconclusivos. A aprovação bloqueada nesses casos é **comportamento esperado**, não uma falha de instalação.
+**Nesta entrega, a execução demonstrada é determinística**: a investigação pode exigir mais de uma rodada de respostas, mas o agente LLM ainda não escolhe nem executa as ferramentas do fluxo principal. Relatos do gestor continuam **não verificados** e não alteram automaticamente a capacidade calculada. Com histórico insuficiente, a previsão se abstém e os cenários ficam inconclusivos. O bloqueio de aprovação é **comportamento esperado**, não falha de instalação.
 
 ## Testes e build
 
@@ -187,25 +274,13 @@ npm run dev
 
 O CI executa testes de backend, regressões da integração HTTP/DOM, verificação de JavaScript, build e migração PostgreSQL a partir de um esquema legado. Veja o [workflow de integração](.github/workflows/p1-p2-integration.yml).
 
-## O que está implementado e o que é evolução
+## Próximos passos para a experiência AI-native
 
-| Componente | Situação da entrega |
-| --- | --- |
-| Landing e novo frontend conectado à API | **Implementado** |
-| Login, papéis, escopo de empresa/equipe e trilha de auditoria | **Implementado para a demonstração** |
-| Importação CSV, fixture sintética, snapshots e métricas | **Implementado** |
-| Investigação com perguntas, checkpoints e retomada | **Implementado (fluxo determinístico)** |
-| Forecast de mediana móvel, backtesting e abstenção | **Implementado como baseline** |
-| Cinco categorias de cenário A–E | **Disponíveis**; B/C/D ainda não são simulações quantitativas completas |
-| Otimizador CP-SAT v4.2 e validador | **Módulos testados**, ainda não integrados ao workflow principal |
-| Agente investigador-planejador com LLM e LangGraph | **Pendente na integração principal** |
-| Jira real | **Pendente**: a fixture funciona, mas `/api/imports/jira/sync` não persiste eventos |
-| Aprovação operacional definitiva | **Bloqueada por segurança** até validação independente v4.2 |
-| Contratação ou alteração de escala automática | **Não implementada nem autorizada** |
+A evolução do produto deve integrar o **agente único** ao workflow já persistido: consultar fontes autorizadas; gerar e revisar hipóteses; solicitar dados ausentes; chamar previsão e CP-SAT por ferramentas tipadas; comparar alternativas A–E; submeter os resultados a validadores independentes e só então encaminhar uma proposta verificável à revisão humana.
 
-Os resultados ilustrativos não são indicadores operacionais reais. O frontend pode continuar exibindo séries de exemplo em gráficos que ainda não usam histórico importado; as métricas carregadas da API são identificadas separadamente.
+Antes de um piloto empresarial, ainda são necessários: sincronização Jira real somente leitura, simulações quantitativas A–D, previsão por skill/turno, validação de política por categoria/contrato, proteção de dados e testes de segurança do agente (inclusive prompt injection e saídas de ferramentas), avaliações de viés e experimento de ganho incremental do LLM.
 
-O projeto tem mecanismos de minimização de dados, isolamento por empresa/equipe, histórico de cenários e falha segura nas decisões. **Isso não constitui, por si só, homologação jurídica, de segurança ou LGPD para dados reais.**
+**A intenção é tornar o agente o centro da experiência de investigação, sem transformar o LLM em fonte de verdade matemática, jurídica ou decisória.**
 
 ## Organização do repositório
 
@@ -230,6 +305,6 @@ docs/                     PRD, auditoria e decisões técnicas
 
 ---
 
-**Alinia — mais clareza para investigar a necessidade de pessoas, comparar alternativas e decidir com responsabilidade.**
+**Alinia — um agente para investigar, reunir evidências e construir alternativas; pessoas continuam responsáveis pelas decisões.**
 
-*Versão de entrega demonstrável com dados sintéticos. A evolução para uso operacional depende da integração dos motores v4.2, validação independente e aprovações de domínio.*
+*A versão atual demonstra a fundação determinística com dados sintéticos. A visão AI-native descrita acima corresponde à arquitetura pretendida no PRD v4.2, não a funcionalidades já finalizadas nesta branch.*
