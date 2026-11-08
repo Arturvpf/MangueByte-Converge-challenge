@@ -37,6 +37,13 @@ Cada dependente começa somente após a aprovação do predecessor pertinente. U
 - **Verificação:** autor e revisor executaram 25 testes, migrações em bancos SQLite e PostgreSQL 16.15 vazios, Uvicorn real com health check, documentação e OpenAPI, build do frontend e `pip check`. O revisor também confirmou autogeração de migração futura e sessão real em PostgreSQL.
 - P2-01 permanece pendente; COM-02 não implementa identidade, autorização ou auditoria de P2-01.
 
+### P2-01 — identidade, permissões e auditoria (revisão externa)
+
+- **Estado:** revisão independente em `319bc06` retornou **CHANGES_REQUESTED**. P2-01 não foi integrada; dependentes P1 aguardam a correção e aprovação.
+- **Verificações:** 96 testes passaram no baseline; a supervisão verificou PostgreSQL 16.15 com migração `0002` → `0003`, check, downgrade e reupgrade.
+- **Achados P2 reproduzidos:** respostas 422 de `/api/auth/login` ou `/api/admin/users` sem email ecoam senha em `input`; `/api/audit` permite dados pessoais em `team_id` e `X-Trace-Id` de eventos, e `team_id` vazio causa 500; `INSERT OR REPLACE` de chave primária contorna proteção SQLite quando `recursive_triggers=0`.
+- **Instrumentação P1 pendente:** GET de lista ou detalhe de snapshots fora da equipe retorna 403 sem evento correlacionado. O domínio P1 deve instrumentar essa negativa após a liberação do gate P2-01.
+
 ### P1-01 — cadastro e snapshots
 
 - **Estado:** implementação parcial aprovada em revisão independente em `179630c` (correção UTC). Commits `d709d4d`, `4a37404`, `058cebe` e `179630c`. A suíte registrou 51 testes passando, incluindo 19 de dados; migração e isolamento foram verificados em PostgreSQL 16.15.
@@ -44,8 +51,8 @@ Cada dependente começa somente após a aprovação do predecessor pertinente. U
 
 ### P1-07 — execução durável
 
-- **Estado:** núcleo com mocks aprovado por revisão independente em `0737745`, após implementação em `8ed6caa`. A revisão registrou 42 testes passando.
-- **Pendente:** migração, registro, API e integração com nós reais; o núcleo aprovado não equivale ao fluxo completo.
+- **Estado:** núcleo com mocks aprovado por revisão independente em `0737745`, após implementação em `8ed6caa`. A revisão registrou 42 testes passando. A extensão LangGraph com mock foi aprovada parcialmente por revisão independente em `c7e6024`: 53 testes, `pip check`, lock de 54 pacotes e verificações reais de corrida de lease/prazo e SQL como fonte única.
+- **Pendente:** migração, registro, API e integração real com P2; os núcleos aprovados não equivalem ao fluxo completo.
 
 ### P1-04 — Metrics Engine
 
@@ -58,13 +65,13 @@ Cada dependente começa somente após a aprovação do predecessor pertinente. U
 | Entrega | Predecessores e condições relevantes | Estado |
 |---|---|---|
 | COM-02 | Base do backend | Entregue e aprovada após autorização do usuário |
-| P2-01 | COM-02; identidade, autorização e auditoria da Pessoa 2 | Externo; ainda não disponível neste repositório |
+| P2-01 | COM-02; identidade, autorização e auditoria da Pessoa 2 | Revisão externa solicitou alterações em `319bc06`; ainda não integrado |
 | P1-01 | COM-01 e COM-02; P2-01 para aceite integrado | Implementação parcial aprovada; aceite integrado aguarda P2-01 |
 | P1-02 | P1-01 aprovado | Bloqueada |
 | P1-03 | P1-02 aprovado; credenciais autorizadas para validação real | Bloqueada; testes com fixtures não equivalem a validação real |
 | P1-04 completa | COM-01 e integração com P1-01 | Núcleo parcial aprovado; integração e aceite completo bloqueados |
 | P1-05 | COM-01 e séries de P1-01/P1-02 | Bloqueada pelas séries e seus predecessores |
-| P1-07 | COM-01 e COM-02; P2-02/P2-04 para fluxo completo | Núcleo com mocks aprovado; migração, registro, API e nós reais pendentes |
+| P1-07 | COM-01 e COM-02; P2-02/P2-04 para fluxo completo | Núcleos com mocks e LangGraph aprovados parcialmente; migração, registro, API e integração real pendentes |
 | P1-06 | P1-04, P1-05 e P1-07 para execução integrada | Bloqueada pelos predecessores |
 | P1-08 | P1-04 a P1-07 | Bloqueada pelos predecessores |
 | INT-01 | P1-06/P1-07 e P2-03/P2-04/P2-05 | Bloqueada pelos predecessores de ambas as pessoas |
@@ -88,4 +95,3 @@ As atribuições abaixo são propostas; agentes ainda não foram criados para es
 | INT-01 — integração | GPT-6.1 Terra, high | GPT-6 Astra, high | P1-06/P1-07 e P2-03/P2-04/P2-05 aprovadas |
 
 Migrações e registro em arquivos comuns devem ser integrados em sequência, com uma única cadeia de revisões e nova verificação do diff integrado. Nós simulados são identificados e não contam como integração real.
-
