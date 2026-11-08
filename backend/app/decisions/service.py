@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from backend.app.audit.log import record_event
 from backend.app.auth.permissions import Permission, Principal
 from backend.app.flow.errors import FlowError
-from backend.app.flow.models import CriticRow, DecisionRow, RequisitionDraftRow, ScenarioRow, SimulationRow
+from backend.app.flow.models import CriticRow, DecisionRow, InvestigationRun, RequisitionDraftRow, ScenarioRow, SimulationRow
 from backend.app.planning.schemas import DecisionRecord, RequisitionDraft
 from backend.app.policies.models import PolicyVersion
 
@@ -42,6 +42,9 @@ def decide(session: Session, principal: Principal, scenario_id: str, *, decision
             return existing
         raise FlowError(409, "IDEMPOTENCY_CONFLICT", row.team_id)
     if decision == "approve":
+        run = session.get(InvestigationRun, row.run_id)
+        if run is None or run.tenant_id != row.tenant_id or row.version != run.cycle_count + 1:
+            raise FlowError(409, "MATERIAL_CHANGE", row.team_id)
         for version_id in row.payload.get("rule_versions") or []:
             version = session.get(PolicyVersion, version_id)
             if version is None or version.tenant_id != row.tenant_id or version.status != "approved":
