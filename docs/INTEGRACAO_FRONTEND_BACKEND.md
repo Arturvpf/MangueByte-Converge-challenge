@@ -36,6 +36,10 @@ O novo visual altera a organização da visão geral, investigação, previsão,
 - Dados externos e respostas de gestores são adicionados ao DOM como `textContent`, não HTML executável.
 - Estado visual de déficit não calculado não é confundido com `0`.
 
+## Falha de execução identificada e corrigida
+
+O teste HTTP de integração revelou que `StaticFiles(directory=prototype)` (configuração anterior) retornava **404 em `/prototype/app/`**. O backend foi ajustado para `StaticFiles(directory=prototype, html=True)` em `backend/app/main.py`, permitindo servir o `index.html` ao acessar a pasta da landing ou da aplicação, sem exigir `/index.html` na URL. O teste cobre ambas as rotas de diretório.
+
 ## Lacunas e riscos restantes
 
 1. **Falta importação pela própria UI:** ainda é necessário criar e confirmar o CSV via API/Swagger. O frontend apenas seleciona snapshots já disponíveis.
