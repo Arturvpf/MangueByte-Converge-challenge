@@ -136,7 +136,11 @@ def _policy(session, run, on_date):
                 weekly = int(hours)
     versions = [item.version_id for item in resolution.items if item.version_id]
     dependencies = [f"{item.rule_key}:{item.reason}" for item in resolution.items if item.status != "resolved"]
-    return resolution.complete, weekly, versions, dependencies
+    # A general rule does not prove applicability to unknown employee
+    # categories, contracts or collective agreements. CSV snapshots currently
+    # do not include an authorized legal-context attestation. Fail closed.
+    dependencies.append("LEGAL_CONTEXT_REQUIRED: categoria, contrato e instrumento coletivo validados pelo RH/jurídico")
+    return False, weekly, versions, dependencies
 
 
 def _pending(report: dict | None) -> bool:
