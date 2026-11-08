@@ -65,6 +65,12 @@ def test_restart_keeps_two_teams_and_short_history(tmp_path):
             "team_id": "team-aurora", "snapshot_id": snap_a, "idempotency_key": "run-restart", "cycle_limit": 3,
         }, headers=rh)
         run_id = opened.json()["run_id"]
+        own_index = client.get("/api/investigations", headers=rh)
+        foreign_index = client.get("/api/investigations", headers=other)
+        assert own_index.status_code == 200
+        assert foreign_index.status_code == 200
+        assert run_id in {item["run_id"] for item in own_index.json()["items"]}
+        assert run_id not in {item["run_id"] for item in foreign_index.json()["items"]}
         waiting = client.post(f"/api/investigations/{run_id}/advance", headers=rh).json()
         assert waiting["state"] == "WAITING_INPUT" and waiting["forecast"]["status"] == "abstained"
         assert client.get(f"/api/investigations/{run_id}", headers=other).status_code == 404
