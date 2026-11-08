@@ -13,6 +13,13 @@ export function isWorkforceQuestion(message: string): boolean {
   return workforce.test(text);
 }
 
+// Com a ficha do site, só recusa o que é claramente outro assunto (código,
+// login, token). O resto vai ao modelo, que se limita à ficha.
+export function isOffTopic(message: string): boolean {
+  const text = message.normalize("NFD").replace(/\p{M}/gu, "");
+  return outside.test(text) && !workforce.test(text);
+}
+
 export const introReply = "Oi. Eu sou a Alinia. Eu olho a equipe do Centro: a jornada, a capacidade, a contratação e o estágio. Pode perguntar, por exemplo: como está a equipe hoje, 8 de novembro de 2026?";
 
 export const offTopicReply = "Eu só falo da equipe. Pergunte como está o Centro, a jornada, a contratação ou o estágio.";
