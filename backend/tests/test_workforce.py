@@ -95,6 +95,7 @@ def test_jira_fixture_dedup_and_live_unavailable():
     class SettingsLike:
         jira_base_url = "https://example.invalid"
         jira_api_token = "synthetic-token"
+        jira_project_key = "DEMO"
 
     assert [item["id"] for item in fetch_issues(SettingsLike(), transport)] == ["DEMO-1", "DEMO-2"]
     assert calls == ["GET", "GET"]
