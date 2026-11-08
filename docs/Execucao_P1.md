@@ -10,6 +10,8 @@ Registro desta execução; não substitui a entrega operacional INT-03.
 | Orquestração técnica | GPT-6.1 Terra, high | Dependências e registro de andamento |
 | COM-01 — autor | GPT-6.1 Terra, high | Contratos e fixtures |
 | COM-01 — revisor | GPT-6.1 Sol, high | Revisão técnica independente |
+| COM-02 — autor | GPT-6.1 Terra, high | Base executável do backend |
+| COM-02 — revisor | GPT-6.1 Sol, high | Revisão técnica independente |
 | P1-04 — autor | GPT-6.1 Terra, high | Núcleo de métricas |
 | P1-04 — revisor | GPT-6 Astra, high | Revisão técnica independente |
 
@@ -25,6 +27,12 @@ Cada dependente começa somente após a aprovação do predecessor pertinente. U
 - **Validação humana da Pessoa 2:** pendente, separada da aprovação técnica dos agentes. O plano original prevê validação das duas pessoas sobre os mesmos exemplos.
 - Os contratos de cenários e revisão pertencem à Pessoa 2; interfaces compartilhadas propostas não transferem essa autoria.
 
+### COM-02 — base executável do backend
+
+- **Estado:** entregue e aprovada em revisão independente; implementação em `4ee5eb3` e revisão do README em `a858db1`.
+- **Verificação:** autor e revisor executaram 25 testes, migrações em bancos SQLite e PostgreSQL 16.15 vazios, Uvicorn real com health check, documentação e OpenAPI, build do frontend e `pip check`. O revisor também confirmou autogeração de migração futura e sessão real em PostgreSQL.
+- P2-01 permanece pendente; COM-02 não implementa identidade, autorização ou auditoria de P2-01.
+
 ### P1-04 — Metrics Engine
 
 - **Estado:** núcleo parcial aprovado em revisão independente no commit `dfddd99`. A subtask completa permanece pendente.
@@ -35,20 +43,18 @@ Cada dependente começa somente após a aprovação do predecessor pertinente. U
 
 | Entrega | Predecessores e condições relevantes | Estado |
 |---|---|---|
-| COM-02 | Base do backend, responsabilidade da Pessoa 2 | Externo; ainda não disponível neste repositório |
+| COM-02 | Base do backend | Entregue e aprovada após autorização do usuário |
 | P2-01 | COM-02; identidade, autorização e auditoria da Pessoa 2 | Externo; ainda não disponível neste repositório |
-| P1-01 | COM-01 e COM-02; P2-01 para aceite integrado | Bloqueada pela base externa; aceite integrado também depende de P2-01 |
+| P1-01 | COM-01 e COM-02; P2-01 para aceite integrado | Liberada para implementação; aceite integrado aguarda P2-01 |
 | P1-02 | P1-01 aprovado | Bloqueada |
 | P1-03 | P1-02 aprovado; credenciais autorizadas para validação real | Bloqueada; testes com fixtures não equivalem a validação real |
 | P1-04 completa | COM-01 e integração com P1-01 | Núcleo parcial aprovado; integração e aceite completo bloqueados |
 | P1-05 | COM-01 e séries de P1-01/P1-02 | Bloqueada pelas séries e seus predecessores |
-| P1-07 | COM-01 e COM-02; P2-02/P2-04 para fluxo completo | Bloqueada por COM-02; nós simulados podem preceder integração real após os gates aplicáveis |
+| P1-07 | COM-01 e COM-02; P2-02/P2-04 para fluxo completo | Base e nós simulados liberados; fluxo completo aguarda nós reais e gates aplicáveis |
 | P1-06 | P1-04, P1-05 e P1-07 para execução integrada | Bloqueada pelos predecessores |
 | P1-08 | P1-04 a P1-07 | Bloqueada pelos predecessores |
 | INT-01 | P1-06/P1-07 e P2-03/P2-04/P2-05 | Bloqueada pelos predecessores de ambas as pessoas |
 | INT-02 | INT-01, P1-08 e P2-07; responsabilidade da Pessoa 2 | Bloqueada |
 | INT-03 | INT-02 | Bloqueada; este registro não é a entrega |
 
-Não se implementam as entregas de P2 nesta execução. Dependências externas adicionais incluem dados e unidades aprovados, histórico, credenciais Jira, políticas e ambiente do piloto, conforme o plano. Fixtures e mocks devem ser identificados e não representam integrações reais.
-
-
+COM-02 foi autorizada pelo usuário para desbloquear P1; P2-01 e as demais entregas de P2 permanecem fora desta execução. Dependências externas adicionais incluem dados e unidades aprovados, histórico, credenciais Jira, políticas e ambiente do piloto, conforme o plano. Fixtures e mocks devem ser identificados e não representam integrações reais.
