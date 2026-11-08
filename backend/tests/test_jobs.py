@@ -146,3 +146,50 @@ def test_expired_answer_commits_failure_and_prior_replay_still_works(setup):
     with sessions.begin() as s:
         s.execute(update(Run).where(Run.id == run_id).values(deadline=now() - timedelta(seconds=1)))
     assert w.answer(run_id, other, question_id=question, expected_version=version, key="accepted", answer="x") == accepted
+
+
+def test_steps_use_stateless_langgraph_and_resume_from_sql(setup, monkeypatch):
+    from backend.app.jobs import engine as jobs_engine
+    from backend.app.jobs.graph import MOCK_GRAPH
+
+    w, sessions, scope = setup
+    assert MOCK_GRAPH.checkpointer is None
+    invocations = []
+    original = MOCK_GRAPH.invoke
+
+    def record(input, *args, **kwargs):
+        result = original(input, *args, **kwargs)
+        invocations.append((input["state"], result["target"]))
+        return result
+
+    monkeypatch.setattr(MOCK_GRAPH, "invoke", record)
+    run_id, _ = create(w, scope)
+    assert step(w, run_id, scope) == "VALIDATING"
+    # A new executor has no in-memory continuation; it reads the committed row.
+    resumed = MockExecutor(sessions, Boundary())
+    assert step(resumed, run_id, scope) == "INVESTIGATING"
+    assert step(resumed, run_id, scope) == "WAITING_INPUT"
+    with sessions() as s:
+        run = s.get(Run, run_id)
+        version, question = run.version, run.question_id
+    resumed.answer(run_id, scope, question_id=question, expected_version=version, key="a", answer="x")
+    assert step(MockExecutor(sessions, Boundary()), run_id, scope) == "BLOCKED"
+    assert invocations == [("CREATED", "VALIDATING"), ("VALIDATING", "INVESTIGATING"),
+                           ("INVESTIGATING", "WAITING_INPUT"), ("PLANNING", "BLOCKED")]
+
+
+def test_lease_expiring_during_graph_cannot_commit(setup, monkeypatch):
+    from backend.app.jobs import engine as jobs_engine
+
+    w, sessions, scope = setup
+    run_id, _ = create(w, scope)
+    token = w.claim(run_id, scope)
+    with sessions() as s:
+        lease_until = s.get(Run, run_id).lease_until
+    times = iter([lease_until - timedelta(microseconds=1), lease_until])
+    monkeypatch.setattr(jobs_engine, "now", lambda: next(times))
+    with pytest.raises(Conflict, match="stale lease"):
+        w.step(run_id, scope, token)
+    with sessions() as s:
+        assert s.get(Run, run_id).state == "CREATED"
+        assert len(s.scalars(select(Checkpoint).where(Checkpoint.run_id == run_id)).all()) == 1

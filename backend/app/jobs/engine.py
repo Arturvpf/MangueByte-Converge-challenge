@@ -10,6 +10,7 @@ from uuid import uuid4
 from sqlalchemy import or_, select, update
 from sqlalchemy.exc import IntegrityError
 
+from .graph import MOCK_GRAPH
 from .models import Answer, Checkpoint, Run
 
 
@@ -144,16 +145,18 @@ class MockExecutor:
             run = self._run(s, run_id, scope, "step")
             instant = now()
             if run.lease_token != token or not run.lease_until or run.lease_until <= instant: raise Conflict("lease expired")
-            if run.steps >= run.max_steps or instant >= run.deadline or run.cost > run.max_cost:
-                target, question, reason = "FAILED", None, "LIMIT_REACHED"
-            elif run.state == "CREATED": target, question, reason = "VALIDATING", None, None
-            elif run.state == "VALIDATING": target, question, reason = "INVESTIGATING", None, None
-            elif run.state == "INVESTIGATING": target, question, reason = "WAITING_INPUT", str(uuid4()), None
-            elif run.state == "PLANNING": target, question, reason = "BLOCKED", None, "REAL_NODES_UNAVAILABLE"
-            else: raise Conflict("state cannot execute")
+            transition = MOCK_GRAPH.invoke({
+                "state": run.state,
+                "limit_reached": run.steps >= run.max_steps or instant >= run.deadline or run.cost > run.max_cost,
+            })
+            target, question, reason = transition["target"], transition["question_id"], transition["reason"]
+            if reason == "INVALID_STATE": raise Conflict("state cannot execute")
+            commit_instant = now()
+            if commit_instant >= run.deadline and instant < run.deadline:
+                raise Conflict("deadline expired during step")
             version = run.version + 1
             result = s.execute(update(Run).where(Run.id == run_id, Run.version == run.version, Run.lease_token == token,
-                Run.lease_until > instant).values(state=target, version=version, steps=Run.steps + 1,
+                Run.lease_until > commit_instant).values(state=target, version=version, steps=Run.steps + 1,
                 question_id=question, failure=reason, lease_token=None, lease_until=None, attempts=0))
             if not result.rowcount: s.rollback(); raise Conflict("stale lease")
             s.add(Checkpoint(run_id=run_id, version=version, state=target, payload={"mock": True, "question_id": question, "reason": reason}, created_at=instant))
