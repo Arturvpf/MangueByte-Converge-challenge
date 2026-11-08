@@ -53,9 +53,11 @@ def build_scenarios(*, tenant_id: str, team_id: str, snapshot_id: str, pools: di
             assumptions = [*assumptions, "backlog operacional igual ao residual de horas; não é simulação de fila"]
         conclusive = reliable and result is not None and result.status in {"optimal", "feasible"}
         if kind == "hire":
-            # A successful max-flow search is not evidence that every required skill is covered.
             conclusive = (conclusive and headcount is not None and weekly_max is not None
                           and residual == 0 and not gaps)
+        if kind in {"temporary", "reallocate", "redesign"}:
+            # No corresponding actual intervention has been simulated.
+            conclusive = False
         scenario = _seal({
             "schema_version": "1.0", "scenario_id": scenario_id, "tenant_id": tenant_id, "team_id": team_id,
             "data_snapshot_id": snapshot_id, "kind": kind, "version": 1, "actions": actions,
@@ -63,6 +65,8 @@ def build_scenarios(*, tenant_id: str, team_id: str, snapshot_id: str, pools: di
             "preliminary_cost": None,  # No validated role/contract cost inputs in this pilot.
             "headcount_delta": headcount, "residual_hours": residual, "conclusive": conclusive,
             "content_hash": "0" * 64, "rule_versions": list(rule_versions),
+            "role_mix": [], "lead_time_and_ramp_up": None,
+            "legal_flags": list(gaps) if kind != "do_nothing" else [], "costs_estimated": False,
         })
         simulation = (_simulation(scenario_id, tenant_id, team_id, snapshot_id, result, assumptions)
                       if result is not None else _unknown(scenario_id, tenant_id, team_id, snapshot_id, skills))
@@ -76,12 +80,25 @@ def build_scenarios(*, tenant_id: str, team_id: str, snapshot_id: str, pools: di
     realloc_gaps = list(capacity_gap)
     if len(skills) < 2:
         realloc_gaps.append("não há segunda skill para realocar; a simulação não cria capacidade")
-    add("reallocate", base, ["realocar horas já existentes entre as skills elegíveis"], realloc_gaps, None,
-        ["a realocação usa o mesmo solver; não inventa hora nova"])
+    realloc_gaps.append("impacto na equipe de origem e habilitação ainda não simulados")
+    add("reallocate", base, ["realocar ou capacitar com autorização e impacto na origem"], realloc_gaps, None,
+        ["baseline inalterado: transferência e capacitação ainda não foram modeladas"])
+    add("temporary", base, ["avaliar contratação temporária após validação da modalidade"], [
+        *capacity_gap, "modalidade, custo, prazo de chegada e habilitação não validados",
+    ], None, ["baseline inalterado; opção temporária somente exploratória"])
+    add("redesign", base, ["avaliar redesenho de turnos e processos"], [
+        *capacity_gap, "sem matriz de cobertura por intervalo, descanso e competências",
+    ], None, ["baseline inalterado; nenhuma escala é sugerida ou executada"])
     headcount = None
     hired = base
     hire_assumptions = ["contratação só entra como pool adicional no solver",
-                        "Custos de contratação ainda não foram fornecidos; custo permanece desconhecido."]
+                        "Custos de contratação ainda não foram fornecidos; custo permanece desconhecido.",
+                        "Novo pool é hipótese matemática, não uma pessoa já disponível."]
+    hire_gaps = list(capacity_gap)
+    hire_gaps.extend([
+        "lead time de recrutamento, admissão, treinamento e ramp-up não informado",
+        "custos, orçamento e mentoria por função não validados",
+    ])
     if base is not None and weekly_max and forecast_calibrated:
         extra = sum(base.residual_hours.values())
         if extra:
@@ -99,10 +116,10 @@ def build_scenarios(*, tenant_id: str, team_id: str, snapshot_id: str, pools: di
             headcount = (extra + weekly_max - 1) // weekly_max
             hire_assumptions.append("headcount agregado estimado sobre horas faltantes; composição de cargos não validada")
             if len([x for x in base.residual_hours.values() if x > 0]) > 1:
-                capacity_gap.append("múltiplas competências: headcount agregado não prova composição contratável ou turnos viáveis")
+                hire_gaps.append("múltiplas competências: headcount agregado não prova composição contratável ou turnos viáveis")
         else:
             headcount = 0
     elif weekly_max is None:
         hire_assumptions.append("sem jornada semanal aprovada, o headcount fica vazio")
-    add("hire", hired, ["adicionar capacidade nova e recalcular o residual"], capacity_gap, headcount, hire_assumptions)
+    add("hire", hired, ["avaliar nova capacidade sujeita a prazo, custos e qualificação"], hire_gaps, headcount, hire_assumptions)
     return scenarios

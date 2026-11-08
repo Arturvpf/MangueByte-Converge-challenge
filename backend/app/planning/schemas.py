@@ -22,7 +22,7 @@ class ScenarioCandidate(Contract):
     tenant_id: str = Field(min_length=1)
     team_id: str = Field(min_length=1)
     data_snapshot_id: str = Field(min_length=1)
-    kind: Literal["hire", "reallocate", "do_nothing"]
+    kind: Literal["hire", "temporary", "reallocate", "redesign", "do_nothing"]
     version: int = Field(ge=1)
     actions: list[str]
     assumptions: list[str]
@@ -34,6 +34,10 @@ class ScenarioCandidate(Contract):
     conclusive: bool
     content_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     rule_versions: list[str]
+    role_mix: list[dict] = Field(default_factory=list)
+    lead_time_and_ramp_up: dict | None = None
+    legal_flags: list[str] = Field(default_factory=list)
+    costs_estimated: bool = False
 
     _ids = field_validator("scenario_id", "tenant_id", "team_id", "data_snapshot_id", "content_hash")(nonempty)
 
