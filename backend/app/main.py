@@ -50,5 +50,5 @@ def create_app(settings: Settings | None = None, modules: tuple[DomainModule, ..
             app.include_router(router)
     prototype = Path(__file__).resolve().parents[2] / "src"
     if prototype.is_dir():
-        app.mount("/prototype", StaticFiles(directory=prototype), name="prototype")
+        app.mount("/prototype", StaticFiles(directory=prototype, html=True), name="prototype")
     return app
