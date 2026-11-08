@@ -6,6 +6,8 @@ from sqlalchemy import engine_from_config, pool
 from backend.app.core.config import Settings
 from backend.app.core.database import Base
 from backend.app.data import models as data_models  # register P1-01 metadata
+from backend.app.auth import models as auth_models  # register P2-01 metadata
+from backend.app.audit import models as audit_models  # register P2-01 metadata
 
 # Import each domain model module here before autogeneration, so its tables are
 # registered on Base.metadata. Each domain owns and reviews its own revisions.

@@ -1,9 +1,12 @@
 """FastAPI application factory."""
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from backend.app.core.config import Settings
+from backend.app.audit.tracing import TraceIdMiddleware
 from backend.app.core.database import make_database
 from backend.app.core.modules import DOMAIN_MODULES, DomainModule, collect_jobs
 
@@ -24,6 +27,16 @@ def create_app(settings: Settings | None = None, modules: tuple[DomainModule, ..
     app.state.engine = engine
     app.state.session_factory = sessions
     app.state.jobs = jobs
+    app.add_middleware(TraceIdMiddleware)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, exc: RequestValidationError):
+        # Error messages and nested locations can contain caller-controlled field
+        # names or validator text. Only expose the fixed source of each error.
+        sources = {"body", "query", "path", "header", "cookie"}
+        errors = [{"type": "validation_error", "loc": [loc[0]] if loc and loc[0] in sources else [],
+                   "msg": "Invalid request"} for e in exc.errors() for loc in [e.get("loc", ())]]
+        return JSONResponse(status_code=422, content={"detail": errors})
 
     @app.get("/health", tags=["health"])
     def health():

@@ -67,7 +67,7 @@ def test_repository_and_api_isolation_version_and_origin(tmp_path):
         session.rollback()
     with TestClient(app) as client:
         path = f'/api/teams/{a.team.id}/snapshots/{a.capacity.data_snapshot_id}'
-        assert client.get(path).status_code == 403
+        assert client.get(path).status_code == 401  # no verified identity
         app.dependency_overrides[get_data_scope] = lambda: scope_a
         assert [t['id'] for t in client.get('/api/teams').json()] == [a.team.id]
         old = client.get(path)

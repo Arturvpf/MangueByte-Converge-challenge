@@ -1,12 +1,20 @@
-"""Read-only API. P2-01 must override get_data_scope with verified identity."""
+"""Read-only API. Scope comes from the verified principal (P2-01)."""
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
+from backend.app.auth.dependencies import require_permission
+from backend.app.auth.permissions import Permission, Principal
+from backend.app.data.models import DataSnapshot
 from backend.app.data.repository import CorruptSnapshot, DataRepository, DataScope, ForbiddenScope
 from backend.app.data.schemas import SnapshotData
 
 router = APIRouter(prefix='/api', tags=['data'])
 
-def get_data_scope() -> DataScope:
-    raise HTTPException(status_code=403, detail={'code': 'FORBIDDEN_SCOPE', 'message': 'Authorization unavailable'})
+def get_data_scope(request: Request, principal: Principal = Depends(require_permission(Permission.DATA_READ))) -> DataScope:
+    team_ids = set(principal.team_ids(Permission.DATA_READ))
+    if principal.tenant_wide(Permission.DATA_READ):
+        with request.app.state.session_factory() as session:
+            team_ids.update(session.scalars(select(DataSnapshot.team_id).where(DataSnapshot.tenant_id == principal.tenant_id).distinct()))
+    return DataScope(principal.tenant_id, frozenset(team_ids))
 
 def repository(request: Request, scope: DataScope = Depends(get_data_scope)):
     with request.app.state.session_factory() as session:
