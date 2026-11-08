@@ -1,5 +1,5 @@
 import copy
-from decimal import Decimal as D
+from decimal import Decimal as D, localcontext
 import json
 from pathlib import Path
 import unittest
@@ -30,7 +30,34 @@ class MetricsTests(unittest.TestCase):
         self.assertEqual((r.required_headcount, r.headcount_gap), (14, 3))
         self.assertEqual(r.fte, D('10.01'))
         self.assertEqual(r.effective_availability, D('.91'))
-        self.assertEqual(r.ipd, D(1200) / D('954.3534'))
+        self.assertEqual(r.ipd, D('1.2573958451869087488974210182517293908105739446205'))
+
+    def test_separate_current_and_projected_demand(self):
+        r = self.metrics(demand_cases=1150, projected_demand_cases=1200)
+        self.assertEqual(r.required_headcount, 14)
+        self.assertEqual(r.ipd, self.metrics(demand_cases=1150).ipd)
+        with self.assertRaises(MetricsError):
+            self.metrics(projected_demand_cases=None)
+
+    def test_exact_ceiling_and_context_independence(self):
+        values = dict(headcount=1, nominal_hours_per_person=1, availability=1,
+                      cases_per_hour=1, demand_cases='1.00000000000000000000000000001')
+        self.assertEqual(homogeneous_metrics(**values).required_headcount, 2)
+        expected = self.metrics()
+        with localcontext() as context:
+            context.prec = 1
+            self.assertEqual(self.metrics(), expected)
+            self.assertEqual(homogeneous_metrics(**values).required_headcount, 2)
+
+    def test_exact_pool_budget_with_tiny_and_low_precision_overages(self):
+        c, d = example()
+        m = matrix(c, d)
+        with localcontext() as context:
+            context.prec = 2
+            with self.assertRaises(MetricsError):
+                validate_allocations(m, [Allocation('pool-day', 'skill-support', 'shift-day', D(121)), Allocation('pool-day', 'skill-triage', 'shift-day', D(200))])
+        with self.assertRaises(MetricsError):
+            validate_allocations(m, [Allocation('pool-day', 'skill-support', 'shift-day', D(320)), Allocation('pool-day', 'skill-triage', 'shift-day', D('1e-28'))])
 
     def test_overtime_effective_not_availability_adjusted_twice(self):
         r = self.metrics(overtime_effective_hours=42)

@@ -1,6 +1,7 @@
 """Pure P1 metrics and shared-pool solver input preparation."""
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation, ROUND_CEILING
+from decimal import Context, Decimal, InvalidOperation, localcontext, ROUND_HALF_EVEN
+from fractions import Fraction
 
 from ..contracts.v1 import DemandSnapshot, SkillCapacitySnapshot, ErrorCode
 
@@ -23,6 +24,31 @@ def number(value, name):
     return result
 
 
+def exact_decimal(value: Fraction) -> Decimal:
+    """Convert a finite decimal fraction without consulting Decimal context."""
+    denominator = value.denominator
+    twos = fives = 0
+    while denominator % 2 == 0:
+        denominator //= 2
+        twos += 1
+    while denominator % 5 == 0:
+        denominator //= 5
+        fives += 1
+    if denominator != 1:
+        raise ValueError('fraction does not have a finite decimal representation')
+    scale = max(twos, fives)
+    coefficient = abs(value.numerator) * 2 ** (scale - twos) * 5 ** (scale - fives)
+    digits = tuple(int(digit) for digit in str(coefficient))
+    return Decimal((int(value < 0), digits, -scale))
+
+
+def ratio(numerator: Fraction, denominator: Fraction) -> Decimal:
+    """Stable rounded ratio; all inputs and decision calculations remain exact."""
+    value = numerator / denominator
+    with localcontext(Context(prec=50, rounding=ROUND_HALF_EVEN, Emax=999999999, Emin=-999999999)):
+        return Decimal(value.numerator) / Decimal(value.denominator)
+
+
 @dataclass(frozen=True)
 class HomogeneousMetrics:
     effective_hours: Decimal
@@ -35,8 +61,11 @@ class HomogeneousMetrics:
     headcount_gap: int | None
 
 
+_SAME_DEMAND = object()
+
+
 def homogeneous_metrics(*, headcount, nominal_hours_per_person, availability, cases_per_hour,
-                        demand_cases, overtime_effective_hours=0,
+                        demand_cases, projected_demand_cases=_SAME_DEMAND, overtime_effective_hours=0,
                         hours_unit='hours_per_period', demand_unit='cases_per_period',
                         productivity_unit='cases_per_hour'):
     """Calculate a homogeneous group; overtime hours are already effective.
@@ -55,18 +84,21 @@ def homogeneous_metrics(*, headcount, nominal_hours_per_person, availability, ca
         raise MetricsError(ErrorCode.INSUFFICIENT_DATA, 'availability must be between 0 and 1')
     rate = number(cases_per_hour, 'cases_per_hour')
     demand = number(demand_cases, 'demand_cases')
+    projected = demand if projected_demand_cases is _SAME_DEMAND else number(projected_demand_cases, 'projected_demand_cases')
     overtime = number(overtime_effective_hours, 'overtime_effective_hours')
+    h, nominal, availability, rate, demand, projected, overtime = map(
+        Fraction, (h, nominal, availability, rate, demand, projected, overtime))
     base = h * nominal
     effective = base * availability + overtime
     capacity = effective * rate
     per_person = nominal * availability * rate
-    required = (int((demand / per_person).to_integral_value(rounding=ROUND_CEILING))
-                if per_person else (0 if not demand else None))
+    required = ((projected / per_person).__ceil__()
+                if per_person else (0 if not projected else None))
     return HomogeneousMetrics(
-        effective, (base * availability / base if base else None), capacity,
-        demand / capacity if capacity else None,
-        effective / nominal if nominal else None,
-        overtime / nominal if nominal else None,
+        exact_decimal(effective), exact_decimal(availability) if base else None,
+        exact_decimal(capacity), ratio(demand, capacity) if capacity else None,
+        ratio(effective, nominal) if nominal else None,
+        ratio(overtime, nominal) if nominal else None,
         required, max(required - int(h), 0) if required is not None else None,
     )
 
@@ -132,8 +164,8 @@ def validate_allocations(matrix: Matrix, allocations: list[Allocation]) -> None:
     """Validate an externally proposed allocation, not solver feasibility or coverage."""
     pools = {p.pool_id: p for p in matrix.pools}
     rows = {(r.skill_id, r.shift_id): r for r in matrix.rows}
-    pool_totals = {key: Decimal(0) for key in pools}
-    row_totals = {key: Decimal(0) for key in rows}
+    pool_totals = {key: Fraction(0) for key in pools}
+    row_totals = {key: Fraction(0) for key in rows}
     seen = set()
     for a in allocations:
         key = (a.skill_id, a.shift_id)
@@ -141,7 +173,7 @@ def validate_allocations(matrix: Matrix, allocations: list[Allocation]) -> None:
         if triple in seen or key not in rows or a.pool_id not in rows[key].pool_ids:
             raise MetricsError(ErrorCode.INSUFFICIENT_DATA, 'duplicate or ineligible allocation')
         seen.add(triple)
-        amount = number(a.hours, 'allocation hours')
+        amount = Fraction(number(a.hours, 'allocation hours'))
         if pools[a.pool_id].available_hours is None or rows[key].eligible_hours is None:
             raise MetricsError(ErrorCode.INSUFFICIENT_DATA, 'allocation uses unknown limit')
         pool_totals[a.pool_id] += amount
