@@ -90,14 +90,33 @@ class MockExecutor:
             raise Conflict("run unavailable")
         return run
 
+    def _expire(self, s, run, instant):
+        """Commit expiry before reporting a conflict; CAS prevents stale writers."""
+        version = run.version + 1
+        result = s.execute(update(Run).where(
+            Run.id == run.id, Run.version == run.version, Run.deadline <= instant,
+            Run.state.not_in(("FAILED", "BLOCKED", "COMPLETED")),
+        ).values(state="FAILED", failure="DEADLINE", version=version,
+                 lease_token=None, lease_until=None, question_id=None))
+        if result.rowcount:
+            s.add(Checkpoint(run_id=run.id, version=version, state="FAILED",
+                             payload={"mock": True, "reason": "DEADLINE"}, created_at=instant))
+            s.commit()
+            return True
+        s.rollback()
+        return False
+
     def claim(self, run_id: str, scope: Scope, lease_seconds: int = 30) -> str | None:
         if not isinstance(lease_seconds, int) or isinstance(lease_seconds, bool) or lease_seconds < 1: raise ValueError("invalid lease")
         with self.sessions() as s:
             run = self._run(s, run_id, scope, "claim")
             instant = now()
+            if instant >= run.deadline and run.state not in ("FAILED", "BLOCKED", "COMPLETED"):
+                self._expire(s, run, instant)
+                return None
             if run.state not in ("CREATED", "VALIDATING", "INVESTIGATING", "PLANNING") or (run.lease_until and run.lease_until > instant): return None
             token = str(uuid4())
-            if run.attempts >= run.max_attempts or instant >= run.deadline:
+            if run.attempts >= run.max_attempts:
                 next_version = run.version + 1
                 result = s.execute(update(Run).where(Run.id == run_id, Run.version == run.version,
                     or_(Run.lease_until.is_(None), Run.lease_until <= instant)).values(state="FAILED", failure="ATTEMPTS_OR_DEADLINE", version=next_version, lease_token=None, lease_until=None))
@@ -150,11 +169,15 @@ class MockExecutor:
             if prior:
                 if prior.fingerprint != fp: raise Conflict("idempotency key reused")
                 return prior.version
+            instant = now()
+            if instant >= run.deadline and run.state not in ("FAILED", "BLOCKED", "COMPLETED"):
+                self._expire(s, run, instant)
+                raise Conflict("deadline expired")
             if run.state != "WAITING_INPUT" or run.version != expected_version or run.question_id != question_id: raise Conflict("stale question or version")
             # Queue a mock continuation; its next step blocks before any real node.
             version = run.version + 1
             result = s.execute(update(Run).where(Run.id == run_id, Run.state == "WAITING_INPUT", Run.version == expected_version,
-                Run.question_id == question_id).values(state="PLANNING", version=version, question_id=None, failure=None))
+                Run.question_id == question_id, Run.deadline > instant).values(state="PLANNING", version=version, question_id=None, failure=None))
             if not result.rowcount: s.rollback(); raise Conflict("stale question or version")
             s.add(Answer(run_id=run_id, idempotency_key=key, fingerprint=fp, version=version))
             s.add(Checkpoint(run_id=run_id, version=version, state="PLANNING", payload={"mock": True, "resumed": True}, created_at=now()))

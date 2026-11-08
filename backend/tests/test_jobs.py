@@ -91,3 +91,58 @@ def test_scope_and_deadline(setup):
     with pytest.raises(PermissionError): w.claim(run_id, Scope("denied", "team", "snapshot", "trace"))
     assert w.claim(run_id, scope) is None
     with sessions() as s: assert s.get(Run, run_id).state == "FAILED"
+
+
+def test_claim_expires_waiting_input(setup):
+    w, sessions, scope = setup
+    run_id, _ = create(w, scope)
+    for _ in range(3): step(w, run_id, scope)
+    with sessions.begin() as s:
+        s.execute(update(Run).where(Run.id == run_id).values(deadline=now() - timedelta(seconds=1)))
+    assert w.claim(run_id, scope) is None
+    with sessions() as s:
+        run = s.get(Run, run_id)
+        assert run.state == "FAILED" and run.failure == "DEADLINE" and run.question_id is None
+        assert s.scalar(select(Checkpoint).where(Checkpoint.run_id == run_id, Checkpoint.version == run.version)).state == "FAILED"
+
+
+def test_claim_expires_live_lease_and_invalidates_token(setup):
+    w, sessions, scope = setup
+    run_id, _ = create(w, scope)
+    token = w.claim(run_id, scope)
+    with sessions.begin() as s:
+        s.execute(update(Run).where(Run.id == run_id).values(deadline=now() - timedelta(seconds=1)))
+    assert w.claim(run_id, scope) is None
+    assert not w.heartbeat(run_id, scope, token)
+    with pytest.raises(Conflict): w.step(run_id, scope, token)
+    with sessions() as s:
+        run = s.get(Run, run_id)
+        assert run.state == "FAILED" and run.lease_token is None and run.lease_until is None
+        assert s.scalar(select(Checkpoint).where(Checkpoint.run_id == run_id, Checkpoint.version == run.version)).state == "FAILED"
+
+
+def test_expired_answer_commits_failure_and_prior_replay_still_works(setup):
+    w, sessions, scope = setup
+    run_id, _ = create(w, scope)
+    for _ in range(3): step(w, run_id, scope)
+    with sessions() as s:
+        run = s.get(Run, run_id)
+        version, question = run.version, run.question_id
+    with sessions.begin() as s:
+        s.execute(update(Run).where(Run.id == run_id).values(deadline=now() - timedelta(seconds=1)))
+    with pytest.raises(Conflict, match="deadline expired"):
+        w.answer(run_id, scope, question_id=question, expected_version=version, key="new", answer="x")
+    with sessions() as s:
+        run = s.get(Run, run_id)
+        assert run.state == "FAILED" and run.failure == "DEADLINE"
+        assert s.scalar(select(Checkpoint).where(Checkpoint.run_id == run_id, Checkpoint.version == run.version)).state == "FAILED"
+    other = Scope("tenant", "other", "snapshot", "trace")
+    run_id, _ = create(w, other)
+    for _ in range(3): step(w, run_id, other)
+    with sessions() as s:
+        run = s.get(Run, run_id)
+        version, question = run.version, run.question_id
+    accepted = w.answer(run_id, other, question_id=question, expected_version=version, key="accepted", answer="x")
+    with sessions.begin() as s:
+        s.execute(update(Run).where(Run.id == run_id).values(deadline=now() - timedelta(seconds=1)))
+    assert w.answer(run_id, other, question_id=question, expected_version=version, key="accepted", answer="x") == accepted
