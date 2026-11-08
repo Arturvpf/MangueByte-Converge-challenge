@@ -27,7 +27,7 @@ html.lenis body {
 
 body {
   margin: 0;
-  background: var(--color-gray-50);
+  background: var(--color-white);
   color: var(--color-ink);
   font-family: var(--font-sans);
   font-size: var(--text-body);

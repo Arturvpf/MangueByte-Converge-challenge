@@ -1,0 +1,36 @@
+{
+  "synthetic": true,
+  "notice": "Issues sintéticas para o contrato de leitura. Não há projeto Jira real nem escrita.",
+  "issues": [
+    {
+      "id": "DEMO-1",
+      "skill_id": "n1",
+      "shift_id": "manha",
+      "pool_id": "pool-a",
+      "eligible_hours": "10",
+      "available_hours": "10",
+      "period_start": "2026-11-02",
+      "period_end_exclusive": "2026-11-09",
+      "timezone": "America/Fortaleza",
+      "demand_cases": "14",
+      "hours_unit": "hours_per_period",
+      "demand_unit": "cases_per_period",
+      "cases_per_hour": "1"
+    },
+    {
+      "id": "DEMO-2",
+      "skill_id": "n2",
+      "shift_id": "manha",
+      "pool_id": "pool-a",
+      "eligible_hours": "10",
+      "available_hours": "10",
+      "period_start": "2026-11-02",
+      "period_end_exclusive": "2026-11-09",
+      "timezone": "America/Fortaleza",
+      "demand_cases": "4",
+      "hours_unit": "hours_per_period",
+      "demand_unit": "cases_per_period",
+      "cases_per_hour": "1"
+    }
+  ]
+}
