@@ -247,7 +247,7 @@ document.querySelectorAll('[data-connect-open]').forEach((button) => button.addE
 document.querySelector('[data-connect-close]').addEventListener('click', () => connectDialog.close());
 connectDialog.addEventListener('click', (event) => { if (event.target === connectDialog) connectDialog.close(); });
 
-const session = { token: null, runId: null, scenarios: [], approvedId: null };
+const session = { token: null, runId: null, scenarios: [], decisions: new Map(), approvedId: null, runs: [] };
 const cardKind = { a: 'hire', b: 'temporary', c: 'reallocate', d: 'redesign', e: 'do_nothing' };
 const kindTitle = { hire: 'Contratar', temporary: 'Temporários', reallocate: 'Realocar ou capacitar', redesign: 'Redesenhar', do_nothing: 'Não agir' };
 const kindHeading = {
@@ -263,6 +263,8 @@ const errorMessages = {
   POLICY_REVIEW_REQUIRED: 'há regra ausente, em revisão ou revogada para este cenário',
   FORBIDDEN_SCOPE: 'seu perfil não tem permissão para esta equipe',
   NOT_FOUND: 'o recurso não foi encontrado',
+  FORECAST_NOT_APPLIED: 'a previsão ainda não foi aplicada por competência e turno',
+  LEGAL_CONTEXT_REQUIRED: 'o contexto jurídico da equipe precisa de validação',
 };
 const violationLabels = {
   MANDATORY_COVERAGE_MISSING: 'cobertura obrigatória não atendida',
@@ -288,6 +290,18 @@ function validation(item) {
   }
   const reasons = (result.violations || []).map((code) => violationLabels[code] || code);
   return { ok: false, label: reasons.length ? `Bloqueada: ${reasons.join(', ')}` : 'Bloqueada' };
+}
+
+function scenarioStatus(item) {
+  if (item.conclusive && validation(item).ok) return 'Elegível para revisão';
+  return 'Inconclusivo';
+}
+
+function readableGap(value) {
+  if (value.startsWith('FORECAST_NOT_APPLIED:')) return 'Previsão ainda não aplicada por competência e turno';
+  if (value.startsWith('LEGAL_CONTEXT_REQUIRED:')) return 'Categoria, contrato e instrumento coletivo ainda não validados';
+  if (value.startsWith('MANAGER_REPORT_UNVERIFIED:')) return 'Relato do gestor ainda não verificado';
+  return value;
 }
 
 function errorText(error) {
@@ -339,6 +353,27 @@ async function loadSnapshots() {
   })), 'Nenhum snapshot');
 }
 
+function refreshRunSelect() {
+  const teamId = document.querySelector('[data-team]').value;
+  const rows = session.runs.filter((run) => run.team_id === teamId);
+  fillSelect(document.querySelector('[data-run-select]'), rows.map((run) => ({
+    value: run.run_id,
+    label: `${run.state} · ${run.snapshot_id} · ${new Date(run.updated_at).toLocaleString('pt-BR')}`,
+  })), 'Nenhuma investigação desta equipe');
+  document.querySelector('[data-resume-run]').disabled = rows.length === 0;
+}
+
+async function loadRuns() {
+  try {
+    const result = await api('/api/investigations');
+    session.runs = result.items || [];
+  } catch (error) {
+    if (error.status !== 404) throw error;
+    session.runs = [];
+  }
+  refreshRunSelect();
+}
+
 document.querySelector('[data-connect-form]').addEventListener('submit', async (event) => {
   event.preventDefault();
   const data = new FormData(event.currentTarget);
@@ -350,10 +385,8 @@ document.querySelector('[data-connect-form]').addEventListener('submit', async (
     });
     // A new login must never retain the previous user's investigation or decision.
     session.token = login.access_token;
-    session.runId = null;
-    session.scenarios = [];
-    session.approvedId = null;
-    document.querySelector('[data-draft]').hidden = true;
+    session.runs = [];
+    resetLoadedInvestigation();
     const me = await api('/api/auth/me');
     const role = me.memberships[0] ? me.memberships[0].role : 'sem papel';
     const teams = await api('/api/teams');
@@ -362,35 +395,35 @@ document.querySelector('[data-connect-form]').addEventListener('submit', async (
     // Restore only the last investigation authorized by the API. Session
     // credentials are intentionally not persisted in browser storage.
     let restored = false;
+    let restoreError = null;
     try {
-      const previous = await api('/api/investigations');
-      const last = (previous.items || []).find((item) =>
-        teams.some((team) => team.id === item.team_id));
+      await loadRuns();
+      const last = session.runs.find((item) => teams.some((team) => team.id === item.team_id));
       if (last) {
-        const teamSelect = document.querySelector('[data-team]');
-        teamSelect.value = last.team_id;
+        document.querySelector('[data-team]').value = last.team_id;
         await loadSnapshots();
-        const snapshotSelect = document.querySelector('[data-snapshot]');
-        if ([...snapshotSelect.options].some((option) => option.value === last.snapshot_id)) {
-          snapshotSelect.value = last.snapshot_id;
-          await paintRun(await api(`/api/investigations/${encodeURIComponent(last.run_id)}`));
-          restored = true;
+        refreshRunSelect();
+        if ([...document.querySelector('[data-snapshot]').options].some((option) => option.value === last.snapshot_id)) {
+          // Read-only restore: never advance the workflow without a user action.
+          restored = await resumeRun(last, { advance: false });
         }
       }
     } catch (error) {
       // Failure to resume is not a failure to authenticate. The user can still
       // select a snapshot and open an investigation manually.
-      setStatus(`Sessão aberta; não foi possível restaurar a investigação: ${errorText(error)}`);
+      restoreError = errorText(error);
     }
     document.querySelector('[data-live-controls]').hidden = false;
     if (restored) connectDialog.close();
     document.querySelector('[data-review-action]').hidden = true;
     document.querySelector('[data-decision-form]').hidden = false;
     document.querySelector('[data-review-copy]').textContent = 'Rejeitar ou adiar fica registrado depois que a API responder. Aprovar exige que o cenário tenha passado pela validação independente.';
-    document.querySelector('[data-banner-copy]').textContent = `Conectado como ${role}. Os números de exemplo ficam até você carregar um recorte`;
+    // Ao restaurar, o banner já descreve a investigação carregada por paintRun().
+    if (!restored) document.querySelector('[data-banner-copy]').textContent = `Conectado como ${role}. Os números de exemplo ficam até você carregar um recorte`;
     document.querySelector('[data-sidebar-status]').textContent = 'Conectado à API';
     document.querySelector('[data-connect-form]').hidden = true;
     if (restored) setStatus('Investigação anterior recuperada da API. Confira as evidências antes de decidir.');
+    else if (restoreError) setStatus(`Sessão aberta; não foi possível restaurar a investigação: ${restoreError}`);
     else if (teams.length) setStatus('Sessão aberta. Escolha a equipe e o recorte.');
     else setStatus('Sessão aberta, mas esta empresa ainda não tem recorte de dados.');
   } catch (error) {
@@ -402,8 +435,10 @@ document.querySelector('[data-connect-form]').addEventListener('submit', async (
 function resetLoadedInvestigation() {
   session.runId = null;
   session.scenarios = [];
+  session.decisions = new Map();
   session.approvedId = null;
   document.querySelector('[data-draft]').hidden = true;
+  document.querySelector('[data-review-feedback]').textContent = '';
   fillSelect(document.querySelector('[data-decision-scenario]'), [], 'Nenhum cenário carregado');
   document.querySelector('[data-review="validation"]').textContent = 'Não executada neste recorte';
   syncApproval();
@@ -411,13 +446,86 @@ function resetLoadedInvestigation() {
 
 document.querySelector('[data-team]').addEventListener('change', () => {
   resetLoadedInvestigation();
+  refreshRunSelect();
   loadSnapshots().catch((error) => setStatus(errorText(error)));
 });
 document.querySelector('[data-snapshot]').addEventListener('change', resetLoadedInvestigation);
 
-document.querySelector('[data-load-metrics]').addEventListener('click', async () => {
-  const teamId = document.querySelector('[data-team]').value;
-  const snapshotId = document.querySelector('[data-snapshot]').value;
+function renderDemandFlow(flow) {
+  const panel = document.querySelector('[data-demand-flow-panel]');
+  const grid = document.querySelector('[data-demand-flow-grid]');
+  const note = document.querySelector('[data-demand-flow-note]');
+  panel.hidden = false;
+  const rows = flow?.items || [];
+  const latest = rows.at(-1);
+  const classified = latest?.demand_semantics === 'incoming_plus_unmet';
+  const fields = classified ? [
+    ['Entradas', latest.incoming_cases], ['Concluídos', latest.completed_cases],
+    ['Backlog inicial', latest.backlog_start], ['Backlog final', latest.backlog_end],
+    ['Cancelados', latest.cancelled_cases], ['Reabertos', latest.reopened_cases],
+    ['Demanda não registrada', latest.unmet_cases],
+  ] : [['Fluxo de demanda', 'Não classificado neste recorte']];
+  grid.replaceChildren(...fields.map(([label, value]) => {
+    const cell = document.createElement('div');
+    const name = document.createElement('span');
+    const number = document.createElement('strong');
+    name.textContent = label;
+    number.textContent = classified ? formatApi(value) : value;
+    cell.append(name, number);
+    return cell;
+  }));
+  note.textContent = latest
+    ? `${latest.start} a ${latest.end}. ${(flow.limitations || []).join(' ')}${classified ? '' : ' A quantidade legada não comprova entradas, conclusões ou backlog.'}`
+    : 'Não há fluxo de entradas e backlog associado a este snapshot.';
+}
+
+// Visão geral no modo conectado: a demanda vem da série por período do
+// demand-flow; a capacidade é a do bloco homogêneo do último período, repetida
+// só como referência. Sem série suficiente, o gráfico continua ilustrativo.
+const OVERVIEW_PERIODS = 6;
+function renderOverviewChart(flow, block) {
+  const chart = document.querySelector('[data-chart="overview"]');
+  const foot = document.querySelector('[data-overview-chart-foot]');
+  const rows = (flow?.items || []).filter((item) => item.quantity != null && Number.isFinite(Number(item.quantity))).slice(-OVERVIEW_PERIODS);
+  if (rows.length < 2) {
+    foot.textContent = 'Série ilustrativa: este recorte não tem histórico suficiente para desenhar a demanda';
+    return;
+  }
+  const line = rows.map((item) => Number(item.quantity));
+  const capacity = block && Number.isFinite(Number(block.capacity_cases)) ? Number(block.capacity_cases) : null;
+  const known = capacity == null ? line : [...line, capacity];
+  // Três intervalos de passo "redondo" (1, 2, 2,5 ou 5 × 10ⁿ) cobrindo os valores com folga.
+  const low = Math.min(...known);
+  const high = Math.max(...known);
+  const raw = Math.max((high - low) * 1.2, high * 0.02, 1) / 3;
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  let step = [1, 2, 2.5, 5, 10].map((factor) => factor * magnitude).find((value) => value >= raw);
+  let min = Math.floor(low / step) * step;
+  while (min + 3 * step < high) {
+    step *= 2;
+    min = Math.floor(low / step) * step;
+  }
+  const max = min + 3 * step;
+  plot(chart, {
+    min, max, ticks: [0, 1, 2, 3].map((index) => min + index * step),
+    line, capacity: capacity ?? undefined,
+  });
+  const day = (value) => String(value).slice(0, 10).split('-').reverse().slice(0, 2).join('/');
+  chart.querySelector('.chart__x').replaceChildren(...rows.map((item) => {
+    const label = document.createElement('span');
+    label.textContent = day(item.start);
+    return label;
+  }));
+  const values = line.map(formatInt).join(', ');
+  chart.setAttribute('aria-label', `Demanda registrada nos últimos ${rows.length} períodos do recorte: ${values}${capacity == null ? '' : `, contra capacidade de cerca de ${formatInt(capacity)}`}`);
+  document.querySelector('[data-overview-chart-sub]').textContent = `Casos por período nos últimos ${rows.length} períodos do recorte`;
+  document.querySelector('[data-overview-capacity-label]').textContent = 'Capacidade do último período';
+  foot.textContent = capacity == null
+    ? 'Demanda do CSV do recorte. Sem bloco homogêneo, a capacidade não é desenhada'
+    : 'Demanda do CSV do recorte. A capacidade é a do último período, repetida como referência; não há histórico de capacidade';
+}
+
+async function loadMetrics(teamId, snapshotId, { closeDialog = true } = {}) {
   if (!teamId || !snapshotId) {
     setStatus('Não há snapshot para carregar.');
     return;
@@ -425,10 +533,18 @@ document.querySelector('[data-load-metrics]').addEventListener('click', async ()
   setStatus('Carregando métricas…');
   try {
     const metrics = await api(`/api/teams/${encodeURIComponent(teamId)}/metrics?snapshot_id=${encodeURIComponent(snapshotId)}`);
-    const demand = metrics.demand.find((item) => item.quantity != null);
+    const demandRows = metrics.demand.filter((item) => item.quantity != null);
+    const demand = demandRows.length ? demandRows.reduce((total, item) => total + Number(item.quantity), 0) : null;
+    let flow = null;
+    try {
+      flow = await api(`/api/teams/${encodeURIComponent(teamId)}/demand-flow?snapshot_id=${encodeURIComponent(snapshotId)}`);
+    } catch (error) {
+      if (error.status !== 404) throw error;
+    }
+    renderDemandFlow(flow);
     const block = metrics.homogeneous;
-    document.querySelector('[data-live="demand"]').textContent = demand ? formatApi(demand.quantity) : '—';
-    document.querySelector('[data-live-meta="demand"]').textContent = demand ? 'quantidade do snapshot' : 'demanda ausente no snapshot';
+    document.querySelector('[data-live="demand"]').textContent = demand == null ? '—' : formatApi(demand);
+    document.querySelector('[data-live-meta="demand"]').textContent = demand == null ? 'demanda ausente no snapshot' : 'quantidade agregada do snapshot';
     document.querySelector('[data-live="capacity"]').textContent = block ? formatApi(block.capacity_cases) : (metrics.pool_hours ? formatApi(metrics.pool_hours) : '—');
     document.querySelector('[data-live-meta="capacity"]').textContent = block ? 'capacidade do bloco homogêneo' : 'horas de pool, contadas uma vez';
     document.querySelector('[data-live="ipd"]').textContent = block ? formatApi(block.ipd) : '—';
@@ -447,14 +563,20 @@ document.querySelector('[data-load-metrics]').addEventListener('click', async ()
     document.querySelector('[data-overview-title]').textContent = Number.isFinite(ipd)
       ? (share === 0 ? 'A demanda está no nível da capacidade' : `A demanda está ${share}% ${ipd > 1 ? 'acima' : 'abaixo'} da capacidade`)
       : 'Demanda e capacidade do recorte';
-    document.querySelector('[data-banner-copy]').textContent = `Métricas do recorte ${snapshotId}. ${metrics.limitations.join(' ')}`;
+    document.querySelector('[data-banner-copy]').textContent = `Visão geral do recorte ${snapshotId}. As demais etapas só usam dados da API depois de abrir ou retomar uma investigação. ${metrics.limitations.join(' ')}`;
     setStatus('Métricas carregadas da API.');
-    document.querySelector('[data-overview-chart-foot]').textContent = 'Série ilustrativa: o gráfico ainda não vem do recorte carregado';
-    connectDialog.close();
+    renderOverviewChart(flow, block);
+    if (closeDialog) connectDialog.close();
     location.hash = '#visao-geral';
+    return true;
   } catch (error) {
     setStatus(`Métricas não carregadas: ${errorText(error)}`);
+    return false;
   }
+}
+
+document.querySelector('[data-load-metrics]').addEventListener('click', () => {
+  loadMetrics(document.querySelector('[data-team]').value, document.querySelector('[data-snapshot]').value);
 });
 
 function renderReport(run) {
@@ -570,9 +692,9 @@ function renderScenarios(items) {
     const check = validation(item);
     const flags = item.legal_flags || [];
     card.querySelector('h2').textContent = kindHeading[item.kind];
-    card.querySelector('.scenario-card__main > p').textContent = flags[0] || item.gaps[0] || item.assumptions[0] || '';
+    card.querySelector('.scenario-card__main > p').textContent = readableGap(flags[0] || item.gaps[0] || item.dependencies?.[0] || item.assumptions[0] || '');
     const status = card.querySelector('[data-scenario-status]');
-    status.textContent = item.conclusive ? 'Conclusivo' : 'Inconclusivo';
+    status.textContent = scenarioStatus(item);
     status.className = `status-pill ${item.kind === 'do_nothing' ? 'status-pill--reference' : 'status-pill--pending'}`;
     card.querySelector('.scenario-card__facts').replaceChildren(...[
       ['Headcount', item.headcount_delta == null ? 'Não calculado' : String(item.headcount_delta)],
@@ -592,8 +714,8 @@ function renderScenarios(items) {
       head: `${key.toUpperCase()} · ${kindTitle[item.kind]}`,
       coverage: check.ok ? 'Validada de forma independente' : check.label,
       timing: item.lead_time_and_ramp_up ? 'Prazo de chegada informado' : 'Prazo de chegada não informado',
-      risk: flags[0] || item.gaps[0] || 'Sem lacuna declarada',
-      status: item.conclusive ? 'Conclusivo' : 'Inconclusivo',
+      risk: readableGap(flags[0] || item.gaps[0] || item.dependencies?.[0] || 'Sem lacuna declarada'),
+      status: scenarioStatus(item),
     };
   });
   renderComparison();
@@ -602,36 +724,61 @@ function renderScenarios(items) {
   document.querySelector('[data-review="validation"]').textContent = validated ? `${validated} de ${items.length} cenários validados` : 'Não executada';
   const hire = items.find((item) => item.kind === 'hire');
   document.querySelector('[data-review-lead]').textContent = hire
-    ? `Cenário de contratação ${hire.conclusive ? 'conclusivo' : 'inconclusivo'}${hire.headcount_delta == null ? ', sem headcount calculado' : `, headcount ${hire.headcount_delta}`}. ${hire.assumptions[0] || ''}`
+    ? `Cenário de contratação na versão ${hire.version}: ${scenarioStatus(hire).toLowerCase()}${hire.headcount_delta == null ? ', sem headcount calculado' : `, headcount agregado ${hire.headcount_delta}`}. ${readableGap(hire.gaps[0] || hire.dependencies?.[0] || hire.assumptions[0] || '')}`
     : 'A API não devolveu um cenário de contratação.';
   const select = document.querySelector('[data-decision-scenario]');
   fillSelect(select, items.map((item) => ({
     value: item.scenario_id,
-    label: `${kindTitle[item.kind]} · ${validation(item).ok ? 'validado' : 'sem validação'}`,
+    label: `${kindTitle[item.kind]} · versão ${item.version} · ${scenarioStatus(item).toLowerCase()}`,
   })), 'Nenhum cenário');
   syncApproval();
 }
 
 // Aprovar só fica disponível para cenário com validação independente válida.
 function syncApproval() {
-  const scenario = session.scenarios.find((item) => item.scenario_id === document.querySelector('[data-decision-scenario]').value);
+  const selectedId = document.querySelector('[data-decision-scenario]').value;
+  const scenario = session.scenarios.find((item) => item.scenario_id === selectedId);
+  const recorded = session.decisions.get(selectedId);
   const ok = Boolean(scenario) && scenario.conclusive === true && validation(scenario).ok;
-  document.querySelector('[data-approve]').disabled = !ok;
-  document.querySelector('[data-approve-hint]').hidden = ok;
+  document.querySelectorAll('[data-decision-form] button[type="submit"]').forEach((button) => {
+    button.disabled = Boolean(recorded) || (button.value === 'approve' && !ok);
+  });
+  document.querySelector('[data-approve-hint]').hidden = ok && !recorded;
+  document.querySelector('[data-approve-hint]').textContent = recorded
+    ? `Decisão ${recorded.decision} já registrada para esta versão do cenário.`
+    : scenario
+    ? `Aprovação bloqueada: ${scenario.conclusive ? validation(scenario).label : readableGap(scenario.gaps[0] || scenario.dependencies?.[0] || 'simulação inconclusiva')}.`
+    : 'Carregue um cenário da API antes de aprovar.';
+  if (recorded) document.querySelector('[data-review-feedback]').textContent = `Decisão ${recorded.decision} registrada (${recorded.decision_id}).`;
 }
 document.querySelector('[data-decision-scenario]').addEventListener('change', syncApproval);
 
 async function paintRun(run) {
+  if (session.runId !== run.run_id) {
+    session.scenarios = [];
+    session.decisions = new Map();
+    session.approvedId = null;
+    document.querySelector('[data-draft]').hidden = true;
+    document.querySelector('[data-review-feedback]').textContent = '';
+    fillSelect(document.querySelector('[data-decision-scenario]'), [], 'Cenários ainda não disponíveis');
+    syncApproval();
+  }
   session.runId = run.run_id;
   renderReport(run);
   renderForecast(run.forecast);
   if (run.state === 'AWAITING_HUMAN' || run.state === 'COMPLETED') {
     const scenarios = await api(`/api/investigations/${run.run_id}/scenarios`);
+    const details = await Promise.allSettled(scenarios.items.map((item) => api(`/api/scenarios/${encodeURIComponent(item.scenario_id)}`)));
+    session.decisions = new Map(details.flatMap((result, index) =>
+      result.status === 'fulfilled' && result.value.decision ? [[scenarios.items[index].scenario_id, result.value.decision]] : []));
+    session.approvedId = [...session.decisions].find(([, record]) => record.decision === 'approve')?.[0] || null;
+    document.querySelector('[data-draft]').hidden = !session.approvedId;
     renderScenarios(scenarios.items);
-    setStatus(`Investigação em ${run.state}. Os cenários vieram da API.`);
+    setStatus(`Investigação em ${run.state}, ciclo ${run.cycle_count}. Cenários da versão atual carregados da API.`);
+    document.querySelector('[data-banner-copy]').textContent = `Investigação ${run.run_id} · recorte ${run.snapshot_id} · ciclo ${run.cycle_count}. Os cenários mostrados são os da versão atual do ciclo.`;
     if (location.hash !== '#cenarios' && location.hash !== '#revisao') location.hash = '#cenarios';
   } else {
-    setStatus(`Investigação em ${run.state}. Responda as perguntas pendentes para continuar.`);
+    setStatus(run.failure ? `Investigação ${run.state}: ${run.failure}.` : `Investigação em ${run.state}. Responda as perguntas pendentes para continuar.`);
     if (location.hash !== '#investigacao') location.hash = '#investigacao';
   }
 }
@@ -651,8 +798,44 @@ document.querySelector('[data-open-investigation]').addEventListener('click', as
     });
     connectDialog.close();
     await paintRun(await api(`/api/investigations/${opened.run_id}/advance`, { method: 'POST' }));
+    await loadRuns();
   } catch (error) {
     setStatus(`Investigação não aberta: ${errorText(error)}`);
+  }
+});
+
+document.querySelector('[data-run-select]').addEventListener('change', (event) => {
+  document.querySelector('[data-resume-run]').disabled = !event.currentTarget.value;
+});
+
+// Carrega o recorte e a investigação escolhidos. `advance` só é usado quando
+// a pessoa pede a retomada; a restauração automática no login é só leitura.
+async function resumeRun(selected, { advance = true } = {}) {
+  document.querySelector('[data-snapshot]').value = selected.snapshot_id;
+  document.querySelector('[data-run-select]').value = selected.run_id;
+  if (!await loadMetrics(selected.team_id, selected.snapshot_id, { closeDialog: false })) return false;
+  const path = `/api/investigations/${encodeURIComponent(selected.run_id)}`;
+  let run = await api(path);
+  if (advance && !['WAITING_INPUT', 'AWAITING_HUMAN', 'COMPLETED', 'FAILED', 'BLOCKED'].includes(run.state)) {
+    run = await api(`${path}/advance`, { method: 'POST' });
+  }
+  await paintRun(run);
+  return true;
+}
+
+document.querySelector('[data-resume-run]').addEventListener('click', async (event) => {
+  // currentTarget vira null depois do primeiro await; guarde o botão antes.
+  const button = event.currentTarget;
+  const selected = session.runs.find((run) => run.run_id === document.querySelector('[data-run-select]').value);
+  if (!selected) return;
+  button.disabled = true;
+  setStatus('Retomando investigação…');
+  try {
+    if (await resumeRun(selected)) connectDialog.close();
+  } catch (error) {
+    setStatus(`Investigação não retomada: ${errorText(error)}`);
+  } finally {
+    button.disabled = false;
   }
 });
 
@@ -678,6 +861,7 @@ document.querySelector('[data-decision-form]').addEventListener('submit', async 
       },
     });
     feedback.textContent = `Decisão ${stored.decision} registrada (${stored.decision_id}). executed=${stored.executed}.`;
+    session.decisions.set(scenarioId, stored);
     if (stored.decision === 'approve') {
       session.approvedId = scenarioId;
       document.querySelector('[data-draft]').hidden = false;

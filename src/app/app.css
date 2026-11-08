@@ -627,6 +627,12 @@ body {
 .connect__live { padding-top: 20px; border-top: 1px solid var(--line); }
 .connect__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
+.demand-flow { margin-top: 20px; }
+.demand-flow__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 12px; }
+.demand-flow__grid > div { display: grid; gap: 5px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
+.demand-flow__grid span { color: var(--muted); font-size: 12px; }
+.demand-flow__grid strong { font-size: 21px; font-weight: 500; }
+
 /* --- Responsivo ---------------------------------------------------------- */
 
 @media (max-width: 1180px) {
