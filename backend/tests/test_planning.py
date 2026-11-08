@@ -21,14 +21,16 @@ def by_kind(items):
 
 def test_three_scenarios_use_solver_numbers():
     items = by_kind(planned())
-    assert set(items) == {"hire", "reallocate", "do_nothing"}
+    assert set(items) == {"hire", "temporary", "reallocate", "redesign", "do_nothing"}
     nothing, nothing_sim = items["do_nothing"]
     direct = solve({"pool": 10}, [Row("n1", "manha", ("pool",), 10)], {"n1": 14})
     assert nothing_sim.residual_hours == direct.residual_hours
     assert nothing.residual_hours == 4 and nothing.conclusive is True
     assert "não é simulação de fila" in " ".join(nothing.assumptions)
     hire, hire_sim = items["hire"]
-    assert hire.headcount_delta == 1 and hire_sim.residual_hours["n1"] == 0 and hire.conclusive is True
+    assert hire.headcount_delta == 1 and hire_sim.residual_hours["n1"] == 0 and hire.conclusive is False
+    assert "lead time" in " ".join(hire.gaps)
+    assert all(items[kind][0].conclusive is False for kind in ("temporary", "redesign", "reallocate"))
     assert "segunda skill" in " ".join(items["reallocate"][0].gaps)
 
 

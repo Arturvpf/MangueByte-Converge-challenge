@@ -208,7 +208,7 @@ def test_flow_resume_decisions_and_isolation(tmp_path):
         ready = client.post(f"/api/investigations/{opened.json()['run_id']}/advance", headers=gestor)
         assert ready.json()["state"] == "AWAITING_HUMAN", ready.text
         scenarios = client.get(f"/api/investigations/{opened.json()['run_id']}/scenarios", headers=gestor).json()["items"]
-        assert {item["kind"] for item in scenarios} == {"hire", "reallocate", "do_nothing"}
+        assert {item["kind"] for item in scenarios} == {"hire", "temporary", "reallocate", "redesign", "do_nothing"}
         hire = next(item for item in scenarios if item["kind"] == "hire")
         assert hire["conclusive"] is False and hire["headcount_delta"] is None
         denied = client.post(f"/api/scenarios/{hire['scenario_id']}/decisions", json={
@@ -242,26 +242,26 @@ def test_flow_resume_decisions_and_isolation(tmp_path):
         assert state["state"] == "AWAITING_HUMAN"
         items = client.get(f"/api/investigations/{opened_long.json()['run_id']}/scenarios", headers=rh).json()["items"]
         hire = next(item for item in items if item["kind"] == "hire")
-        assert hire["conclusive"] is True and hire["headcount_delta"] == 1
+        assert hire["conclusive"] is False and hire["headcount_delta"] == 1
         assert client.post(f"/api/scenarios/{hire['scenario_id']}/decisions", json={
             "decision": "approve", "reason": "seguir com ressalva", "expected_hash": "a" * 64, "idempotency_key": "bad-hash",
         }, headers=rh).status_code == 409
         approved = client.post(f"/api/scenarios/{hire['scenario_id']}/decisions", json={
             "decision": "approve", "reason": "seguir com ressalva", "expected_hash": hire["content_hash"], "idempotency_key": "ok-1",
         }, headers=rh)
-        assert approved.status_code == 200, approved.text
+        assert approved.status_code == 409 and approved.json()["detail"]["code"] == "NOT_CONCLUSIVE"
         duplicate = client.post(f"/api/scenarios/{hire['scenario_id']}/decisions", json={
             "decision": "approve", "reason": "seguir com ressalva", "expected_hash": hire["content_hash"], "idempotency_key": "ok-1",
         }, headers=rh)
-        assert duplicate.json()["decision_id"] == approved.json()["decision_id"]
+        assert duplicate.status_code == 409
         assert client.get(f"/api/scenarios/{hire['scenario_id']}/requisition-drafts").status_code in {404, 405}
         first = client.post(f"/api/scenarios/{hire['scenario_id']}/requisition-drafts", json={"idempotency_key": "draft-1"}, headers=rh)
-        assert first.status_code == 200 and first.json()["executed"] is False
+        assert first.status_code == 409
         second = client.post(f"/api/scenarios/{hire['scenario_id']}/requisition-drafts", json={"idempotency_key": "draft-1"}, headers=rh)
-        assert second.json()["draft_id"] == first.json()["draft_id"]
+        assert second.status_code == 409
         assert client.post(f"/api/scenarios/{hire['scenario_id']}/requisition-drafts", json={"idempotency_key": "draft-1"}, headers=gestor).status_code == 403
         with Session(app.state.engine) as session:
-            assert session.scalar(select(func.count()).select_from(ScenarioRow).where(ScenarioRow.run_id == opened_long.json()["run_id"])) == 3
+            assert session.scalar(select(func.count()).select_from(ScenarioRow).where(ScenarioRow.run_id == opened_long.json()["run_id"])) == 5
         jira = client.post("/api/imports/jira", json={"team_id": "team-aurora", "fixture": "issues"}, headers=rh)
         assert jira.status_code == 200, jira.text
         again = client.post("/api/imports/jira", json={"team_id": "team-aurora", "fixture": "issues"}, headers=rh)

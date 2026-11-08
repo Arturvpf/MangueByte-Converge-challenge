@@ -124,7 +124,7 @@ def test_revoked_rule_and_infeasible_block_approval(tmp_path):
         items = client.get(f"/api/investigations/{run_id}/scenarios", headers=rh).json()["items"]
         hire = next(item for item in items if item["kind"] == "hire")
         reallocate = next(item for item in items if item["kind"] == "reallocate")
-        assert hire["conclusive"] is True
+        assert hire["conclusive"] is False
         with Session(app.state.engine) as session:
             scenario = session.get(ScenarioRow, reallocate["scenario_id"])
             scenario.payload = {**scenario.payload, "conclusive": True}
