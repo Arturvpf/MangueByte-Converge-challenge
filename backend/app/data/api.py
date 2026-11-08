@@ -4,6 +4,8 @@ from sqlalchemy import select
 from backend.app.auth.dependencies import deny, require_permission
 from backend.app.auth.permissions import Permission, Principal
 from backend.app.data.models import DataSnapshot
+from backend.app.flow.models import DataImport
+
 from backend.app.data.repository import CorruptSnapshot, DataRepository, DataScope, ForbiddenScope
 from backend.app.data.schemas import SnapshotData
 
@@ -55,3 +57,31 @@ def snapshot(team_id: str, snapshot_id: str, request: Request, repo: DataReposit
     if result is None:
         raise HTTPException(status_code=404, detail='Snapshot not found')
     return result
+
+
+@router.get('/teams/{team_id}/demand-flow')
+def demand_flow(team_id: str, snapshot_id: str, request: Request,
+                principal: Principal = Depends(require_permission(Permission.DATA_READ))):
+    """Read-only aggregate demand ledger; never identifies employees or ticket authors.
+
+    Legacy imports cannot be represented as verified arrivals/backlog, and the
+    response explicitly labels their semantics as unclassified.
+    """
+    if not principal.can(Permission.DATA_READ, team_id):
+        raise HTTPException(status_code=404, detail={'code': 'NOT_FOUND'})
+    with request.app.state.session_factory() as session:
+        row = session.scalar(select(DataImport).where(
+            DataImport.tenant_id == principal.tenant_id, DataImport.team_id == team_id,
+            DataImport.snapshot_id == snapshot_id, DataImport.status == 'complete',
+        ))
+        if row is None:
+            raise HTTPException(status_code=404, detail={'code': 'NOT_FOUND'})
+        entries = row.history or []
+        return {
+            'team_id': team_id, 'snapshot_id': snapshot_id, 'source_kind': row.source_kind,
+            'items': entries,
+            'limitations': (['Fluxo apenas agregado; sem avaliação de pessoas.'] +
+                (['Campos legados não comprovam entradas ou demanda latente.']
+                 if any(item.get('demand_semantics') != 'incoming_plus_unmet' for item in entries)
+                 else [])),
+        }

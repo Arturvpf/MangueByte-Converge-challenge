@@ -175,6 +175,16 @@ def test_flow_resume_decisions_and_isolation(tmp_path):
         created = client.post("/api/imports", json={"team_id": "team-aurora", "filename": "short.csv", "content": short}, headers=rh)
         confirmed = client.post(f"/api/imports/{created.json()['import_id']}/confirm", headers=rh)
         snapshot_id = confirmed.json()["snapshot_id"]
+        ledger = client.get(
+            "/api/teams/team-aurora/demand-flow",
+            params={"snapshot_id": snapshot_id}, headers=rh,
+        )
+        assert ledger.status_code == 200 and ledger.json()["items"]
+        assert ledger.json()["items"][0]["demand_semantics"] == "legacy_unclassified"
+        assert client.get(
+            "/api/teams/team-aurora/demand-flow",
+            params={"snapshot_id": "wrong-snapshot"}, headers=rh,
+        ).status_code == 404
         opened = client.post("/api/investigations", json={
             "team_id": "team-aurora", "snapshot_id": snapshot_id, "idempotency_key": "run-short", "cycle_limit": 3,
         }, headers=gestor)
