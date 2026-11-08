@@ -18,7 +18,7 @@ O site precisa ser servido via HTTP: ES modules e WebGL não funcionam em `file:
 
 Abra `/app/` no mesmo servidor. A landing também oferece o link **Explorar plataforma**. O protótipo reúne cinco telas: visão geral, investigação, previsão, cenários e revisão do RH. Há navegação por hash, detalhe de evidências, alternância de faixas de demanda, comparação de até dois cenários e preparação local de um checklist.
 
-Os números vêm do exemplo ilustrativo da Unidade Centro no PRD ou são séries demonstrativas identificadas na interface. Não há backend, dados reais, persistência, integração, aprovação administrativa ou requisição de vaga.
+Os números vêm do exemplo ilustrativo da Unidade Centro no PRD ou são séries demonstrativas identificadas na interface. O protótipo não usa dados reais nem oferece persistência, integração, aprovação administrativa ou requisição de vaga. A base inicial do backend COM-02 é independente do protótipo; suas instruções estão em [backend/README.md](backend/README.md).
 
 ## Estrutura
 
