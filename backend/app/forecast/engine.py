@@ -1,11 +1,11 @@
-"""Moving-median baseline. A short history abstains; nothing is called P10/P50/P90."""
+"""Moving-median baseline plus rolling-origin predictive quantiles with holdout gating."""
 from datetime import date, timedelta
 from decimal import Decimal
 
 from backend.app.contracts.v1 import Backtest, ForecastPoint, ForecastResult, Period
 
 MODEL_VERSION = "baseline-moving-median-1"
-NOT_A_PERCENTILE = "Intervalos não são P10, P50 ou P90."
+NOT_A_PERCENTILE = "A faixa simultânea não equivale aos percentis preditivos P10/P50/P90."
 
 
 def predict_next(values: list[Decimal]) -> Decimal:
@@ -15,6 +15,17 @@ def predict_next(values: list[Decimal]) -> Decimal:
     if len(window) % 2:
         return window[middle]
     return (window[middle - 1] + window[middle]) / 2
+
+
+def _quantile(values: list[Decimal], probability: Decimal) -> Decimal:
+    """Type-7 empirical quantile on residuals, no extrapolation."""
+    ordered = sorted(values)
+    if not ordered:
+        raise ValueError("No calibration observations")
+    position = (len(ordered) - 1) * probability
+    low = int(position)
+    high = min(low + 1, len(ordered) - 1)
+    return ordered[low] + (ordered[high] - ordered[low]) * (position - low)
 
 
 def _backtest(values: list[Decimal]):
@@ -87,14 +98,30 @@ def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, time
     status = "calibrated" if interval_width is not None and wape is not None else "uncalibrated"
     if status == "uncalibrated":
         limitations.append("Sem oito origens de holdout e amostra suficiente para validar a faixa conjunta de quatro semanas por equipe.")
+    # Train empirical predictive quantiles only on CALIBRATION origins; never
+    # use the final eight origins to fit a quantile. Residuals are specific to
+    # each forecast lead (week 1, 2, 3, 4), not borrowed from 1-week errors.
+    quantile_residuals = [[] for _ in range(4)]
+    if interval_width is not None:
+        for origin in range(8, len(values) - 3 - 11):
+            predicted = predict_next(values[:origin])
+            for lead in range(4):
+                quantile_residuals[lead].append(values[origin + lead] - predicted)
     points = []
     for week in range(4):
         start = end + timedelta(days=7 * week)
+        residuals = quantile_residuals[week]
+        q = (tuple(max(Decimal(0), estimate + _quantile(residuals, level))
+                    for level in (Decimal("0.10"), Decimal("0.50"), Decimal("0.90")))
+             if residuals else (None, None, None))
         points.append(ForecastPoint.model_validate({
             "period": Period(start=start, end_exclusive=start + timedelta(days=7), timezone=timezone),
             "point_estimate": float(estimate),
             "lower": None if interval_width is None else float(max(Decimal(0), estimate - interval_width)),
             "upper": None if interval_width is None else float(estimate + interval_width),
+            "p10": None if q[0] is None else float(q[0]),
+            "p50": None if q[1] is None else float(q[1]),
+            "p90": None if q[2] is None else float(q[2]),
         }))
     if mae is None:
         limitations.append("Sem janela de backtest após os 8 primeiros períodos; estimativa não calibrada.")
