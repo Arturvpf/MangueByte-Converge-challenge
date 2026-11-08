@@ -42,7 +42,7 @@ def test_redesigned_frontend_same_origin_and_dom_contract():
 
     collector = AttributeCollector()
     collector.feed(page.text)
-    hooks = set(re.findall(r"\\[data-([a-z][a-z-]+)", script.text))
+    hooks = set(re.findall(r"\[data-([a-z][a-z-]+)", script.text))
     missing = sorted("data-" + hook for hook in hooks if "data-" + hook not in collector.attributes)
     assert not missing, "JS selectors missing from redesigned HTML: " + ", ".join(missing)
     assert "api('/api/auth/login'" in script.text
