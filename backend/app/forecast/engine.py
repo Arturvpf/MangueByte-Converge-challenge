@@ -72,8 +72,10 @@ def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, time
         max(abs(predict_next(values[:index]) - actual) for actual in values[index:index + 4])
         for index in range(8, len(values) - 3)
     ]
-    if len(horizon_errors) >= 24:
-        calibration, holdout = horizon_errors[:-8], horizon_errors[-8:]
+    # Purge three origins between calibration and holdout: their four-week
+    # evaluation windows would otherwise overlap and leak holdout outcomes.
+    if len(horizon_errors) >= 27:
+        calibration, holdout = horizon_errors[:-11], horizon_errors[-8:]
         rank = (9 * (len(calibration) + 1) + 9) // 10
         if rank <= len(calibration):
             envelope = sorted(calibration)[rank - 1]
