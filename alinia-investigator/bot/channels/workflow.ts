@@ -1,7 +1,8 @@
 import { bearerAuth, defineChannel, GET, POST } from "@grok/agent-sdk/channels";
 import * as z from "zod/v4";
-import { deepseekStream } from "../lib/deepseek-turn.js";
-import { isGreeting, isWorkforceQuestion, introReply, offTopicReply } from "../lib/topic-gate.js";
+import { deepseekStream, siteContextStream } from "../lib/deepseek-turn.js";
+import { featherlessKey } from "../lib/featherless.js";
+import { isGreeting, isOffTopic, isWorkforceQuestion, introReply, offTopicReply } from "../lib/topic-gate.js";
 import { SYNTHETIC_ON_DATE, SYNTHETIC_RUN_ID } from "../lib/synthetic-centro.js";
 
 const webhookToken = process.env.ALINIA_WEBHOOK_TOKEN;
@@ -81,8 +82,25 @@ export default defineChannel({
         run_id: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._~-]{0,127}$/).default(SYNTHETIC_RUN_ID),
         on_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).default(SYNTHETIC_ON_DATE),
         message: z.string().min(1).max(500).default("Qual e o parecer?"),
+        // Ficha do site (scripts/agent-site-context.mjs). Com ela, o modelo
+        // responde só ao que a tela mostra, sem o caso sintético do agente.
+        context: z.string().min(1).max(8000).optional(),
       }),
       handler: async (_request, { body }) => {
+        if (body.context !== undefined) {
+          if (isGreeting(body.message)) {
+            return Response.json({ source: "apresentacao", messages: [{ role: "assistant", text: introReply }] });
+          }
+          if (isOffTopic(body.message)) {
+            return Response.json({ source: "recusa", messages: [{ role: "assistant", text: offTopicReply }] });
+          }
+          const key = featherlessKey();
+          // Sem modelo, a ficha do agente não serve de resposta: a tela usa a ferramenta local.
+          if (!key) return Response.json({ ok: false, error: "model_unavailable" }, { status: 503 });
+          return new Response(siteContextStream(body.message, body.context, key), {
+            headers: { "content-type": "text/plain; charset=utf-8" },
+          });
+        }
         if (isGreeting(body.message)) {
           return Response.json({
             source: "apresentacao",
