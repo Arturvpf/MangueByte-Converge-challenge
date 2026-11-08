@@ -65,3 +65,22 @@ def test_shared_pool_hours_and_qualifications_are_not_double_counted():
     disallowed = solve(needs=[need()], pools=[pool()],
                        options=[hire()], policy_verified=False)
     assert disallowed.status == "blocked"
+
+
+def test_one_hire_provides_capacity_in_each_separate_week():
+    from datetime import timedelta
+    next_week = D1 + timedelta(days=7)
+    needs = [
+        IntervalDemand("week-1", D0, D1, "helpdesk", "day", 2, 2),
+        IntervalDemand("week-2", D1, next_week, "helpdesk", "day", 2, 2),
+    ]
+    option = HiringOption("role", ("helpdesk",), ("day",), D0, 2, 1, 100, 100,
+                          modality_verified=True)
+    result = solve_capacity(
+        needs=needs, pools=[], options=[option], budget_cents=100,
+        policy_evidence_id="approved-test", policy_verified=True,
+    )
+    assert result.status == "optimal"
+    assert result.hires == {"role": 1}
+    assert result.operational_residual == {"week-1": 0, "week-2": 0}
+    assert result.hire_allocations["role"] == {"week-1": 2, "week-2": 2}
