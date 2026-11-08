@@ -124,7 +124,7 @@ def test_revoked_rule_and_infeasible_block_approval(tmp_path):
         items = client.get(f"/api/investigations/{run_id}/scenarios", headers=rh).json()["items"]
         hire = next(item for item in items if item["kind"] == "hire")
         reallocate = next(item for item in items if item["kind"] == "reallocate")
-        assert hire["conclusive"] is True
+        assert hire["conclusive"] is False
         with Session(app.state.engine) as session:
             scenario = session.get(ScenarioRow, reallocate["scenario_id"])
             scenario.payload = {**scenario.payload, "conclusive": True}
@@ -140,6 +140,18 @@ def test_revoked_rule_and_infeasible_block_approval(tmp_path):
             "decision": "approve", "reason": REASON, "expected_hash": reallocate["content_hash"], "idempotency_key": "approve-infeasible",
         }, headers=rh)
         assert infeasible.status_code == 409 and infeasible.json()["detail"]["code"] == "NOT_CONCLUSIVE"
+        # The model's own "conclusive" and "optimal" flags must not bypass
+        # the missing independent v4.2 validator evidence.
+        with Session(app.state.engine) as session:
+            sim = session.scalar(select(SimulationRow).where(SimulationRow.scenario_id == reallocate["scenario_id"]))
+            sim.payload = {**sim.payload, "status": "optimal"}
+            flag_modified(sim, "payload")
+            session.commit()
+        bypass = client.post(f"/api/scenarios/{reallocate['scenario_id']}/decisions", json={
+            "decision": "approve", "reason": REASON, "expected_hash": reallocate["content_hash"],
+            "idempotency_key": "bypass-independent-validation",
+        }, headers=rh)
+        assert bypass.status_code == 409 and bypass.json()["detail"]["code"] == "NOT_CONCLUSIVE"
 
         listed = client.get("/api/policies", params={"rule_key": "workweek.max_hours"}, headers=rh).json()["items"]
         chosen = None

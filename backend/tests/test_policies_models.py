@@ -36,7 +36,7 @@ def test_upgrade_head_and_downgrade_to_0004(tmp_path):
     alembic(db, "upgrade", "head")
     engine = engine_for(db)
     with engine.connect() as conn:
-        assert conn.execute(text("select version_num from alembic_version")).scalar_one() == "0006"
+        assert conn.execute(text("select version_num from alembic_version")).scalar_one() == "0008_scenario_families"
     names = set(inspect(engine).get_table_names())
     assert {"policies", "policy_versions", "audit_events", "investigation_runs", "hr_decisions", "requisition_drafts"} <= names
     checks = {item["name"] for item in inspect(engine).get_check_constraints("policy_versions")}

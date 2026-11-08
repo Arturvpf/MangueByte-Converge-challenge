@@ -54,6 +54,9 @@ const CAPACITY = 954;
 
 const toNumber = (value) => Number(String(value).replace(/\./g, '').replace(',', '.'));
 const formatInt = (value) => Math.round(value).toLocaleString('pt-BR');
+// Valores da API chegam como texto decimal ("14.0"); mostra no formato pt-BR.
+const formatApi = (value) => (value == null || value === '' || Number.isNaN(Number(value))
+  ? (value ?? '—') : Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 2 }));
 
 function plot(chart, { min, max, ticks, line, quiet = [], band, capacity }) {
   const svg = chart.querySelector('svg');
@@ -143,19 +146,22 @@ document.querySelectorAll('[data-forecast]').forEach((button) => {
 });
 showForecast('base');
 
+// Cinco famílias de cenário (A–E), na ordem do contrato do backend.
 const scenarioData = {
-  a: { head: 'A · Contratar', coverage: 'A validar por competência', timing: 'Após contratação e ramp-up', risk: 'Mentoria e cobertura N1', status: 'Condicional' },
-  b: { head: 'B · Realocar', coverage: 'A validar por competência', timing: 'Após formação e realocação', risk: 'Impacto na equipe de origem', status: 'Condicional' },
-  c: { head: 'C · Não agir', coverage: 'Gap agregado de 3 posições', timing: 'Imediato', risk: 'Backlog e pressão operacional', status: 'Referência' },
+  a: { head: 'A · Contratar', coverage: 'A validar por competência', timing: 'Após recrutamento e ramp-up', risk: 'Prazo de chegada, mentoria e cobertura N1', status: 'Condicional' },
+  b: { head: 'B · Temporários', coverage: 'Não verificada', timing: 'Após contratação e treinamento', risk: 'Modalidade, custo e prazo', status: 'Exploratório' },
+  c: { head: 'C · Realocar', coverage: 'A validar por competência', timing: 'Após formação e realocação', risk: 'Impacto na equipe de origem', status: 'Condicional' },
+  d: { head: 'D · Redesenhar', coverage: 'Não verificada', timing: 'Depende da nova organização', risk: 'Repousos e cobertura obrigatória', status: 'Exploratório' },
+  e: { head: 'E · Não agir', coverage: 'Gap agregado de 3 posições', timing: 'Imediato', risk: 'Backlog e pressão operacional', status: 'Referência' },
 };
-let selectedScenarios = ['a', 'b'];
+let selectedScenarios = ['a', 'c'];
 
 function renderComparison() {
   document.querySelectorAll('[data-select-scenario]').forEach((button) => {
     const selected = selectedScenarios.includes(button.dataset.selectScenario);
     button.setAttribute('aria-pressed', String(selected));
     button.closest('.scenario-card').classList.toggle('is-selected', selected);
-    button.querySelector('[data-select-label]').textContent = selected ? 'Na comparação' : 'Adicionar à comparação';
+    button.querySelector('[data-select-label]').textContent = selected ? 'Na comparação' : 'Comparar';
   });
   document.querySelector('[data-comparison-count]').textContent = `${selectedScenarios.length} selecionado${selectedScenarios.length === 1 ? '' : 's'}`;
   document.querySelector('[data-comparison-empty]').hidden = selectedScenarios.length > 0;
@@ -242,13 +248,52 @@ document.querySelector('[data-connect-close]').addEventListener('click', () => c
 connectDialog.addEventListener('click', (event) => { if (event.target === connectDialog) connectDialog.close(); });
 
 const session = { token: null, runId: null, scenarios: [], approvedId: null };
-const cardKind = { a: 'hire', b: 'reallocate', c: 'do_nothing' };
-const kindTitle = { hire: 'Contratar', reallocate: 'Realocar', do_nothing: 'Não agir' };
+const cardKind = { a: 'hire', b: 'temporary', c: 'reallocate', d: 'redesign', e: 'do_nothing' };
+const kindTitle = { hire: 'Contratar', temporary: 'Temporários', reallocate: 'Realocar ou capacitar', redesign: 'Redesenhar', do_nothing: 'Não agir' };
+const kindHeading = {
+  hire: 'Contratar quadro permanente', temporary: 'Contratar temporariamente', reallocate: 'Realocar ou capacitar',
+  redesign: 'Redesenhar turnos ou processos', do_nothing: 'Não agir',
+};
+
+const errorMessages = {
+  NOT_CONCLUSIVE: 'o cenário não passou pela validação independente de cobertura obrigatória e não pode ser aprovado',
+  NOT_APPROVED: 'o rascunho só pode ser pedido para um cenário aprovado',
+  MATERIAL_CHANGE: 'o cenário mudou depois de carregado; recarregue antes de decidir',
+  IDEMPOTENCY_CONFLICT: 'este cenário já tem outra decisão registrada',
+  POLICY_REVIEW_REQUIRED: 'há regra ausente, em revisão ou revogada para este cenário',
+  FORBIDDEN_SCOPE: 'seu perfil não tem permissão para esta equipe',
+  NOT_FOUND: 'o recurso não foi encontrado',
+};
+const violationLabels = {
+  MANDATORY_COVERAGE_MISSING: 'cobertura obrigatória não atendida',
+  CAPACITY_ARRIVES_TOO_LATE: 'capacidade chega depois do pico',
+  TRAINING_NOT_COMPLETED: 'habilitação não concluída',
+  POLICY_REVIEW_REQUIRED: 'regra em revisão',
+  BUDGET_NOT_APPROVED: 'orçamento não aprovado',
+  MODALITY_REVIEW_REQUIRED: 'modalidade não validada',
+  SCHEDULE_NOT_APPROVED: 'escala não aprovada',
+  POOL_HOURS_EXCEEDED: 'horas acima do disponível',
+  SKILL_OR_SHIFT_MISMATCH: 'competência ou turno incompatível',
+  UNKNOWN_POOL: 'grupo de capacidade desconhecido',
+  DUPLICATE_POOL: 'grupo de capacidade duplicado',
+};
+
+// A aprovação exige um resultado válido do validador determinístico v4.2;
+// o campo `conclusive` sozinho não basta.
+function validation(item) {
+  const result = item.v42_validation;
+  if (!result || typeof result !== 'object') return { ok: false, label: 'Não executada' };
+  if (result.status === 'valid' && result.mandatory_coverage_met === true && !(result.violations || []).length) {
+    return { ok: true, label: 'Válida' };
+  }
+  const reasons = (result.violations || []).map((code) => violationLabels[code] || code);
+  return { ok: false, label: reasons.length ? `Bloqueada: ${reasons.join(', ')}` : 'Bloqueada' };
+}
 
 function errorText(error) {
   const detail = error.body && error.body.detail;
   const code = detail && (detail.code || (Array.isArray(detail) ? detail.map((item) => item.msg).join(' ') : null));
-  return code || error.message || 'A API não confirmou a operação.';
+  return errorMessages[code] || code || error.message || 'A API não confirmou a operação';
 }
 
 async function api(path, options = {}) {
@@ -312,7 +357,7 @@ document.querySelector('[data-connect-form]').addEventListener('submit', async (
     document.querySelector('[data-live-controls]').hidden = false;
     document.querySelector('[data-review-action]').hidden = true;
     document.querySelector('[data-decision-form]').hidden = false;
-    document.querySelector('[data-review-copy]').textContent = 'Rejeitar, adiar ou aprovar só muda de estado depois que a API responder. Aprovar um cenário inconclusivo não é registrado.';
+    document.querySelector('[data-review-copy]').textContent = 'Rejeitar ou adiar fica registrado depois que a API responder. Aprovar exige que o cenário tenha passado pela validação independente.';
     document.querySelector('[data-banner-copy]').textContent = `Conectado como ${role}. Os números de exemplo ficam até você carregar um recorte`;
     document.querySelector('[data-sidebar-status]').textContent = 'Conectado à API';
     document.querySelector('[data-connect-form]').hidden = true;
@@ -339,14 +384,21 @@ document.querySelector('[data-load-metrics]').addEventListener('click', async ()
     const metrics = await api(`/api/teams/${encodeURIComponent(teamId)}/metrics?snapshot_id=${encodeURIComponent(snapshotId)}`);
     const demand = metrics.demand.find((item) => item.quantity != null);
     const block = metrics.homogeneous;
-    document.querySelector('[data-live="demand"]').textContent = demand ? demand.quantity : '—';
+    document.querySelector('[data-live="demand"]').textContent = demand ? formatApi(demand.quantity) : '—';
     document.querySelector('[data-live-meta="demand"]').textContent = demand ? 'quantidade do snapshot' : 'demanda ausente no snapshot';
-    document.querySelector('[data-live="capacity"]').textContent = block ? block.capacity_cases : (metrics.pool_hours || '—');
+    document.querySelector('[data-live="capacity"]').textContent = block ? formatApi(block.capacity_cases) : (metrics.pool_hours ? formatApi(metrics.pool_hours) : '—');
     document.querySelector('[data-live-meta="capacity"]').textContent = block ? 'capacidade do bloco homogêneo' : 'horas de pool, contadas uma vez';
-    document.querySelector('[data-live="ipd"]').textContent = block ? block.ipd : '—';
+    document.querySelector('[data-live="ipd"]').textContent = block ? formatApi(block.ipd) : '—';
     document.querySelector('[data-live-meta="ipd"]').textContent = block ? 'calculado dos agregados do arquivo' : 'sem bloco homogêneo neste snapshot';
     document.querySelector('[data-live="gap"]').textContent = block && block.headcount_gap != null ? String(block.headcount_gap) : '—';
     document.querySelector('[data-live-meta="gap"]').textContent = block ? `quadro de referência ${block.required_headcount}` : 'gap não calculado';
+    const teamSelect = document.querySelector('[data-team]');
+    const teamName = teamSelect.selectedOptions[0] ? teamSelect.selectedOptions[0].textContent : teamId;
+    document.querySelector('[data-unit-name]').textContent = teamName;
+    document.querySelector('[data-unit-crumb]').textContent = teamName;
+    document.querySelector('[data-unit-meta]').textContent = `Recorte ${snapshotId}`;
+    document.querySelector('[data-review="capacity"]').textContent = block ? `${formatApi(block.capacity_cases)} por semana` : 'Não calculada';
+    document.querySelector('[data-review="source"]').textContent = `Recorte ${snapshotId}`;
     const ipd = block ? Number.parseFloat(block.ipd) : Number.NaN;
     const share = Math.round(Math.abs(ipd - 1) * 100);
     document.querySelector('[data-overview-title]').textContent = Number.isFinite(ipd)
@@ -354,6 +406,7 @@ document.querySelector('[data-load-metrics]').addEventListener('click', async ()
       : 'Demanda e capacidade do recorte';
     document.querySelector('[data-banner-copy]').textContent = `Métricas do recorte ${snapshotId}. ${metrics.limitations.join(' ')}`;
     setStatus('Métricas carregadas da API.');
+    document.querySelector('[data-overview-chart-foot]').textContent = 'Série ilustrativa: o gráfico ainda não vem do recorte carregado';
     connectDialog.close();
     location.hash = '#visao-geral';
   } catch (error) {
@@ -394,6 +447,7 @@ function renderReport(run) {
   const pending = report.questions.filter((item) => item.status === 'pending');
   document.querySelector('[data-question-copy]').hidden = pending.length > 0;
   document.querySelector('[data-question-status]').textContent = pending.length ? `${pending.length} pendente(s)` : 'Sem pergunta pendente';
+  document.querySelector('[data-step-meta="investigacao"]').textContent = pending.length ? `${pending.length} pergunta${pending.length === 1 ? '' : 's'}` : '';
   pending.forEach((question) => {
     const form = document.createElement('form');
     form.className = 'question-form';
@@ -431,25 +485,37 @@ function renderReport(run) {
 function renderForecast(forecast) {
   if (!forecast) return;
   document.querySelector('[data-forecast-switch]').hidden = true;
-  document.querySelector('[data-forecast-status]').textContent = forecast.status;
-  document.querySelector('[data-method="model"]').textContent = forecast.method;
+  const statusLabel = { calibrated: 'Faixa validada', uncalibrated: 'Sem faixa validada', abstained: 'Previsão abstida' };
+  const label = statusLabel[forecast.status] || forecast.status;
+  document.querySelector('[data-forecast-status]').textContent = label;
+  document.querySelector('[data-method="model"]').textContent = forecast.method === 'moving_median_4' ? 'Mediana móvel de 4 semanas' : forecast.method;
   document.querySelector('[data-method="backtest"]').textContent = forecast.backtest ? `MAE ${forecast.backtest.mae}` : 'Sem backtest';
-  document.querySelector('[data-method="confidence"]').textContent = forecast.status;
-  const points = forecast.points || [];
-  const estimate = points[0] && points[0].point_estimate != null ? String(points[0].point_estimate) : '—';
-  document.querySelector('[data-forecast-value]').textContent = estimate;
+  document.querySelector('[data-method="confidence"]').textContent = label;
+  document.querySelector('[data-review="quality"]').textContent = label;
+  const points = (forecast.points || []).slice(0, 4);
+  const number = (value) => (value == null ? null : Number(value));
+  const estimates = points.map((point) => number(point.point_estimate));
+  const lower = points.map((point) => number(point.lower));
+  const upper = points.map((point) => number(point.upper));
+  const complete = (values) => values.length > 0 && values.every((value) => value != null);
+  const last = estimates[estimates.length - 1];
+  document.querySelector('[data-forecast-value]').textContent = last == null ? '—' : formatInt(last);
+  document.querySelector('[data-review="demand"]').textContent = last == null ? 'Sem estimativa' : `${formatInt(last)} por semana`;
   document.querySelector('[data-forecast-heading]').textContent = forecast.status === 'abstained' ? 'A previsão se absteve' : 'Estimativa pontual da mediana móvel';
   document.querySelector('[data-forecast-copy]').textContent = (forecast.limitations || []).join(' ');
-  document.querySelector('[data-forecast-delta]').textContent = '';
-  document.querySelector('[data-forecast-foot]').textContent = 'A API não devolve faixas P10, P50 ou P90. O gráfico mostra só a estimativa pontual quando ela existe';
-  const estimates = points.slice(0, 4).map((point) => (point.point_estimate == null ? null : Number(point.point_estimate)));
-  document.querySelectorAll('[data-bar-label]').forEach((label, index) => {
-    label.textContent = estimates[index] == null ? '—' : formatInt(estimates[index]);
+  document.querySelector('[data-forecast-delta]').textContent = complete(lower) && complete(upper)
+    ? `Faixa de ${formatInt(lower[lower.length - 1])} a ${formatInt(upper[upper.length - 1])} na semana 4`
+    : '';
+  document.querySelector('[data-forecast-foot]').textContent = forecast.interval_description
+    || 'Sem faixa validada para esta equipe. O gráfico mostra só a estimativa pontual quando ela existe';
+  document.querySelectorAll('[data-bar-label]').forEach((item, index) => {
+    item.textContent = estimates[index] == null ? '—' : formatInt(estimates[index]);
   });
-  const known = estimates.filter((value) => value != null);
-  const low = Math.min(...known, 900);
-  const high = Math.max(...known, 1350);
-  plot(forecastChart, { min: low, max: high, ticks: [low, high], line: known.length === estimates.length ? known : [] });
+  const band = complete(lower) && complete(upper) ? { low: lower, high: upper } : null;
+  const known = [...estimates, ...(band ? [...lower, ...upper] : [])].filter((value) => value != null);
+  const min = Math.floor(Math.min(...known, 900) / 50) * 50;
+  const max = Math.ceil(Math.max(...known, 1350) / 50) * 50;
+  plot(forecastChart, { min, max, ticks: [min, max], line: complete(estimates) ? estimates : [], band });
 }
 
 function renderScenarios(items) {
@@ -458,28 +524,59 @@ function renderScenarios(items) {
     const key = Object.keys(cardKind).find((candidate) => cardKind[candidate] === item.kind);
     const card = document.querySelector(`[data-scenario="${key}"]`);
     if (!card) return;
-    card.querySelector('h2').textContent = kindTitle[item.kind];
-    card.querySelector(':scope > p').textContent = item.assumptions[0] || item.gaps[0] || item.kind;
-    const facts = card.querySelectorAll('.scenario-card__facts strong');
-    facts[0].textContent = item.conclusive ? 'Conclusivo' : 'Inconclusivo';
-    facts[1].textContent = item.headcount_delta == null ? 'Não calculado' : String(item.headcount_delta);
-    facts[2].textContent = item.residual_hours == null ? 'Sem resíduo' : `${item.residual_hours} h`;
+    const check = validation(item);
+    const flags = item.legal_flags || [];
+    card.querySelector('h2').textContent = kindHeading[item.kind];
+    card.querySelector('.scenario-card__main > p').textContent = flags[0] || item.gaps[0] || item.assumptions[0] || '';
+    const status = card.querySelector('[data-scenario-status]');
+    status.textContent = item.conclusive ? 'Conclusivo' : 'Inconclusivo';
+    status.className = `status-pill ${item.kind === 'do_nothing' ? 'status-pill--reference' : 'status-pill--pending'}`;
+    card.querySelector('.scenario-card__facts').replaceChildren(...[
+      ['Headcount', item.headcount_delta == null ? 'Não calculado' : String(item.headcount_delta)],
+      ['Déficit residual', item.residual_hours == null ? 'Não simulado' : `${item.residual_hours} h`],
+      ['Custo', item.costs_estimated ? 'Estimado' : 'Não estimado'],
+      ['Validação independente', check.label],
+    ].map(([name, value]) => {
+      const row = document.createElement('div');
+      const term = document.createElement('span');
+      const data = document.createElement('strong');
+      term.textContent = name;
+      data.textContent = value;
+      row.append(term, data);
+      return row;
+    }));
     scenarioData[key] = {
       head: `${key.toUpperCase()} · ${kindTitle[item.kind]}`,
-      coverage: item.conclusive ? 'Solver e política permitiram concluir' : 'Inconclusivo',
-      timing: item.kind,
-      risk: item.gaps[0] || 'Sem lacuna declarada',
+      coverage: check.ok ? 'Validada de forma independente' : check.label,
+      timing: item.lead_time_and_ramp_up ? 'Prazo de chegada informado' : 'Prazo de chegada não informado',
+      risk: flags[0] || item.gaps[0] || 'Sem lacuna declarada',
       status: item.conclusive ? 'Conclusivo' : 'Inconclusivo',
     };
   });
   renderComparison();
+  const validated = items.filter((item) => validation(item).ok).length;
+  document.querySelector('[data-step-meta="cenarios"]').textContent = String(items.length);
+  document.querySelector('[data-review="validation"]').textContent = validated ? `${validated} de ${items.length} cenários validados` : 'Não executada';
   const hire = items.find((item) => item.kind === 'hire');
   document.querySelector('[data-review-lead]').textContent = hire
     ? `Cenário de contratação ${hire.conclusive ? 'conclusivo' : 'inconclusivo'}${hire.headcount_delta == null ? ', sem headcount calculado' : `, headcount ${hire.headcount_delta}`}. ${hire.assumptions[0] || ''}`
     : 'A API não devolveu um cenário de contratação.';
   const select = document.querySelector('[data-decision-scenario]');
-  fillSelect(select, items.map((item) => ({ value: item.scenario_id, label: `${kindTitle[item.kind]} · ${item.conclusive ? 'conclusivo' : 'inconclusivo'}` })), 'Nenhum cenário');
+  fillSelect(select, items.map((item) => ({
+    value: item.scenario_id,
+    label: `${kindTitle[item.kind]} · ${validation(item).ok ? 'validado' : 'sem validação'}`,
+  })), 'Nenhum cenário');
+  syncApproval();
 }
+
+// Aprovar só fica disponível para cenário com validação independente válida.
+function syncApproval() {
+  const scenario = session.scenarios.find((item) => item.scenario_id === document.querySelector('[data-decision-scenario]').value);
+  const ok = Boolean(scenario) && validation(scenario).ok;
+  document.querySelector('[data-approve]').disabled = !ok;
+  document.querySelector('[data-approve-hint]').hidden = ok;
+}
+document.querySelector('[data-decision-scenario]').addEventListener('change', syncApproval);
 
 async function paintRun(run) {
   session.runId = run.run_id;
@@ -546,6 +643,7 @@ document.querySelector('[data-decision-form]').addEventListener('submit', async 
     feedback.textContent = `A API não registrou a decisão: ${errorText(error)}.`;
   } finally {
     submitter.disabled = false;
+    syncApproval();
   }
 });
 

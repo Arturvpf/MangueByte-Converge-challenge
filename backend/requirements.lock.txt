@@ -52,3 +52,4 @@ uvicorn==0.34.2
 websockets==17.4
 xxhash==4.0.2
 zstandard==0.25.0
+ortools==9.15.6755

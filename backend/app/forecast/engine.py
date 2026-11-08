@@ -25,11 +25,11 @@ def _backtest(values: list[Decimal]):
         errors.append(abs(predicted - values[index]))
         actuals.append(values[index])
     if not errors:
-        return None, None
+        return None, None, []
     mae = sum(errors) / len(errors)
     denominator = sum(abs(item) for item in actuals)
     wape = None if denominator == 0 else sum(errors) / denominator
-    return mae, wape
+    return mae, wape, errors
 
 
 def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, timezone: str,
@@ -40,9 +40,15 @@ def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, time
     horizon = Period(start=end, end_exclusive=end + timedelta(days=28), timezone=timezone)
     enough = len(ordered) >= 8 and all(item[2] is not None for item in ordered)
     overlaps = any(ordered[i][1] > ordered[i + 1][0] for i in range(len(ordered) - 1))
-    if not enough or overlaps or not ordered:
+    irregular = any(
+        (end_day - start_day).days != 7 or (index and ordered[index - 1][1] != start_day)
+        for index, (start_day, end_day, _) in enumerate(ordered)
+    )
+    if not enough or overlaps or irregular or not ordered:
         if overlaps:
             limitations.append("Períodos sobrepostos; a série foi recusada.")
+        elif irregular:
+            limitations.append("Série com lacunas ou períodos não semanais; previsão abstida.")
         elif len(ordered) < 8:
             limitations.append("Histórico com menos de 8 períodos; previsão abstida.")
         else:
@@ -55,22 +61,36 @@ def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, time
         })
     values = [item[2] for item in ordered]
     estimate = predict_next(values)
-    mae, wape = _backtest(values)
+    mae, wape, errors = _backtest(values)
+    # A split calibration/test protocol avoids using the test period to
+    # select its own error envelope. These are absolute-error bands, not
+    # probabilistic percentiles and never burnout risk.
+    interval_width = None
+    holdout_coverage = None
+    if len(errors) >= 16:
+        calibration, holdout = errors[:-4], errors[-4:]
+        rank = (9 * (len(calibration) + 1) + 9) // 10
+        if rank <= len(calibration):
+            envelope = sorted(calibration)[rank - 1]
+            holdout_coverage = sum(error <= envelope for error in holdout) / len(holdout)
+            if holdout_coverage >= 0.75:
+                interval_width = envelope
     if wape is None:
         limitations.append("WAPE indefinido porque a soma dos realizados do backtest é zero.")
+    status = "calibrated" if interval_width is not None and wape is not None else "uncalibrated"
+    if status == "uncalibrated":
+        limitations.append("Sem quatro testes de cobertura e amostra suficiente para validar faixa empírica por equipe.")
     points = []
     for week in range(4):
         start = end + timedelta(days=7 * week)
         points.append(ForecastPoint.model_validate({
             "period": Period(start=start, end_exclusive=start + timedelta(days=7), timezone=timezone),
-            "point_estimate": float(estimate), "lower": None, "upper": None,
+            "point_estimate": float(estimate),
+            "lower": None if interval_width is None else float(max(Decimal(0), estimate - interval_width)),
+            "upper": None if interval_width is None else float(estimate + interval_width),
         }))
-    # One successful backtest window is not enough to claim a calibrated forecast.
-    status = "calibrated" if mae is not None and len(values) >= 12 and wape is not None else "uncalibrated"
     if mae is None:
         limitations.append("Sem janela de backtest após os 8 primeiros períodos; estimativa não calibrada.")
-    elif status != "calibrated":
-        limitations.append("Menos de quatro origens de backtest ou WAPE indefinido; não afirmar calibração.")
     backtest = None
     if mae is not None:
         backtest = Backtest.model_validate({
@@ -81,5 +101,10 @@ def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, time
         "schema_version": "1.0", "tenant_id": tenant_id, "team_id": team_id,
         "data_snapshot_id": data_snapshot_id, "model_version": MODEL_VERSION, "method": "moving_median_4",
         "status": status, "unit": "cases_per_period", "history_end_exclusive": end, "horizon": horizon,
-        "points": points, "interval_description": None, "backtest": backtest, "limitations": limitations,
+        "points": points,
+        "interval_description": None if interval_width is None else (
+            "Faixa empírica de erros absolutos com janela de calibração separada do teste; "
+            f"cobertura de holdout {holdout_coverage:.0%}; não é P10/P50/P90 nem garantia."
+        ),
+        "backtest": backtest, "limitations": limitations,
     })

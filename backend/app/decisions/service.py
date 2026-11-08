@@ -42,6 +42,15 @@ def decide(session: Session, principal: Principal, scenario_id: str, *, decision
             return existing
         raise FlowError(409, "IDEMPOTENCY_CONFLICT", row.team_id)
     if decision == "approve":
+        # The v4.1 `conclusive` flag is not independent evidence of legal,
+        # mandatory coverage or qualification checks. Refuse all new v4.2
+        # approvals unless a deterministic verifier has written a valid result.
+        verified = row.payload.get("v42_validation")
+        if not (isinstance(verified, dict)
+                and verified.get("status") == "valid"
+                and verified.get("mandatory_coverage_met") is True
+                and not verified.get("violations")):
+            raise FlowError(409, "NOT_CONCLUSIVE", row.team_id)
         for version_id in row.payload.get("rule_versions") or []:
             version = session.get(PolicyVersion, version_id)
             if version is None or version.tenant_id != row.tenant_id or version.status != "approved":
