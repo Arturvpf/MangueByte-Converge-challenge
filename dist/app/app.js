@@ -1028,6 +1028,43 @@ function table(headers, rows) {
   return table;
 }
 
+function renderWeeklyDeficits(scenarios) {
+  const container = document.querySelector('[data-projection-deficit]');
+  const dates = [...new Set(scenarios.flatMap((item) => (item.quantitative.weeks || []).map((week) => week.starts)))].sort();
+  container.hidden = dates.length === 0;
+  container.replaceChildren();
+  if (!dates.length) return;
+
+  const labels = dates.map((date) => date.slice(8, 10) + '/' + date.slice(5, 7));
+  const grid = table(['Cenário', ...labels], []);
+  grid.createCaption().textContent = 'Déficit semanal por cenário (horas)';
+  const max = Math.max(1, ...scenarios.flatMap((item) => (item.quantitative.weeks || [])
+    .map((week) => week.uncovered_hours ?? 0)));
+  for (const item of scenarios) {
+    const row = grid.tBodies[0].insertRow();
+    const heading = document.createElement('th');
+    heading.scope = 'row';
+    heading.textContent = item.title;
+    row.append(heading);
+    row.classList.toggle('projection-deficit__baseline', item.kind === 'do_nothing');
+    const weeks = new Map((item.quantitative.weeks || []).map((week) => [week.starts, week.uncovered_hours]));
+    for (const date of dates) {
+      const cell = row.insertCell();
+      const hours = weeks.get(date);
+      cell.textContent = formatApi(hours);
+      if (hours == null) continue;
+      const track = document.createElement('span');
+      const bar = document.createElement('span');
+      track.className = 'projection-deficit__track';
+      track.setAttribute('aria-hidden', 'true');
+      bar.style.width = `${100 * hours / max}%`;
+      track.append(bar);
+      cell.prepend(track);
+    }
+  }
+  container.append(grid);
+}
+
 function renderProjections(items) {
   const panel = document.querySelector('[data-projections]');
   const ordered = Object.entries(cardKind).flatMap(([letter, kind]) => {
@@ -1047,6 +1084,7 @@ function renderProjections(items) {
         formatApi(q.weeks?.at(-1)?.backlog_cases), percent(q.queue?.sla_fraction?.mean), costRange(q), days(q.implementation_days)];
     }),
   ));
+  renderWeeklyDeficits(ordered);
   const select = document.querySelector('[data-projection-scenario]');
   const previous = select.value;
   fillSelect(select, ordered.map((item) => ({ value: item.scenario_id, label: item.title })), '');

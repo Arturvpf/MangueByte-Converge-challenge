@@ -287,10 +287,10 @@ Para perguntas sobre **seus próprios snapshots**, utilize a porta **8000**; par
 
 ### 6. Carregar dados sintéticos para a demonstração
 
-Abra [a plataforma local](http://127.0.0.1:8000/prototype/app/), entre com o perfil RH em **Conectar dados** e use **Carregar dados sintéticos → Carregar demonstração → Abrir investigação**. O perfil padrão `gargalo` carrega 88 semanas, três competências, dois turnos e pools compartilhados. Também estão disponíveis os perfis `pico`, `estrutural` e `turnos`.
+Abra [a plataforma local](http://127.0.0.1:8000/prototype/app/), entre com o perfil RH em **Conectar dados** e use **Carregar dados sintéticos → Carregar demonstração → Abrir investigação**. O painel abre com **Pico sazonal e retomada**, um histórico de 88 semanas, três competências, dois turnos e pools compartilhados. O comparativo mostra o déficit de cada alternativa semana a semana. Também estão disponíveis os perfis `gargalo`, `pico`, `estrutural` e `turnos`.
 
 ```bash
-python -m backend.app.ingestion.demo --profile gargalo --output alinia-demo.csv
+python -m backend.app.ingestion.demo --profile pico-e-retomada --output alinia-demo.csv
 ```
 
 Em **Previsão**, escolha uma competência ou turno. Em **Cenários**, compare A–E e abra a matriz semanal. Em **Revisão do RH**, é possível recalcular com outra evidência, adiar ou rejeitar uma alternativa e acompanhar resultados agregados. A aprovação exige validação de jornada, cobertura, habilitação e orçamento.

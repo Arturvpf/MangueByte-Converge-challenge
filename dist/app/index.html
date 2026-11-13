@@ -408,6 +408,7 @@
             <h2 id="projection-title">Resultados da simulação</h2>
             <p class="panel-text" data-projection-source></p>
             <div class="projection-table" data-projection-comparison></div>
+            <div class="projection-table projection-deficit" data-projection-deficit hidden></div>
             <label>Cenário para detalhar <select data-projection-scenario></select></label>
             <div data-projection-weekly></div>
           </section>
@@ -614,6 +615,7 @@
       <details>
         <summary>Carregar dados sintéticos</summary>
         <label>Perfil<select data-demo-profile>
+          <option value="pico-e-retomada">Pico sazonal e retomada</option>
           <option value="gargalo">Gargalo de competência</option>
           <option value="pico">Pico temporário</option>
           <option value="estrutural">Déficit estrutural</option>

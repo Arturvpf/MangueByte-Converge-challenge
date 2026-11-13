@@ -72,6 +72,38 @@ def test_generated_shift_history_and_flow_conserve_totals(profile):
             assert sum(Decimal(s["quantity"]) for s in row["segments"] if bool(s["shift_id"]) == use_shifts) == Decimal(row["quantity"])
 
 
+def test_seasonal_peak_is_visible_in_the_forecast_and_scenario_comparison(app):
+    with TestClient(app) as client:
+        headers = _headers(client)
+        loaded = _request(client, "POST", "/api/imports/synthetic", headers,
+                          {"team_id": TEAM, "profile": "pico-e-retomada"})
+        opened = _request(client, "POST", "/api/investigations", headers, {
+            "team_id": TEAM, "snapshot_id": loaded["snapshot_id"],
+            "idempotency_key": "seasonal-peak", "cycle_limit": 2,
+        }, 202)
+        path = f"/api/investigations/{opened['run_id']}"
+        run = _request(client, "POST", path + "/advance", headers)
+        assert run["state"] == "AWAITING_HUMAN"
+        forecast = run["forecast"]
+        assert forecast["status"] == "calibrated"
+        start, rising, peak, recovery = [point["p50"] for point in forecast["points"]]
+        assert start < rising < peak and recovery < rising
+        assert peak > 1.25 * start
+        history = _request(client, "GET",
+                           f"/api/teams/{TEAM}/demand-flow?snapshot_id={loaded['snapshot_id']}", headers)["items"]
+        last_peak, after_peak = history[-11:-9]
+        assert int(last_peak["backlog_end"]) > int(after_peak["backlog_end"]) > 0
+        assert int(history[-1]["backlog_end"]) == 0
+        scenarios = _request(client, "GET", path + "/scenarios", headers)["items"]
+        projections = {item["kind"]: item["quantitative"] for item in scenarios}
+        assert all(item["synthetic"] and item["solver_status"] == "optimal" for item in projections.values())
+        assert [week["uncovered_hours"] for week in projections["do_nothing"]["weeks"]] == [0, 21, 47, 0]
+        temporary = projections["temporary"]
+        assert temporary["residual_hours"] == 0
+        assert temporary["incremental_cost_brl"] < projections["hire"]["incremental_cost_brl"]
+        assert temporary["weeks"][-1]["available_hours"] == projections["do_nothing"]["weeks"][-1]["available_hours"]
+
+
 def test_full_demo_replans_and_follows_human_baseline_decision(app):
     with TestClient(app) as client:
         headers = _headers(client)

@@ -2,19 +2,30 @@
 
 Prepare o backend e a conta RH seguindo o [README](../README.md). Abra a [plataforma local](http://127.0.0.1:8000/prototype/app/), clique em **Conectar dados**, entre e use **Carregar dados sintéticos → Carregar demonstração → Abrir investigação**. Uma conta RH de uma empresa vazia pode criar o recorte `team-demo`. Selecione **Previsão**, **Cenários** e **Revisão do RH** para ver os resultados. O fluxo funciona com SQLite e sem Jira ou provedor de LLM.
 
-A mesma carga autenticada está disponível em `POST /api/imports/synthetic` com `{"team_id":"team-demo","profile":"gargalo"}`. Um novo `profile` ou `extra_weeks` de 1 a 8 produz outro snapshot. Repetir os parâmetros retorna o mesmo recorte no mesmo escopo.
+A mesma carga autenticada está disponível em `POST /api/imports/synthetic` com `{"team_id":"team-demo","profile":"pico-e-retomada"}`. Um novo `profile` ou `extra_weeks` de 1 a 8 produz outro snapshot. Repetir os parâmetros retorna o mesmo recorte no mesmo escopo.
 
 Para gerar um CSV reproduzível na raiz do repositório:
 
 ```bash
-python -m backend.app.ingestion.demo --profile gargalo --output alinia-demo.csv
+python -m backend.app.ingestion.demo --profile pico-e-retomada --output alinia-demo.csv
 ```
 
 O endpoint sintético usa o mesmo parser e confirma o recorte com origem `synthetic` definida pelo servidor. O upload genérico registra origem CSV mesmo se o arquivo tiver o mesmo nome.
 
 ## Dados e resultados
 
-O gerador usa a semente fixa 4115. São 88 semanas, três competências, dois turnos, cinco pools e quatro perfis. `gargalo` concentra o déficit em suporte especializado e atendimento noturno, `pico` aumenta a carga noturna em parte do ciclo, `estrutural` eleva a carga especializada e `turnos` desloca demanda de atendimento para a noite. A série contém variação, ciclo de 13 semanas, tendência suave e mudança histórica de nível. O histórico mensal do Investigador continua disponível no chat Centro, com granularidade mensal própria.
+O gerador usa a semente fixa 4115. São 88 semanas, três competências, dois turnos, cinco pools e cinco perfis. `gargalo` concentra o déficit em suporte especializado e atendimento noturno, `pico` aumenta a carga noturna em parte do ciclo, `estrutural` eleva a carga especializada e `turnos` desloca demanda de atendimento para a noite. A série contém variação, ciclo de 13 semanas, tendência suave e mudança histórica de nível. O histórico mensal do Investigador continua disponível no chat Centro, com granularidade mensal própria.
+
+**Pico sazonal e retomada** é o perfil selecionado inicialmente no painel. A cada 13 semanas, o volume aumenta por duas semanas, principalmente em atendimento noturno e suporte especializado diurno. O gerador calcula o backlog de cada turno a partir das chegadas registradas, reaberturas, cancelamentos e atendimento possível com os pools compartilhados. Ao fim do pico, as folgas de capacidade permitem reduzir o backlog histórico. O modelo de forecast e o solver processam esse perfil pela mesma API usada pelos demais recortes.
+
+| Semana | P50 da equipe (casos) | A · Permanente | B · Temporária | C · Realocação | D · Redesenho | E · Referência |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 09/11 | 339 | 0 h | 0 h | 0 h | 0 h | 0 h |
+| 16/11 | 428 | 25 h | 0 h | 21 h | 19 h | 21 h |
+| 23/11 | 479 | 4 h | 0 h | 47 h | 43 h | 47 h |
+| 30/11 | 361 | 0 h | 0 h | 0 h | 0 h | 0 h |
+
+As horas da tabela são o déficit de cada cenário. O temporário cobre as duas semanas do pico e termina antes da retomada. No cenário E, a quarta semana cobre a demanda semanal e ainda carrega cerca de 128 casos equivalentes de backlog. Os valores são projeções sintéticas exploratórias.
 
 O ledger soma chegadas e demanda fora do registro para estimar demanda total. O backlog registrado conserva `inicial + entradas + reaberturas − conclusões − cancelamentos = final`. A projeção usa as reaberturas recentes como carga adicional de serviço e apresenta backlog em casos equivalentes. O saldo inicial observado entra na primeira semana. As semanas seguintes carregam o saldo residual sob as horas de serviço comprometidas. O arquivo não contém registros individuais.
 

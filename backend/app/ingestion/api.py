@@ -9,7 +9,7 @@ from backend.app.auth.dependencies import deny, require_permission
 from backend.app.auth.permissions import Permission, Principal
 from backend.app.contracts.v1 import Contract
 from backend.app.flow.errors import FlowError
-from backend.app.ingestion.demo import demo_csv
+from backend.app.ingestion.demo import DemoProfile, demo_csv
 from backend.app.ingestion.collection import collect_jira
 from backend.app.ingestion.jira import IntegrationUnavailable
 from backend.app.ingestion.service import confirm_import, import_jira_fixture, public_import, submit_csv
@@ -31,7 +31,7 @@ class JiraIn(Contract):
 
 class DemoIn(Contract):
     team_id: str = Field(min_length=1, max_length=128)
-    profile: Literal["gargalo", "pico", "estrutural", "turnos"] = "gargalo"
+    profile: DemoProfile = "gargalo"
     extra_weeks: int = Field(default=0, ge=0, le=8)
 
 
