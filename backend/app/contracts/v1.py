@@ -310,6 +310,10 @@ class ForecastPoint(Contract):
     point_estimate: float | None = Field(ge=0)
     lower: float | None = Field(ge=0)
     upper: float | None = Field(ge=0)
+    # Empirical predictive quantiles, NOT the simultaneous confidence band.
+    p10: float | None = Field(default=None, ge=0)
+    p50: float | None = Field(default=None, ge=0)
+    p90: float | None = Field(default=None, ge=0)
 
     @model_validator(mode='after')
     def bounds(self) -> Self:
@@ -317,6 +321,10 @@ class ForecastPoint(Contract):
             raise ValueError('forecast bounds must both be known or null')
         if self.lower is not None and (self.point_estimate is None or not self.lower <= self.point_estimate <= self.upper):
             raise ValueError('forecast estimate must fall within bounds')
+        quantiles = (self.p10, self.p50, self.p90)
+        if any(item is not None for item in quantiles):
+            if any(item is None for item in quantiles) or not self.p10 <= self.p50 <= self.p90:
+                raise ValueError('predictive quantiles must be complete and ordered')
         return self
 
 
@@ -325,6 +333,24 @@ class Backtest(Contract):
     evaluated_through: date
     mae: float | None = Field(ge=0)
     wape: float | None = Field(ge=0)
+    limitations: list[str]
+    benchmarks: dict[str, dict[str, float | None]] = Field(default_factory=dict)
+    quantile_coverage: list[float] = Field(default_factory=list)
+    quantile_pinball_loss: list[list[float]] = Field(default_factory=list)
+    simultaneous_coverage: float | None = None
+    evaluation_origins: int = 0
+    calibration_through: date | None = None
+    evaluation_starts: date | None = None
+
+
+class ForecastSegment(Contract):
+    skill_id: str
+    shift_id: str | None
+    status: Literal['calibrated', 'uncalibrated', 'abstained']
+    method: str
+    points: list[ForecastPoint]
+    backtest: Backtest | None
+    usable_for_planning: bool
     limitations: list[str]
 
 
@@ -340,6 +366,9 @@ class ForecastResult(Scope):
     interval_description: str | None
     backtest: Backtest | None
     limitations: list[str]
+    segments: list[ForecastSegment] = Field(default_factory=list)
+    source_kind: str | None = None
+    usable_for_planning: bool = True
 
     _ids = field_validator('data_snapshot_id', 'model_version', 'method')(nonempty)
 

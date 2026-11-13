@@ -71,7 +71,7 @@ jobs:
           with psycopg.connect(os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://")) as db:
               assert db.execute("SELECT snapshot_id FROM jira_checkpoints_legacy_unscoped").fetchone() == ("historic-snapshot",)
               assert db.execute("SELECT count(*) FROM jira_checkpoints").fetchone() == (0,)
-              assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0010_scenario_cycle_versions",)
+              assert db.execute("SELECT version_num FROM alembic_version").fetchone() == ("0011_planning_evidence",)
           PY
 
   frontend:

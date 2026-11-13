@@ -7,8 +7,12 @@ from backend.app.planning.schemas import CriticResult, ScenarioCandidate, Simula
 def critique(*, scenario: ScenarioCandidate, simulation: SimulationResult, policy_complete: bool,
              forecast_status: str, already_asked: bool) -> CriticResult:
     blocks = ["restricao_dura"] if simulation.status == "infeasible" else []
+    if scenario.quantitative:
+        checks = scenario.quantitative.get("validation", {})
+        if checks.get("mathematical_status") == "invalid":
+            blocks.append("alocacao_quantitativa_inconsistente")
     missing = []
-    if simulation.status == "unknown":
+    if simulation.status in {"unknown", "blocked"}:
         missing.append("solver_sem_resultado")
     if not policy_complete:
         missing.append("policy_review")

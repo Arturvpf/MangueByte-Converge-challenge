@@ -26,13 +26,18 @@ def run_migrations_offline():
         context.run_migrations()
 
 
+def include_name(name, type_, parent_names):
+    # Migration 0009 deliberately retains this archive outside ORM metadata.
+    return type_ != "table" or name != "jira_checkpoints_legacy_unscoped"
+
+
 def run_migrations_online():
     # Supply URL as a plain value rather than Config.set_main_option: passwords
     # may contain percent signs, which ConfigParser would otherwise interpolate.
     connectable = engine_from_config({"sqlalchemy.url": Settings.from_env().database_url},
                                      prefix="sqlalchemy.", poolclass=pool.NullPool)
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(connection=connection, target_metadata=target_metadata, include_name=include_name)
         with context.begin_transaction():
             context.run_migrations()
     connectable.dispose()

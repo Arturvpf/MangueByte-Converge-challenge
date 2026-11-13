@@ -345,7 +345,7 @@
                   <button type="button" data-forecast="base" aria-pressed="true">Provável</button>
                   <button type="button" data-forecast="high" aria-pressed="false">Alta</button>
                 </div>
-                <div class="legend" aria-hidden="true"><span><i class="swatch swatch--quiet"></i>Outros cenários de demanda</span><span><i class="swatch swatch--dash"></i>Capacidade em 42h</span><span><i class="swatch swatch--gap"></i>Déficit</span></div>
+                <div class="legend" data-forecast-legend aria-hidden="true"><span><i class="swatch swatch--quiet"></i>Outros cenários de demanda</span><span><i class="swatch swatch--dash"></i>Capacidade em 42h</span><span><i class="swatch swatch--gap"></i>Déficit</span></div>
               </div>
               <div class="forecast-figure">
                 <strong data-forecast-value>1.200</strong>
@@ -362,6 +362,8 @@
                   <span>Sem. 4<b data-bar-label="3">1.200</b></span>
                 </div>
               </div>
+              <label data-forecast-series-label hidden>Série <select data-forecast-series></select></label>
+              <div class="projection-table" data-forecast-quantiles hidden></div>
               <p class="panel-foot" data-forecast-foot>Faixas demonstrativas. A previsão real só mostra faixa depois de backtesting com cobertura validada por equipe</p>
             </article>
 
@@ -393,15 +395,23 @@
             <div>
               <p class="step-of">Etapa 4 de 5 · Cenários</p>
               <h1 id="scenario-title">Compare caminhos antes de decidir</h1>
-              <p class="lede">Cinco alternativas para a Unidade Centro, incluindo o custo de não agir</p>
+              <p class="lede" data-scenario-lede>Cinco alternativas para a Unidade Centro, incluindo o custo de não agir</p>
             </div>
           </div>
 
           <div class="notice">
             <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
-            <p><strong>Nenhum cenário pode ser aprovado ainda.</strong> A aprovação exige validação independente de cobertura obrigatória, habilitação e regras aplicáveis. O gap de três posições em 42h é agregado e não define a composição das vagas.</p>
+            <p>A aprovação exige validação independente da cobertura obrigatória, da habilitação e das regras aplicáveis.</p>
           </div>
 
+          <section class="panel projection-panel" data-projections hidden aria-labelledby="projection-title">
+            <h2 id="projection-title">Resultados da simulação</h2>
+            <p class="panel-text" data-projection-source></p>
+            <div class="projection-table" data-projection-comparison></div>
+            <div class="projection-table projection-deficit" data-projection-deficit hidden></div>
+            <label>Cenário para detalhar <select data-projection-scenario></select></label>
+            <div data-projection-weekly></div>
+          </section>
           <div class="scenario-list">
             <article class="scenario-card is-selected" data-scenario="a">
               <div class="scenario-card__main">
@@ -489,7 +499,7 @@
           <div class="review-grid">
             <article class="panel">
               <div class="panel-head">
-                <div><p class="panel-label">Rascunho de requisição</p><h2>Necessidade de capacidade · Unidade Centro</h2></div>
+                <div><p class="panel-label">Rascunho de requisição</p><h2 data-review-title>Necessidade de capacidade · Unidade Centro</h2></div>
                 <span class="count">A-001</span>
               </div>
               <div class="summary">
@@ -536,6 +546,32 @@
                   <button class="button" type="button" data-draft hidden>Gerar rascunho sem execução</button>
                 </form>
                 <p class="feedback" data-review-feedback aria-live="polite"></p>
+                <details data-replan hidden>
+                  <summary>Replanejar com evidências revisadas</summary>
+                  <form class="connect__live" data-replan-form>
+                    <label>Snapshot da mesma equipe<select name="snapshot_id" required></select></label>
+                    <label>Teto hipotético para contratação (R$)<input name="hiring_budget_brl" type="number" min="0" max="1000000000" step="0.01"></label>
+                    <label>Justificativa da revisão<input name="reason" maxlength="1000" required></label>
+                    <button class="button" type="submit">Recalcular cenários</button>
+                  </form>
+                  <p class="feedback" data-replan-feedback aria-live="polite"></p>
+                </details>
+                <details data-outcomes hidden>
+                  <summary>Resultados observados</summary>
+                  <form class="connect__live" data-outcomes-form>
+                    <label>Semana<select name="week_start" required></select></label>
+                    <label>Chegadas (casos)<input name="arrival_cases" type="number" min="0" required></label>
+                    <label>Backlog final (casos)<input name="backlog_end" type="number" min="0" required></label>
+                    <label>SLA atendido (%)<input name="sla_percent" type="number" min="0" max="100" step="0.01"></label>
+                    <label>Custo incremental (R$)<input name="incremental_cost_brl" type="number" min="0" step="0.01"></label>
+                    <label><input name="adverse_effect" type="checkbox"> Houve efeito indesejado</label>
+                    <label><input name="disputed" type="checkbox"> Houve contestação</label>
+                    <label>Justificativa<input name="justification" maxlength="1000" required></label>
+                    <button class="button" type="submit">Registrar resultado</button>
+                  </form>
+                  <p class="feedback" data-outcomes-feedback aria-live="polite"></p>
+                  <div class="projection-table" data-outcomes-table></div>
+                </details>
               </article>
             </div>
           </div>
@@ -576,6 +612,17 @@
         <button class="button" type="button" data-load-metrics>Carregar métricas</button>
         <button class="button button--dark" type="button" data-open-investigation>Abrir investigação</button>
       </div>
+      <details>
+        <summary>Carregar dados sintéticos</summary>
+        <label>Perfil<select data-demo-profile>
+          <option value="pico-e-retomada">Pico sazonal e retomada</option>
+          <option value="gargalo">Gargalo de competência</option>
+          <option value="pico">Pico temporário</option>
+          <option value="estrutural">Déficit estrutural</option>
+          <option value="turnos">Redistribuição de turnos</option>
+        </select></label>
+        <button class="button" type="button" data-load-synthetic>Carregar demonstração</button>
+      </details>
       <label>Investigação existente<select data-run-select><option value="">Nenhuma investigação carregada</option></select></label>
       <button class="button" type="button" data-resume-run disabled>Retomar investigação</button>
     </div>

@@ -15,6 +15,11 @@ class Settings:
     jira_project_key: str | None = None
     jira_api_token: str | None = field(default=None, repr=False)
 
+    jira_tenant_id: str | None = None
+    jira_team_id: str | None = None
+    jira_capacity_snapshot_id: str | None = None
+    jira_skill_map: str | None = None
+
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
@@ -24,4 +29,8 @@ class Settings:
             jira_base_url=os.environ.get("JIRA_BASE_URL") or None,
             jira_project_key=os.environ.get("JIRA_PROJECT_KEY") or None,
             jira_api_token=os.environ.get("JIRA_API_TOKEN") or None,
+            jira_tenant_id=os.environ.get("ALINIA_JIRA_TENANT_ID") or None,
+            jira_team_id=os.environ.get("ALINIA_JIRA_TEAM_ID") or None,
+            jira_capacity_snapshot_id=os.environ.get("ALINIA_JIRA_CAPACITY_SNAPSHOT_ID") or None,
+            jira_skill_map=os.environ.get("ALINIA_JIRA_SKILL_MAP") or None,
         )

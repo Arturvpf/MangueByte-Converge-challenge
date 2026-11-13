@@ -2,6 +2,7 @@ import { prompt } from "@grok/agent-sdk";
 import { defineTool } from "@grok/agent-sdk/tools";
 import * as z from "zod/v4";
 import { dateFromQuestion } from "../lib/asked-month.js";
+import { SYNTHETIC_RUN_ID } from "../lib/synthetic-centro.js";
 import { compactInvestigation } from "../lib/compact-investigation.js";
 
 export default defineTool({
@@ -19,6 +20,7 @@ export default defineTool({
     question: z.string().min(1).max(500).optional(),
   }),
   async execute({ runId, onDate, question }) {
+    if (runId !== SYNTHETIC_RUN_ID) return { ok: false as const, code: "USE_READ_PLANNING" };
     return compactInvestigation(runId, question === undefined ? onDate : dateFromQuestion(question));
   },
 });

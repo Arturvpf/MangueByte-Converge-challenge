@@ -36,19 +36,24 @@ def decide(session: Session, principal: Principal, scenario_id: str, *, decision
         raise FlowError(404 if row is None or row.tenant_id != principal.tenant_id else 403, "FORBIDDEN_SCOPE" if row and row.tenant_id == principal.tenant_id else "NOT_FOUND", getattr(row, "team_id", None))
     if expected_hash != row.content_hash:
         raise FlowError(409, "MATERIAL_CHANGE", row.team_id)
+    if decision == "approve":
+        run = session.scalar(select(InvestigationRun).where(
+            InvestigationRun.run_id == row.run_id,
+        ).with_for_update())
+        if run is None or run.tenant_id != row.tenant_id or row.version != run.cycle_count + 1:
+            raise FlowError(409, "MATERIAL_CHANGE", row.team_id)
     existing = session.scalar(select(DecisionRow).where(DecisionRow.scenario_id == scenario_id))
     if existing is not None:
         if existing.idempotency_key == idempotency_key and existing.decision == decision and existing.reason == reason:
             return existing
         raise FlowError(409, "IDEMPOTENCY_CONFLICT", row.team_id)
     if decision == "approve":
-        run = session.get(InvestigationRun, row.run_id)
-        if run is None or run.tenant_id != row.tenant_id or row.version != run.cycle_count + 1:
-            raise FlowError(409, "MATERIAL_CHANGE", row.team_id)
         for version_id in row.payload.get("rule_versions") or []:
             version = session.get(PolicyVersion, version_id)
             if version is None or version.tenant_id != row.tenant_id or version.status != "approved":
                 raise FlowError(409, "MATERIAL_CHANGE", row.team_id)
+        if (row.payload.get("quantitative") or {}).get("simulation_only"):
+            raise FlowError(409, "NOT_CONCLUSIVE", row.team_id)
         # The v4.1 `conclusive` flag is not independent evidence of legal,
         # mandatory coverage or qualification checks. Refuse all new v4.2
         # approvals unless a deterministic verifier has written a valid result.
@@ -92,6 +97,9 @@ def draft(session: Session, principal: Principal, scenario_id: str, *, idempoten
         raise FlowError(404, "NOT_FOUND")
     if not principal.can(Permission.REQUISITION_DRAFT, row.team_id):
         raise FlowError(403, "FORBIDDEN_SCOPE", row.team_id)
+    run = session.get(InvestigationRun, row.run_id)
+    if run is None or run.tenant_id != row.tenant_id or row.version != run.cycle_count + 1:
+        raise FlowError(409, "MATERIAL_CHANGE", row.team_id)
     decision = session.scalar(select(DecisionRow).where(DecisionRow.scenario_id == scenario_id))
     if decision is None or decision.decision != "approve":
         raise FlowError(409, "NOT_APPROVED", row.team_id)

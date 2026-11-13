@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -19,7 +19,7 @@ def load_fixture(name: str = "issues") -> dict:
     return json.loads((ROOT / "backend/fixtures/jira/issues.json").read_text(encoding="utf-8"))
 
 
-def fetch_issues(settings, transport=None) -> list[dict]:
+def fetch_issues(settings, transport=None, *, created_from=None, created_to=None) -> list[dict]:
     """GET pages only. Missing credentials stay visible and do not open a connection."""
     if not settings.jira_base_url or not settings.jira_api_token:
         raise IntegrationUnavailable("Integração Jira real pendente: credenciais não configuradas")
@@ -30,32 +30,41 @@ def fetch_issues(settings, transport=None) -> list[dict]:
     if parsed_url.scheme != "https" or not parsed_url.hostname or parsed_url.username or parsed_url.password:
         raise IntegrationUnavailable("JIRA_BASE_URL exige host HTTPS sem credenciais embutidas")
     transport = transport or _urllib_get
-    start = 0
+    if parsed_url.query or parsed_url.fragment:
+        raise IntegrationUnavailable("JIRA_BASE_URL inválida")
+    jql = f'project = "{project}"'
+    if created_from is not None and created_to is not None:
+        jql += f' AND created >= "{created_from}" AND created < "{created_to}"'
+    token = None
+    seen = set()
     collected = []
     for _page_number in range(200):
+        params = {"maxResults": 50, "fields": "created,issuetype,project",
+                  "jql": jql + " ORDER BY created ASC, key ASC"}
+        if token:
+            params["nextPageToken"] = token
         payload = transport(
-            "GET", f"{settings.jira_base_url.rstrip('/')}/rest/api/3/search",
-            {"startAt": start, "maxResults": 50,
-             "fields": "created,resolutiondate,status,issuetype,project",
-             "jql": f'project = "{project}" ORDER BY created ASC'},
+            "GET", f"{settings.jira_base_url.rstrip('/')}/rest/api/3/search/jql", params,
             {"Authorization": f"Bearer {settings.jira_api_token}", "Accept": "application/json"},
         )
         if not isinstance(payload, dict) or not isinstance(payload.get("issues"), list):
             raise IntegrationUnavailable("Resposta Jira inválida; nenhum evento persistido")
         page = payload["issues"]
         if len(page) > 50:
-            raise IntegrationUnavailable("Pagina Jira acima do limite declarado")
+            raise IntegrationUnavailable("Página Jira acima do limite declarado")
         collected.extend(page)
-        start += len(page)
-        try:
-            total = int(payload["total"])
-        except (KeyError, TypeError, ValueError):
-            raise IntegrationUnavailable("Total de resultados Jira inválido") from None
-        if total < 0 or (not page and start < total):
-            raise IntegrationUnavailable("Paginação Jira incompleta; nenhum evento persistido")
-        if start >= total:
+        if payload.get("isLast") is True:
             return collected
+        token = payload.get("nextPageToken")
+        if not isinstance(token, str) or not token or token in seen:
+            raise IntegrationUnavailable("Paginação Jira incompleta; nenhum evento persistido")
+        seen.add(token)
     raise IntegrationUnavailable("Limite de páginas Jira atingido; nenhuma importação parcial permitida")
+
+
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
 
 
 def _urllib_get(method: str, url: str, params: dict, headers: dict):
@@ -63,7 +72,7 @@ def _urllib_get(method: str, url: str, params: dict, headers: dict):
         raise IntegrationUnavailable("o conector Jira não escreve")
     request = Request(f"{url}?{urlencode(params)}", headers=headers, method="GET")
     try:
-        with urlopen(request, timeout=10) as response:  # noqa: S310 — URL from deployment config
+        with build_opener(_NoRedirect()).open(request, timeout=10) as response:  # noqa: S310 — URL from deployment config
             return json.loads(response.read().decode())
     except (HTTPError, URLError, TimeoutError, ValueError) as exc:
         raise IntegrationUnavailable("Falha na leitura da API Jira; nenhuma importação confirmada") from exc

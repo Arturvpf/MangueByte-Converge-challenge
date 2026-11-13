@@ -3,12 +3,15 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import Field
+from sqlalchemy.exc import IntegrityError
 
 from backend.app.auth.dependencies import deny, require_permission
 from backend.app.auth.permissions import Permission, Principal
 from backend.app.contracts.v1 import Contract
 from backend.app.flow.errors import FlowError
-from backend.app.ingestion.jira import IntegrationUnavailable, fetch_issues
+from backend.app.ingestion.demo import DemoProfile, demo_csv
+from backend.app.ingestion.collection import collect_jira
+from backend.app.ingestion.jira import IntegrationUnavailable
 from backend.app.ingestion.service import confirm_import, import_jira_fixture, public_import, submit_csv
 
 router = APIRouter(prefix="/api/imports", tags=["imports"])
@@ -26,12 +29,33 @@ class JiraIn(Contract):
     fixture: Literal["issues"]
 
 
+class DemoIn(Contract):
+    team_id: str = Field(min_length=1, max_length=128)
+    profile: DemoProfile = "gargalo"
+    extra_weeks: int = Field(default=0, ge=0, le=8)
+
+
+@router.post("/synthetic")
+def import_demo(body: DemoIn, request: Request, principal: Principal = Depends(runner)):
+    def load(session):
+        row = submit_csv(
+            session, principal, team_id=body.team_id, source_kind="synthetic",
+            filename=f"alinia-demo-{body.profile}.csv", content=demo_csv(body.profile, extra_weeks=body.extra_weeks),
+        )
+        if row.status == "invalid":
+            raise FlowError(422, "INVALID_SYNTHETIC_DATA")
+        return public_import(confirm_import(session, principal, row.import_id))
+    return _call(request, principal, Permission.INVESTIGATION_RUN, load)
+
+
 def _call(request: Request, principal: Principal, permission: Permission, fn):
     try:
         with request.app.state.session_factory() as session:
             result = fn(session)
             session.commit()
             return result
+    except IntegrityError:
+        raise HTTPException(status_code=409, detail={"code": "CONCURRENT_CHANGE"}) from None
     except FlowError as exc:
         if exc.status == 403:
             deny(request, principal, permission, exc.team_id)
@@ -72,7 +96,8 @@ def jira_fixture(body: JiraIn, request: Request, principal: Principal = Depends(
 @router.post("/jira/sync")
 def jira_sync(request: Request, principal: Principal = Depends(runner)):
     try:
-        fetch_issues(request.app.state.settings)
+        return _call(request, principal, Permission.INVESTIGATION_RUN,
+                     lambda session: collect_jira(session, principal, request.app.state.settings,
+                                                  min_interval_seconds=300))
     except IntegrationUnavailable as exc:
         raise HTTPException(status_code=503, detail={"code": exc.code, "message": str(exc)}) from None
-    raise HTTPException(status_code=503, detail={"code": "INTEGRATION_UNAVAILABLE", "message": "validação real do Jira continua pendente"})

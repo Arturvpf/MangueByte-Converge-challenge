@@ -5,6 +5,8 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from io import StringIO
 
+from pydantic import ValidationError
+
 from backend.app.contracts.v1 import Period
 from backend.app.data.schemas import SnapshotData
 
@@ -17,12 +19,13 @@ OPTIONAL = (
     "nominal_hours", "projected_demand", "skill_name", "shift_name",
     "incoming_cases", "completed_cases", "cancelled_cases", "reopened_cases",
     "unmet_cases", "backlog_start", "backlog_end",
+    "shift_demand_cases", "shift_backlog_end", "queue_sla_hours", "service_cv", "mandatory_hours",
 )
 FORBIDDEN = {
     "salary", "salario", "salário", "cpf", "email", "e-mail", "nome", "name", "person_id",
     "employee_id", "employee", "pessoa", "motivo_afastamento", "absence_reason", "afastamento",
 }
-AGGREGATE_FIELDS = ("cases_per_hour", "headcount", "nominal_hours", "availability_fraction", "projected_demand")
+AGGREGATE_FIELDS = ("cases_per_hour", "headcount", "nominal_hours", "availability_fraction", "projected_demand", "queue_sla_hours", "service_cv")
 FLOW_FIELDS = ("incoming_cases", "completed_cases", "cancelled_cases", "reopened_cases",
                "unmet_cases", "backlog_start", "backlog_end")
 
@@ -70,6 +73,9 @@ def parse_csv(content: str, *, tenant_id: str, team_id: str, snapshot_id: str, r
     canonical = {header.casefold(): header for header in headers}
     rows = []
     for index, raw in enumerate(reader, start=2):
+        if None in raw:
+            errors.append(_error(index, "row", "extra_cells"))
+            continue
         item = {name: _cell(raw.get(canonical.get(name))) for name in (*REQUIRED, *OPTIONAL)}
         if not any(item.values()):
             continue
@@ -111,9 +117,12 @@ def _row_errors(line: int, item: dict) -> list[dict]:
                 found.append(_error(line, "backlog_end", "backlog_mismatch"))
             if _decimal(item["demand_cases"]) != flow["incoming_cases"] + flow["unmet_cases"]:
                 found.append(_error(line, "demand_cases", "must_equal_incoming_plus_unmet"))
-    for column in ("availability_fraction", "cost_min", "cost_max", "cases_per_hour", "nominal_hours", "projected_demand"):
+    for column in ("availability_fraction", "cost_min", "cost_max", "cases_per_hour", "nominal_hours", "projected_demand",
+                   "shift_demand_cases", "shift_backlog_end", "queue_sla_hours", "service_cv"):
         if item.get(column) not in (None, "") and _decimal(item[column]) is None:
             found.append(_error(line, column, "invalid_number"))
+    if item["mandatory_hours"] and not item["mandatory_hours"].isdigit():
+        found.append(_error(line, "mandatory_hours", "invalid_number"))
     if item.get("headcount") not in (None, "") and (not item["headcount"].isdigit() or int(item["headcount"]) < 0):
         found.append(_error(line, "headcount", "invalid_number"))
     try:
@@ -152,13 +161,43 @@ def _assemble(rows, errors, *, tenant_id, team_id, snapshot_id, reference):
     # A skill may be listed across several shifts and pools. Count its demand
     # once per period; inconsistent duplicates invalidate the entire import.
     unique_demand = {}
+    shift_demand = {}
+    periods = {}
+    shift_grid = {}
     for line, item in rows:
         key = (item["period_start"], item["period_end_exclusive"], item["skill_id"])
+        period = (item["period_start"], item["timezone"])
+        if periods.setdefault(item["period_end_exclusive"], period) != period:
+            errors.append(_error(line, "period", "conflicting_period"))
+        shift_key = (*key, item["shift_id"])
+        shift_values = (item["shift_demand_cases"], item["shift_backlog_end"])
+        if shift_demand.setdefault(shift_key, shift_values) != shift_values:
+            errors.append(_error(line, "shift_demand_cases", "conflicting_shift_demand"))
+        shift_grid.setdefault(key, {})[item["shift_id"]] = shift_values
         signature = (item["demand_cases"], *(item.get(field, "") for field in FLOW_FIELDS))
         if key in unique_demand and unique_demand[key][1] != signature:
             errors.append(_error(line, "demand_cases", "conflicting_demand_flow"))
         else:
             unique_demand.setdefault(key, (item, signature))
+    if errors:
+        return _empty(errors)
+    previous_flows = {}
+    for key, (item, _) in sorted(unique_demand.items()):
+        start, end, skill = key
+        shifts_for_skill = shift_grid[key]
+        observed = [values[0] for values in shifts_for_skill.values() if values[0] != ""]
+        if observed and (len(observed) != len(shifts_for_skill)
+                         or sum(map(_decimal, observed)) != _decimal(item["demand_cases"])):
+            errors.append(_error(1, "shift_demand_cases", "shift_demand_mismatch"))
+        backlog = [values[1] for values in shifts_for_skill.values() if values[1] != ""]
+        if backlog and (len(backlog) != len(shifts_for_skill) or not item["backlog_end"]
+                        or sum(map(_decimal, backlog)) != _decimal(item["backlog_end"])):
+            errors.append(_error(1, "shift_backlog_end", "shift_backlog_mismatch"))
+        if item["backlog_start"] != "":
+            prior = previous_flows.get(skill)
+            if prior is not None and prior[0] == start and prior[1] != item["backlog_start"]:
+                errors.append(_error(1, "backlog_start", "backlog_discontinuity"))
+            previous_flows[skill] = (end, item["backlog_end"])
     if errors:
         return _empty(errors)
     last_end = max(item["period_end_exclusive"] for _, item in rows)
@@ -167,6 +206,7 @@ def _assemble(rows, errors, *, tenant_id, team_id, snapshot_id, reference):
     skills = {}
     shifts = {}
     matrix = {}
+    mandatory = {}
     demand = {}
     for item in selected:
         pools.setdefault(item["pool_id"], item["available_hours"])
@@ -177,6 +217,8 @@ def _assemble(rows, errors, *, tenant_id, team_id, snapshot_id, reference):
             errors.append(_error(1, "skill_name", "conflicting_name"))
         shifts.setdefault(item["shift_id"], item.get("shift_name") or item["shift_id"])
         key = (item["skill_id"], item["shift_id"])
+        if mandatory.setdefault(key, item["mandatory_hours"]) != item["mandatory_hours"]:
+            errors.append(_error(1, "mandatory_hours", "conflicting_row"))
         matrix.setdefault(key, {"pools": [], "eligible": item["eligible_hours"], "availability": item.get("availability_fraction") or "",
                                 "cost_min": item.get("cost_min") or "", "cost_max": item.get("cost_max") or "", "currency": item.get("currency") or ""})
         if item["pool_id"] not in matrix[key]["pools"]:
@@ -224,23 +266,39 @@ def _assemble(rows, errors, *, tenant_id, team_id, snapshot_id, reference):
             "limitations": ["Demanda agregada do último período do arquivo."],
         },
     }
-    SnapshotData.model_validate_json(json.dumps(snapshot))
+    try:
+        SnapshotData.model_validate_json(json.dumps(snapshot))
+    except ValidationError:
+        return _empty([_error(1, "snapshot", "invalid_snapshot")])
     history = []
-    for end in sorted({item["period_end_exclusive"] for _, item in rows}):
-        chunk = [item for (start, period_end, skill), (item, _) in unique_demand.items() if period_end == end]
+    demand_by_end = {}
+    for (start, end, skill), (item, _) in unique_demand.items():
+        demand_by_end.setdefault(end, {})[skill] = (start, item)
+    for end, items in sorted(demand_by_end.items()):
+        chunk = [item for _, item in items.values()]
         flow_present = all(all(item.get(field, "") != "" for field in FLOW_FIELDS) for item in chunk)
         if any(any(item.get(field, "") != "" for field in FLOW_FIELDS) for item in chunk) and not flow_present:
             return _empty([_error(1, "demand_flow", "mixed_flow_schema")])
         entry = {
             "start": chunk[0]["period_start"], "end": end,
             "quantity": str(sum(_decimal(item["demand_cases"]) for item in chunk)),
+            "segments": [
+                {"skill_id": skill, "shift_id": shift, "quantity": quantity,
+                 **({"backlog_end": backlog or None} if shift is not None else {
+                     field: item[field] or None for field in FLOW_FIELDS
+                 })}
+                for skill, (start, item) in sorted(items.items())
+                for shift, (quantity, backlog) in [
+                    (None, (item["demand_cases"], "")), *sorted(shift_grid[(start, end, skill)].items())
+                ] if quantity != ""
+            ],
             "demand_semantics": "incoming_plus_unmet" if flow_present else "legacy_unclassified",
         }
         if flow_present:
             for field in FLOW_FIELDS:
                 entry[field] = str(sum(int(item[field]) for item in chunk))
         history.append(entry)
-    first = selected[0]
+    first = {key: next((item[key] for item in selected if item[key]), "") for key in AGGREGATE_FIELDS}
     aggregates = {
         "cases_per_hour": first.get("cases_per_hour") or None,
         "headcount": first.get("headcount") or None,
@@ -248,5 +306,9 @@ def _assemble(rows, errors, *, tenant_id, team_id, snapshot_id, reference):
         "availability": first.get("availability_fraction") or None,
         "demand_cases": str(sum(_decimal(quantity) for quantity in demand.values())),
         "projected_demand": first.get("projected_demand") or None,
+        "queue_sla_hours": first.get("queue_sla_hours") or None,
+        "service_cv": first.get("service_cv") or None,
+        "mandatory_hours": [{"skill": skill, "shift": shift, "hours": int(hours)}
+                            for (skill, shift), hours in sorted(mandatory.items()) if hours != ""],
     }
     return {"errors": [], "history": history, "aggregates": aggregates, "snapshot": snapshot}

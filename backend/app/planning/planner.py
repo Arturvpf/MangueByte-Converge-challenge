@@ -41,7 +41,11 @@ def _unknown(scenario_id, tenant_id, team_id, snapshot_id, skills):
 def build_scenarios(*, tenant_id: str, team_id: str, snapshot_id: str, pools: dict[str, int], rows: list[Row],
                     demand_hours: dict[str, int] | None, weekly_max: int | None, policy_complete: bool,
                     forecast_calibrated: bool, dependencies: list[str], rule_versions: list[str],
-                     forecast_applied: bool = True, scenario_version: int = 1):
+                     forecast_applied: bool = True, scenario_version: int = 1,
+                    projections: dict[str, dict] | None = None):
+    if projections is not None:
+        return _projected_scenarios(tenant_id, team_id, snapshot_id, scenario_version,
+                                    dependencies, rule_versions, projections)
     skills = sorted({row.skill_id for row in rows})
     reliable = demand_hours is not None and policy_complete and forecast_calibrated and forecast_applied
     base = solve(pools, rows, demand_hours) if demand_hours is not None else None
@@ -126,3 +130,39 @@ def build_scenarios(*, tenant_id: str, team_id: str, snapshot_id: str, pools: di
         hire_assumptions.append("sem jornada semanal aprovada, o headcount fica vazio")
     add("hire", hired, ["avaliar nova capacidade sujeita a prazo, custos e qualificação"], hire_gaps, headcount, hire_assumptions)
     return scenarios
+
+
+def _projected_scenarios(tenant_id, team_id, snapshot_id, version, dependencies, rule_versions, projections):
+    actions = {
+        "hire": "Adicionar quadro permanente após recrutamento, admissão e formação.",
+        "temporary": "Adicionar cobertura durante a vigência do contrato temporário.",
+        "reallocate": "Capacitar e realocar horas do pool de origem.",
+        "redesign": "Transferir parte das horas para o turno com gargalo.",
+        "do_nothing": "Manter o quadro e a distribuição de horas.",
+    }
+    pairs = []
+    for kind, projection in projections.items():
+        scenario_id = str(uuid4())
+        costs = projection["incremental_cost_brl"]
+        common = {
+            "schema_version": "1.0", "scenario_id": scenario_id, "tenant_id": tenant_id,
+            "team_id": team_id, "data_snapshot_id": snapshot_id, "quantitative": projection,
+            "assumptions": projection.get("assumptions", []),
+        }
+        violations = projection["validation"]["violations"]
+        scenario = _seal({
+            **common, "kind": kind, "version": version, "actions": [actions[kind]], "conclusive": False,
+            "dependencies": dependencies, "gaps": violations, "rule_versions": rule_versions,
+            "legal_flags": violations, "costs_estimated": projection["cost_status"] == "assumed",
+            "preliminary_cost": str(costs) if costs is not None else None,
+            "headcount_delta": projection["headcount"], "residual_hours": projection["residual_hours"],
+            "role_mix": projection.get("role_mix", []), "lead_time_and_ramp_up": projection.get("lead_time"),
+        })
+        residual = projection["residual_hours"]
+        simulation = SimulationResult.model_validate({
+            **common, "simulation_id": str(uuid4()), "status": projection["solver_status"],
+            "allocations": [], "residual_hours": {"total_forecast_hours": residual} if residual is not None else {},
+            "limitations": projection["reason"],
+        })
+        pairs.append((scenario, simulation))
+    return pairs
