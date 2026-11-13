@@ -26,6 +26,8 @@ from backend.app.metrics.engine import prepare_matrix
 from backend.app.optimization.solver import Row
 from backend.app.planning.critic import critique
 from backend.app.planning.planner import build_scenarios
+from backend.app.planning.quantitative import build_whatifs
+from backend.app.planning.planner import _seal
 from backend.app.planning.schemas import ScenarioCandidate, SimulationResult
 from backend.app.policies.catalog import CATALOG
 from backend.app.policies.resolver import resolve
@@ -269,7 +271,56 @@ def _plan(session, principal, run: InvestigationRun):
         forecast_applied=False,  # Explicit fail-closed until skill/shift forecast drives the solver.
         scenario_version=run.cycle_count + 1,
     )
+    # CP-SAT now evaluates *all five* alternatives on the same forecast,
+    # skill/shift grid and resource budgets. These are hypothetical what-ifs,
+    # not independent legal/budget validation, and never unlock approval.
+    imported = session.scalar(select(DataImport).where(
+        DataImport.tenant_id == run.tenant_id, DataImport.team_id == run.team_id,
+        DataImport.snapshot_id == run.snapshot_id, DataImport.status == "complete",
+    ))
+    whatifs = build_whatifs(snapshot, forecast, aggregates,
+                            [] if imported is None else imported.history)
+    enhanced = []
     for scenario, simulation in pairs:
+        q = whatifs.get(scenario.kind)
+        if q is None:
+            enhanced.append((scenario, simulation))
+            continue
+        valid_math = q["solver_status"] in {"optimal", "feasible"}
+        costs = q.get("incremental_cost_brl")
+        payload = scenario.model_dump()
+        payload["quantitative"] = q
+        payload["conclusive"] = False  # Never treat hypothetical schedules as verified.
+        payload["gaps"] = [
+            "DADOS_SIMULADOS: premissas por turno e políticas não verificadas"
+            if gap.startswith("FORECAST_NOT_APPLIED") else gap
+            for gap in payload["gaps"]
+        ]
+        payload["assumptions"] = [
+            *payload["assumptions"],
+            "Quantificação exploratória CP-SAT sobre as quatro próximas semanas.",
+        ]
+        if valid_math:
+            payload["residual_hours"] = q["residual_hours"]
+            payload["preliminary_cost"] = None if costs is None else str(costs)
+            payload["costs_estimated"] = costs is not None
+            if forecast.status == "calibrated":
+                payload["headcount_delta"] = q["headcount"]
+        updated = _seal(payload)
+        sim_payload = simulation.model_dump()
+        sim_payload["quantitative"] = q
+        sim_payload["status"] = q["solver_status"]
+        if valid_math:
+            sim_payload["residual_hours"] = {
+                "total_forecast_hours": q["residual_hours"],
+            }
+            sim_payload["limitations"] = [
+                *sim_payload["limitations"],
+                "Resultado CP-SAT para hipótese matemática, não para aprovação jurídica.",
+            ]
+        updated_simulation = SimulationResult.model_validate(sim_payload)
+        enhanced.append((updated, updated_simulation))
+    for scenario, simulation in enhanced:
         session.add(ScenarioRow(
             scenario_id=scenario.scenario_id, run_id=run.run_id, tenant_id=run.tenant_id, team_id=run.team_id,
             snapshot_id=run.snapshot_id, kind=scenario.kind, version=scenario.version, content_hash=scenario.content_hash,
