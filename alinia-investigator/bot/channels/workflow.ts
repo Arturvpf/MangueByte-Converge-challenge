@@ -1,6 +1,7 @@
 import { bearerAuth, defineChannel, GET, POST } from "@grok/agent-sdk/channels";
 import * as z from "zod/v4";
 import { deepseekStream, siteContextStream } from "../lib/deepseek-turn.js";
+import { readPlanning } from "../tools/read-planning.js";
 import { featherlessKey } from "../lib/featherless.js";
 import { isGreeting, isOffTopic, isWorkforceQuestion, introReply, offTopicReply } from "../lib/topic-gate.js";
 import { SYNTHETIC_ON_DATE, SYNTHETIC_RUN_ID } from "../lib/synthetic-centro.js";
@@ -125,6 +126,22 @@ export default defineChannel({
         on_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       }),
       handler: async (_request, { send, waitUntil, body }) => {
+        if (body.run_id !== SYNTHETIC_RUN_ID) {
+          if (!webhookToken) {
+            return Response.json({ ok: false, error: "authenticated_channel_required" }, { status: 503 });
+          }
+          const planning = await readPlanning(body.run_id);
+          if (!planning.ok) {
+            return Response.json({ ok: false, error: planning.code }, { status: 404 });
+          }
+          waitUntil(send(
+            "Explique o planejamento já calculado, usando apenas estes totais. " +
+            "Informe quais valores estão indisponíveis e que a autorização está bloqueada. " +
+            JSON.stringify(planning),
+            { title: "Comparação A–E" },
+          ));
+          return new Response(null, { status: 202 });
+        }
         waitUntil(
           send(
             [

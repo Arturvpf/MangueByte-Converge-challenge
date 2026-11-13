@@ -108,7 +108,7 @@ Se a previsão se abstiver, faltar uma regra ou a cobertura obrigatória falhar,
 
 ## O que já pode ser demonstrado
 
-A `main` possui duas experiências complementares, explicitamente identificadas na interface:
+A plataforma oferece duas experiências, identificadas na interface:
 
 | Modo | Como funciona hoje | Limite |
 | --- | --- | --- |
@@ -117,7 +117,7 @@ A `main` possui duas experiências complementares, explicitamente identificadas 
 
 A aplicação web inclui **Conversa com a Alinia**, **Visão geral**, **Investigação**, **Previsão**, **Cenários** e **Revisão do RH**. A landing apresenta o problema e a proposta.
 
-| Componente na `main` | Situação verificada no código |
+| Componente | Situação |
 | --- | --- |
 | Interface de chat e roteamento de intenções | **Implementados** em `src/app/agent.js` |
 | Proxy `/agent/chat` e `/agent/health` no servidor Node de desenvolvimento | **Implementado** em `scripts/serve.mjs`; não existe no servidor FastAPI |
@@ -126,10 +126,10 @@ A aplicação web inclui **Conversa com a Alinia**, **Visão geral**, **Investig
 | Histórico sintético Centro (60 meses), resumo de capacidade e filtros de privacidade | **Disponíveis** no projeto do agente |
 | Autenticação, controle de acesso, importação CSV, fixture Jira, snapshots e métricas | **Implementados** no backend |
 | Workflow de investigação com perguntas, checkpoints, revisão e retomada | **Implementado de forma determinística** |
-| Forecast por mediana móvel, backtesting e abstenção | **Baseline implementado**; P10/P50/P90 e planejamento futuro por skill/turno ainda não estão na `main` |
-| Cinco tipos de cenário A–E | **Disponíveis na API**; intervenções B/C/D não estão simuladas quantitativamente de ponta a ponta |
-| CP-SAT e validador independente | **Módulos existentes**, ainda não conectados ao workflow principal |
-| Jira real, simulação de filas e aprovação operacional completa | **Pendentes** |
+| Forecast por competência e turno | P10/P50/P90 condicionados a backtest temporal e cobertura observada |
+| Planejamento A–E | CP-SAT e verificação independente no workflow exploratório |
+| Coleta Jira e filas | Coleta somente leitura com checkpoint e SimPy quando há parâmetros suficientes |
+| Revisão e resultados | Replanejamento versionado pelo RH e comparação semanal com observações agregadas |
 
 **Segurança:** o agente de demonstração não aprova, rejeita nem adia decisões no lugar do RH. A API preserva controle de acesso, verificação de versão e bloqueios para aprovação de cenários sem evidência independente. Dados de exemplo não são medições de uma empresa real.
 
@@ -160,7 +160,7 @@ Com evidências suficientes, o agente aciona ferramentas para projetar demanda e
 | Frontend | HTML, CSS, JavaScript ES Modules e gráficos SVG |
 | API e contratos | Python 3.12, FastAPI, Pydantic |
 | Dados e auditoria | SQLAlchemy, Alembic, SQLite local e PostgreSQL |
-| Ferramentas de planejamento | Motor de métricas, baseline de previsão e otimizador OR-Tools CP-SAT (módulo separado) |
+| Ferramentas de planejamento | Métricas, forecast semanal, OR-Tools CP-SAT, SimPy e validação independente |
 | Serviço do agente | **TypeScript, Agent SDK, DeepSeek/Featherless, LangChain** para recuperação de regras e dados sintéticos |
 | Orquestração e workflow | Workflow Python persistido; agente TypeScript separado, com ferramentas de leitura; LangGraph experimental no backend | 
 | Qualidade | Pytest, testes do agente (`npm test`), verificação TypeScript, CI de backend/frontend |
@@ -287,27 +287,15 @@ Para perguntas sobre **seus próprios snapshots**, utilize a porta **8000**; par
 
 ### 6. Carregar dados sintéticos para a demonstração
 
-A plataforma lista snapshots existentes, mas **a importação de CSV ainda não está implementada na interface**. O caminho mais curto para preparar uma demonstração é a fixture de Jira, **sem conexão com Jira real**:
+Abra [a plataforma local](http://127.0.0.1:8000/prototype/app/), entre com o perfil RH em **Conectar dados** e use **Carregar dados sintéticos → Carregar demonstração → Abrir investigação**. O perfil padrão `gargalo` carrega 88 semanas, três competências, dois turnos e pools compartilhados. Também estão disponíveis os perfis `pico`, `estrutural` e `turnos`.
 
-1. Abra [`http://127.0.0.1:8000/docs`](http://127.0.0.1:8000/docs) e execute `POST /api/auth/login` usando `tenant_id: demo`, `email: rh@demo.example` e sua senha.
-2. Copie o `access_token` e configure-o no botão **Authorize** do Swagger.
-3. Execute `POST /api/imports/jira` com o JSON abaixo. A resposta `status: complete` indica que o snapshot sintético foi persistido.
-4. Abra [a plataforma](http://127.0.0.1:8000/prototype/app/), entre com as mesmas credenciais, selecione a equipe `team-demo` e carregue as métricas.
-
-```json
-{
-  "team_id": "team-demo",
-  "fixture": "issues"
-}
+```bash
+python -m backend.app.ingestion.demo --profile gargalo --output alinia-demo.csv
 ```
 
-**Alternativa:** usar `POST /api/imports` com um CSV agregado (como texto no campo JSON `content`) e depois `POST /api/imports/{import_id}/confirm`. O formato e os campos obrigatórios estão descritos em [`backend/CONTRATOS.md`](backend/CONTRATOS.md) e em `backend/app/ingestion/csvparse.py`. Nenhum dado pessoal deve ser usado na demonstração.
+Em **Previsão**, escolha uma competência ou turno. Em **Cenários**, compare A–E e abra a matriz semanal. Em **Revisão do RH**, é possível recalcular com outra evidência, adiar ou rejeitar uma alternativa e acompanhar resultados agregados. A aprovação exige validação de jornada, cobertura, habilitação e orçamento.
 
-### 7. Percorrer o fluxo conectado ao backend
-
-Na porta **8000**, com o snapshot carregado, percorra **Conversa com a Alinia → Visão geral → Investigação → Previsão → Cenários A–E → Revisão do RH**. A conversa usa ferramentas de leitura da API para apresentar as fontes e encaminhar perguntas ao gestor. **Não é o mesmo chat DeepSeek que responde no modo sintético da porta 5173.**
-
-**Nesta entrega, a execução demonstrada é determinística**: a investigação pode exigir mais de uma rodada de respostas, mas o agente LLM ainda não escolhe nem executa as ferramentas do fluxo principal. Relatos do gestor continuam **não verificados** e não alteram automaticamente a capacidade calculada. Com histórico insuficiente, a previsão se abstém e os cenários ficam inconclusivos. O bloqueio de aprovação é **comportamento esperado**, não falha de instalação.
+O [guia de planejamento quantitativo](docs/PLANEJAMENTO_QUANTITATIVO.md) documenta os resultados do caso de gargalo, as hipóteses, os endpoints de replanejamento e observação, a coleta Jira e a ferramenta do Investigador.
 
 ## Testes e build
 
