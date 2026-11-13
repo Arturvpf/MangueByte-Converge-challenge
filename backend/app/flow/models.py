@@ -1,13 +1,17 @@
 """Rows for the pilot flow. The mock job engine keeps its own tables."""
 from datetime import datetime
-from sqlalchemy import JSON, DateTime, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, CheckConstraint, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from backend.app.core.database import Base
 
 
 class DataImport(Base):
     __tablename__ = "data_imports"
-    __table_args__ = (UniqueConstraint("tenant_id", "team_id", "content_hash", name="uq_imports_hash"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "team_id", "content_hash", name="uq_imports_hash"),
+        CheckConstraint("status IN ('invalid', 'ready', 'complete')", name="ck_imports_status"),
+        CheckConstraint("source_kind IN ('csv', 'jira', 'synthetic')", name="ck_imports_source"),
+    )
     import_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     team_id: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -95,7 +99,7 @@ class InvestigationCheckpoint(Base):
 
 class ScenarioRow(Base):
     __tablename__ = "scenarios"
-    __table_args__ = (UniqueConstraint("run_id", "kind", name="uq_scenarios_kind"),)
+    __table_args__ = (UniqueConstraint("run_id", "kind", "version", name="uq_scenarios_run_kind_version"),)
     scenario_id: Mapped[str] = mapped_column(String(36), primary_key=True)
     run_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     tenant_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
@@ -158,3 +162,31 @@ class JiraCheckpoint(Base):
     source_key: Mapped[str] = mapped_column(String(200), primary_key=True)
     issue_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     snapshot_id: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+
+class PlanningEvidence(Base):
+    __tablename__ = "planning_evidence"
+    run_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    idempotency_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    actor_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class DecisionObservation(Base):
+    __tablename__ = "decision_observations"
+    decision_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    week_start: Mapped[str] = mapped_column(String(10), primary_key=True)
+    actor_user_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class JiraCollection(Base):
+    __tablename__ = "jira_collection"
+    tenant_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    team_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    snapshot_id: Mapped[str | None] = mapped_column(String(128))
+    last_success: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -50,7 +50,7 @@ class SimulationResult(Contract):
     tenant_id: str = Field(min_length=1)
     team_id: str = Field(min_length=1)
     data_snapshot_id: str = Field(min_length=1)
-    status: Literal["optimal", "feasible", "infeasible", "unknown"]
+    status: Literal["optimal", "feasible", "infeasible", "unknown", "blocked"]
     allocations: list[AllocationOut]
     residual_hours: dict[str, int]
     limitations: list[str]

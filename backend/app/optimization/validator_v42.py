@@ -70,3 +70,65 @@ def verify_interval(
         violations=violations,
         limitations=limitations,
     )
+
+def verify_projection(needs, pools, options, interval_caps, plan):
+    """Check allocation arithmetic independently of OR-Tools and block authorization."""
+    violations = ["POLICY_REVIEW_REQUIRED", "BUDGET_NOT_APPROVED", "MODALITY_REVIEW_REQUIRED"]
+    if plan.status not in {"optimal", "feasible"}:
+        return {"status": "blocked", "mathematical_status": "unavailable",
+                "mandatory_coverage_met": None, "violations": [*violations, "NO_SOLUTION_TO_VERIFY"]}
+    windows = defaultdict(list)
+    errors = set()
+    for need in needs:
+        windows[(need.start, need.end_exclusive)].append(need)
+        existing = sum(hours.get(need.interval_id, 0) for hours in plan.pool_allocations.values())
+        hired = sum(hours.get(need.interval_id, 0) for hours in plan.hire_allocations.values())
+        covered = existing + hired
+        if existing > interval_caps.get(need.interval_id, 0):
+            errors.add("INTERVAL_EXISTING_CAP_EXCEEDED")
+        if covered + plan.operational_residual.get(need.interval_id, -1) != need.target_hours:
+            errors.add("COVERAGE_BALANCE_INVALID")
+        if covered < need.mandatory_hours:
+            errors.add("MANDATORY_COVERAGE_MISSING")
+    for pool in pools:
+        used = plan.pool_allocations.get(pool.pool_id, {})
+        options_with_mentor = [option for option in options if option.mentor_pool_id == pool.pool_id]
+        mentor_hours = sum(option.mentor_hours_per_hire * plan.hires[option.role_id]
+                           for option in options_with_mentor)
+        if sum(used.values()) + mentor_hours > pool.total_hours:
+            errors.add("POOL_HORIZON_CAP_EXCEEDED")
+        for window, group in windows.items():
+            mentoring = sum(option.mentor_hours_per_hire * plan.hires[option.role_id]
+                            for option in options_with_mentor if window[0] < option.ready_on <= window[1])
+            if sum(used.get(n.interval_id, 0) for n in group) + mentoring > pool.caps_by_window[window]:
+                errors.add("POOL_WEEKLY_CAP_EXCEEDED")
+            moved = sum(used.get(n.interval_id, 0) for n in group if n.interval_id in pool.flexible_intervals)
+            if moved > pool.flexible_caps_by_window[window]:
+                errors.add("MOBILITY_CAP_EXCEEDED")
+            for need in group:
+                hours = used.get(need.interval_id, 0)
+                if not 0 <= hours <= pool.caps_by_interval.get(need.interval_id, 0):
+                    errors.add("POOL_ELIGIBILITY_EXCEEDED")
+                if hours and (need.skill not in pool.eligible_skills or need.shift not in pool.eligible_shifts):
+                    errors.add("SKILL_OR_SHIFT_MISMATCH")
+    cost = 0
+    for option in options:
+        count = plan.hires.get(option.role_id, 0)
+        cost += count * option.cost_cents
+        if not 0 <= count <= option.max_people:
+            errors.add("HEADCOUNT_LIMIT_EXCEEDED")
+        allocation = plan.hire_allocations.get(option.role_id, {})
+        for window, group in windows.items():
+            if sum(allocation.get(n.interval_id, 0) for n in group) > count * option.effective_hours(*window):
+                errors.add("HIRING_WINDOW_CAP_EXCEEDED")
+            for need in group:
+                if allocation.get(need.interval_id, 0) and (
+                    need.skill not in option.eligible_skills or need.shift not in option.eligible_shifts
+                ):
+                    errors.add("HIRING_ELIGIBILITY_INVALID")
+    if cost != plan.total_hiring_cost_cents:
+        errors.add("HIRING_COST_MISMATCH")
+    return {"status": "blocked", "mathematical_status": "invalid" if errors else "verified",
+            "mandatory_coverage_met": (("MANDATORY_COVERAGE_MISSING" not in errors)
+                                       if any(need.mandatory_hours for need in needs) else None),
+            "violations": [*violations, *sorted(errors)]}

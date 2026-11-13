@@ -334,6 +334,24 @@ class Backtest(Contract):
     mae: float | None = Field(ge=0)
     wape: float | None = Field(ge=0)
     limitations: list[str]
+    benchmarks: dict[str, dict[str, float | None]] = Field(default_factory=dict)
+    quantile_coverage: list[float] = Field(default_factory=list)
+    quantile_pinball_loss: list[list[float]] = Field(default_factory=list)
+    simultaneous_coverage: float | None = None
+    evaluation_origins: int = 0
+    calibration_through: date | None = None
+    evaluation_starts: date | None = None
+
+
+class ForecastSegment(Contract):
+    skill_id: str
+    shift_id: str | None
+    status: Literal['calibrated', 'uncalibrated', 'abstained']
+    method: str
+    points: list[ForecastPoint]
+    backtest: Backtest | None
+    usable_for_planning: bool
+    limitations: list[str]
 
 
 class ForecastResult(Scope):
@@ -348,6 +366,9 @@ class ForecastResult(Scope):
     interval_description: str | None
     backtest: Backtest | None
     limitations: list[str]
+    segments: list[ForecastSegment] = Field(default_factory=list)
+    source_kind: str | None = None
+    usable_for_planning: bool = True
 
     _ids = field_validator('data_snapshot_id', 'model_version', 'method')(nonempty)
 

@@ -34,13 +34,13 @@ def _guard_team(principal: Principal, team_id: str) -> None:
         raise FlowError(403, "FORBIDDEN_SCOPE", team_id)
 
 
-def submit_csv(session: Session, principal: Principal, *, team_id: str, filename: str, content: str) -> DataImport:
+def submit_csv(session: Session, principal: Principal, *, team_id: str, filename: str, content: str, source_kind: str = "csv") -> DataImport:
     _guard_team(principal, team_id)
     if not isinstance(content, str) or not content or len(content) > 200_000:
         raise FlowError(422, "INVALID_IMPORT")
     if not isinstance(filename, str) or not filename.strip() or filename != filename.strip() or len(filename) > 200 or "\n" in filename:
         raise FlowError(422, "INVALID_IMPORT")
-    digest = sha256(content.encode()).hexdigest()
+    digest = sha256((content if source_kind == "csv" else f"{source_kind}\0{filename}\0{content}").encode()).hexdigest()
     existing = session.scalar(select(DataImport).where(
         DataImport.tenant_id == principal.tenant_id, DataImport.team_id == team_id, DataImport.content_hash == digest,
     ))
@@ -49,9 +49,11 @@ def submit_csv(session: Session, principal: Principal, *, team_id: str, filename
     parsed = parse_csv(
         content, tenant_id=principal.tenant_id, team_id=team_id, snapshot_id=f"csv-{digest[:20]}", reference=filename,
     )
+    if parsed["snapshot"] is not None:
+        parsed["snapshot"]["source"]["kind"] = source_kind
     row = DataImport(
         import_id=str(uuid4()), tenant_id=principal.tenant_id, team_id=team_id, created_by=principal.user_id,
-        status="invalid" if parsed["errors"] else "ready", content_hash=digest, source_kind="csv",
+        status="invalid" if parsed["errors"] else "ready", content_hash=digest, source_kind=source_kind,
         source_reference=filename, snapshot_id=None, errors=parsed["errors"], history=parsed["history"],
         aggregates=parsed["aggregates"], preview=parsed["snapshot"] or {}, line_count=max(content.count("\n"), 1),
         created_at=datetime.now(timezone.utc),

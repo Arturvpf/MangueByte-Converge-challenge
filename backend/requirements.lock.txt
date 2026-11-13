@@ -53,3 +53,4 @@ websockets==17.4
 xxhash==4.0.2
 zstandard==0.25.0
 ortools==9.15.6755
+simpy==4.1.1

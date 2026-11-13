@@ -88,9 +88,11 @@ def test_jira_fixture_dedup_and_live_unavailable():
         calls.append(method)
         if method != "GET":
             raise AssertionError(method)
-        if params["startAt"] == 0:
-            return {"total": 2, "issues": [{"id": "DEMO-1"}]}
-        return {"total": 2, "issues": [{"id": "DEMO-2"}]}
+        assert url.endswith("/search/jql")
+        if not params.get("nextPageToken"):
+            return {"nextPageToken": "page-two", "issues": [{"id": "DEMO-1"}], "isLast": False}
+        assert params["nextPageToken"] == "page-two"
+        return {"issues": [{"id": "DEMO-2"}], "isLast": True}
 
     class SettingsLike:
         jira_base_url = "https://example.invalid"
@@ -104,7 +106,7 @@ def test_jira_fixture_dedup_and_live_unavailable():
         assert "summary" not in params["fields"]
         assert "created" in params["fields"]
         assert method == "GET"
-        return {"total": 0, "issues": []}
+        return {"isLast": True, "issues": []}
 
     assert fetch_issues(SettingsLike(), inspect_transport) == []
 

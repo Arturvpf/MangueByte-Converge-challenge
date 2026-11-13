@@ -3,7 +3,7 @@ from backend.app.contracts.v1 import EvidenceRef, ForecastResult, Hypothesis, In
 
 
 def build_report(*, tenant_id: str, team_id: str, data_snapshot_id: str, demand_known: bool,
-                 history_points: int, notes: list[str]) -> InvestigationReport:
+                 history_points: int, notes: list[str], shift_history: bool = False) -> InvestigationReport:
     evidence = EvidenceRef.model_validate({
         "evidence_id": "ev-snapshot", "tenant_id": tenant_id, "team_id": team_id,
         "data_snapshot_id": data_snapshot_id, "description": "Contagem agregada do snapshot, sem pessoas identificadas",
@@ -27,11 +27,14 @@ def build_report(*, tenant_id: str, team_id: str, data_snapshot_id: str, demand_
         questions.append(_pending("q-demand", "Qual é a demanda agregada, em atendimentos, no período do snapshot?"))
     hypotheses.append(Hypothesis.model_validate({
         "hypothesis_id": "hyp-coverage",
-        "statement": "A cobertura pode ser desigual entre competências e turnos",
-        "critical": True, "verification": "unverified", "evidence_ids": [], "confidence": None,
+        "statement": ("O histórico discrimina a demanda por competência e turno" if shift_history
+                      else "A cobertura pode ser desigual entre competências e turnos"),
+        "critical": True, "verification": "supported" if shift_history else "unverified",
+        "evidence_ids": ["ev-snapshot"] if shift_history else [], "confidence": None,
     }))
-    questions.append(_pending("q-skill", "Quais tarefas dessa equipe exigem cada competência no turno registrado?"))
-    missing.append("cobertura por competência e turno")
+    if not shift_history:
+        questions.append(_pending("q-skill", "Quais tarefas dessa equipe exigem cada competência no turno registrado?"))
+        missing.append("cobertura por competência e turno")
     if history_points < 8:
         hypotheses.append(Hypothesis.model_validate({
             "hypothesis_id": "hyp-seasonality",
