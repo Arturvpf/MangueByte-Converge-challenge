@@ -45,9 +45,11 @@ def _grid(snapshot, forecast, rate, rework, history, mandatory):
         shifts = sorted({row.shift_id for row in snapshot.capacity.rows if row.skill_id == skill})
         if not shifts:
             return None
-        if any((skill, shift) in rejected_segments for shift in [None, *shifts]):
-            return None
         shift_series = all((skill, shift) in segments for shift in shifts)
+        if any((skill, shift) in rejected_segments for shift in shifts):
+            return None
+        if not shift_series and (skill, None) in rejected_segments:
+            return None
         if shift_series:
             weights = {}
             assumptions.add("Demanda por turno prevista a partir de séries observadas.")

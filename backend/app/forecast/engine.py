@@ -141,6 +141,9 @@ def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, time
     if not calibrated:
         quantiles = [None] * weeks
         limitations.append("Percentis omitidos por histórico, mudança de regime ou cobertura insuficiente na avaliação.")
+    failed_calibration = len(calibration) >= MIN_CALIBRATION and not calibrated
+    if failed_calibration and not drift:
+        limitations.append("O holdout não sustentou os percentis; estimativas excluídas do planejamento.")
     if drift:
         limitations.append("Mudança recente de nível superior a 50%; estimativas diagnósticas excluídas do planejamento.")
     if metrics["wape"] is None:
@@ -168,7 +171,7 @@ def forecast_series(*, tenant_id: str, team_id: str, data_snapshot_id: str, time
     ) if actuals else None
     return ForecastResult(
         **scope, method=method, status="calibrated" if calibrated else "uncalibrated", points=points,
-        usable_for_planning=not drift,
+        usable_for_planning=not drift and not failed_calibration,
         interval_description=(f"Faixa empírica conjunta, cobertura observada de {simultaneous_coverage:.0%}."
                               if width is not None else None),
         backtest=backtest,
